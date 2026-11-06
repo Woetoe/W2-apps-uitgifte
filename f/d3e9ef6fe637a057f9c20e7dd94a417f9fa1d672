@@ -1,0 +1,191 @@
+/* W2 Apps — spelen met twee telefoons, gedeeld door schaken, Chinees dammen en Woordbord.
+   De verbinding zelf (Bluetooth/wifi) blijft open als je van spel wisselt; berichten
+   dragen daarom altijd de naam van het spel, zodat elk spel alleen zijn eigen stand oppikt.
+   Afspraak: wie "Spel maken" kiest is de host (speler 0), wie meedoet speler 1.
+   Een stand heeft altijd gid (spel-id) en seq (volgnummer); de hoogste seq wint. */
+(function () {
+  const NET = window.W2 && W2.net;
+
+  function sharedName() {
+    let n = '';
+    try { n = localStorage.getItem('w2-name') || ''; } catch (e) {}
+    if (!n) { try { n = (JSON.parse(localStorage.getItem('bg-settings') || '{}').name) || ''; } catch (e) {} }
+    return n;
+  }
+  function setSharedName(n) { try { localStorage.setItem('w2-name', n); } catch (e) {} }
+  function readRole() { try { return localStorage.getItem('w2-net-role') || localStorage.getItem('bg-net-role') || null; } catch (e) { return null; } }
+  function writeRole(r) { try { localStorage.setItem('w2-net-role', r); localStorage.setItem('bg-net-role', r); } catch (e) {} }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const GAME_NAMES = { chess: 'Schaken', halma: 'Chinees dammen', backgammon: 'Backgammon', woordbord: 'Woordbord', kronkel: 'Kronkel' };
+
+  // Lobby-opmaak; kleuren komen uit de CSS-variabelen van het spel zelf
+  const css = `
+  .ng{display:flex;flex-direction:column;gap:16px}
+  .ng-field{display:flex;flex-direction:column;gap:6px}
+  .ng-field label{font-weight:700}
+  .ng-input{background:var(--ng-panel,#222);border:1px solid var(--ng-line,#444);border-radius:12px;padding:13px 14px;font:inherit;font-size:17px;color:inherit;-webkit-user-select:text;user-select:text}
+  .ng-input:focus{outline:none;border-color:var(--ng-accent,#fc3)}
+  .ng-row{display:flex;gap:10px}
+  .ng-btn{flex:1;border:0;border-radius:14px;padding:15px 16px;min-height:52px;font:inherit;font-weight:700;font-size:17px;background:var(--ng-accent,#fc3);color:var(--ng-accent-ink,#211);cursor:pointer}
+  .ng-btn.alt{background:var(--ng-panel,#222);color:inherit;border:1px solid var(--ng-line,#444)}
+  .ng-btn:disabled{opacity:.45}
+  .ng-wait{display:flex;align-items:center;gap:12px;padding:6px 0}
+  .ng-pulse{width:14px;height:14px;border-radius:50%;background:var(--ng-accent,#fc3);animation:ngp 1.2s ease-in-out infinite;flex:none}
+  @keyframes ngp{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+  .ng-note{font-size:14px;opacity:.75}
+  .ng-tip{background:var(--ng-panel,#222);border-left:3px solid var(--ng-accent,#fc3);border-radius:6px 12px 12px 6px;padding:12px 14px;font-size:15px;opacity:.9}
+  .ng-err{color:var(--ng-warn,#ff8a6b);font-weight:600}
+  .ng-list{display:flex;flex-direction:column;gap:8px}
+  @media (prefers-reduced-motion:reduce){.ng-pulse{animation:none}}`;
+  function injectCss() {
+    if (document.getElementById('ng-css')) return;
+    const s = document.createElement('style'); s.id = 'ng-css'; s.textContent = css; document.head.appendChild(s);
+  }
+
+  window.W2NetGame = function (gameId, opts) {
+    injectCss();
+    const self = {
+      status: 'idle', // idle | hosting | searching | connecting | connected | lost
+      role: readRole(), peer: '', found: new Map(), error: '', peerGame: null,
+      available: () => !!(NET && NET.available()),
+      me() { return self.role === 'join' ? 1 : 0; },
+      name: sharedName,
+    };
+    const change = () => opts.onChange && opts.onChange();
+
+    function load() { try { const s = JSON.parse(localStorage.getItem(opts.storageKey) || 'null'); return s && s.gid ? s : null; } catch (e) { return null; } }
+    function save(s) { try { localStorage.setItem(opts.storageKey, JSON.stringify(s)); } catch (e) {} }
+    self.load = load;
+
+    self.publish = function (state) {
+      save(state);
+      if (self.status === 'connected') NET.send({ t: 'sync', game: gameId, s: state });
+    };
+    function hostStart() {
+      // host bepaalt: verder met opgeslagen spel tegen dezelfde persoon, of een nieuw spel
+      const st = opts.startHost(load(), self.peer || 'Tegenstander', sharedName() || 'Speler');
+      if (st) self.publish(st);
+    }
+
+    function onEvent(ev) {
+      switch (ev.type) {
+        case 'hosting': self.status = 'hosting'; self.error = ''; break;
+        case 'searching': self.status = 'searching'; self.error = ''; break;
+        case 'found': self.found.set(ev.id, ev.name); break;
+        case 'lost': self.found.delete(ev.id); break;
+        case 'connecting': self.status = 'connecting'; self.peer = ev.name || self.peer; break;
+        case 'connected':
+          self.status = 'connected'; self.peer = ev.name || self.peer; self.error = ''; self.found.clear();
+          NET.send({ t: 'here', game: gameId, name: sharedName() });
+          if (self.role === 'host') hostStart();
+          break;
+        case 'disconnected': self.status = 'lost'; try { navigator.vibrate && navigator.vibrate([80, 60, 80]); } catch (e) {} break;
+        case 'stopped': self.status = 'idle'; break;
+        case 'error': self.error = NET.explain(ev); if (self.status !== 'connected') self.status = 'idle'; break;
+        case 'message': {
+          let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+          onMessage(m); return;
+        }
+        default: return;
+      }
+      change();
+    }
+    function onMessage(m) {
+      if (m.t === 'here') {
+        if (m.name) self.peer = m.name;
+        self.peerGame = m.game;
+        if (m.game === gameId) {
+          if (!m.ack) NET.send({ t: 'here', game: gameId, ack: true, name: sharedName() });
+          if (self.role === 'host') {
+            const cur = load();
+            if (cur && opts.inProgress(cur)) self.publish(cur); else hostStart();
+          }
+        }
+        change();
+        return;
+      }
+      if (m.t !== 'sync' || !m.s) return;
+      if (m.game !== gameId) { self.peerGame = m.game; change(); return; }
+      self.peerGame = gameId;
+      const inc = m.s, local = load();
+      if (local && local.gid === inc.gid && local.seq > inc.seq) { self.publish(local); opts.onState(local, false); return; }
+      save(inc);
+      opts.onState(inc, true);
+    }
+
+    if (NET) {
+      NET.on(onEvent);
+      if (NET.isConnected()) {
+        self.status = 'connected';
+        // laat de ander weten dat we in dit spel zitten
+        setTimeout(() => NET.send({ t: 'here', game: gameId, name: sharedName() }), 50);
+      }
+    }
+
+    self.host = function () {
+      if (!sharedName().trim()) { self.error = 'Vul eerst je naam in, dan ziet de ander wie je bent.'; change(); return; }
+      self.role = 'host'; writeRole('host'); self.error = ''; self.status = 'hosting'; NET.host(sharedName()); change();
+    };
+    self.join = function () {
+      if (!sharedName().trim()) { self.error = 'Vul eerst je naam in, dan ziet de ander wie je bent.'; change(); return; }
+      self.role = 'join'; writeRole('join'); self.error = ''; self.found.clear(); self.status = 'searching'; NET.join(sharedName()); change();
+    };
+    self.reconnect = function () {
+      NET.stop(); self.status = 'idle';
+      setTimeout(() => (self.role === 'join' ? self.join() : self.host()), 300);
+    };
+    self.stop = function () { NET.stop(); self.status = 'idle'; change(); };
+    self.stopSearching = function () { if (self.status === 'hosting' || self.status === 'searching') { NET.stopSearching(); self.status = 'idle'; } };
+
+    self.lobbyHTML = function (rulesText) {
+      const st = self.status;
+      let body = '';
+      if (!self.available()) {
+        body = `<p class="ng-note">Spelen met twee telefoons werkt alleen in de geïnstalleerde app.</p>`;
+      } else if (st === 'idle' || st === 'lost') {
+        body = `<div class="ng-field"><label for="ng-name">Jouw naam</label><input class="ng-input" id="ng-name" data-in="ng-name" value="${esc(sharedName())}" maxlength="18" placeholder="bijv. Wouter" autocomplete="off"></div>
+          <div class="ng-row"><button class="ng-btn" data-a="ng-host">Spel maken</button><button class="ng-btn alt" data-a="ng-join">Meedoen</button></div>
+          <p class="ng-note">Eén van jullie tikt op Spel maken, de ander op Meedoen. De app vindt de andere telefoon vanzelf.</p>`;
+      } else if (st === 'hosting') {
+        body = `<div class="ng-wait"><span class="ng-pulse"></span><div><b>Wachten op een tegenstander…</b><p class="ng-note">Laat de ander in ${GAME_NAMES[gameId]} op Meedoen tikken.</p></div></div>
+          <button class="ng-btn alt" data-a="ng-cancel">Stoppen</button>`;
+      } else if (st === 'searching') {
+        const list = [...self.found.entries()];
+        body = `<div class="ng-wait"><span class="ng-pulse"></span><div><b>Zoeken naar telefoons in de buurt…</b><p class="ng-note">De ander moet op Spel maken hebben getikt.</p></div></div>
+          <div class="ng-list">${list.map(([id, n]) => `<button class="ng-btn" data-a="ng-connect" data-id="${esc(id)}">Spelen tegen ${esc(n)}</button>`).join('')}</div>
+          <button class="ng-btn alt" data-a="ng-cancel">Stoppen</button>`;
+      } else if (st === 'connecting') {
+        body = `<div class="ng-wait"><span class="ng-pulse"></span><b>Verbinden met ${esc(self.peer || 'de andere telefoon')}…</b></div>`;
+      } else if (st === 'connected') {
+        const elsewhere = self.peerGame && self.peerGame !== gameId;
+        body = `<div class="ng-wait"><span class="ng-pulse"></span><div><b>Verbonden met ${esc(self.peer || 'de andere telefoon')}</b>
+          <p class="ng-note">${elsewhere ? `${esc(self.peer || 'De ander')} zit nog in ${GAME_NAMES[self.peerGame] || 'een ander spel'}. Zodra die ook ${GAME_NAMES[gameId]} opent, begint het spel.` : 'Het spel wordt geladen…'}</p></div></div>
+          <button class="ng-btn alt" data-a="ng-stop">Verbinding verbreken</button>`;
+      }
+      return `<div class="ng">
+        ${self.error ? `<p class="ng-err">${esc(self.error)}</p>` : ''}
+        ${body}
+        <div class="ng-tip"><b>In het vliegtuig?</b> Zet vliegtuigmodus aan en daarna Bluetooth en wifi weer aan. Internet is niet nodig. Beide telefoons hebben deze app nodig.</div>
+        ${self.role !== 'join' && rulesText ? `<p class="ng-note">Wie het spel maakt, bepaalt de instellingen: ${esc(rulesText)}.</p>` : ''}
+      </div>`;
+    };
+
+    // Kliks uit de lobby; geeft true terug als die hier afgehandeld zijn
+    self.handleClick = function (el) {
+      const a = el.dataset.a;
+      if (!a || a.indexOf('ng-') !== 0) return false;
+      if (a === 'ng-host') self.host();
+      else if (a === 'ng-join') self.join();
+      else if (a === 'ng-connect') { self.status = 'connecting'; self.peer = self.found.get(el.dataset.id) || ''; NET.connect(el.dataset.id); change(); }
+      else if (a === 'ng-cancel') self.stop();
+      else if (a === 'ng-stop') self.stop();
+      return true;
+    };
+    self.handleInput = function (e) {
+      if (e.target.dataset.in === 'ng-name') { setSharedName(e.target.value); return true; }
+      return false;
+    };
+    return self;
+  };
+})();

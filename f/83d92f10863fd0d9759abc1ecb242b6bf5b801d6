@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Woordbord</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+/* Woordbord: alle kleuren komen uit het gekozen thema (themes.js zet de variabelen). */
+:root{
+  --room:#11241d; --room2:#18302a; --panel:#1f3a33; --line:#2f5047; --text:#f3efe3; --muted:#a9bdb5;
+  --board:#0d3b2e; --cell:#e9e2cc; --cellLine:#0d3b2e; --tile:#f6e7c1; --tileInk:#2b1d0e; --tileEdge:#c9a96b;
+  --dl:#9fd3e8; --tl:#3c8fc4; --dw:#f2b8b0; --tw:#d9473b; --prInk:#10261f; --accent:#f2b134; --accentInk:#2a1c02;
+  --good:#5fd08a; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif; --f-tile:var(--f-display);
+  --cs:22px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(14px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+p{margin:0}
+.muted{color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.back{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-weight:600;padding:10px 4px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room2);display:grid;place-items:center;flex:none;color:var(--text)}
+.iconbtn svg{width:22px;height:22px}
+.iconbtn[aria-pressed="true"]{background:var(--accent);color:var(--accentInk);border-color:var(--accent)}
+.btn{border:0;border-radius:14px;padding:13px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accentInk)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:8px}
+.btnrow .btn{flex:1;padding:12px 8px}
+
+/* start */
+.hero{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.hero h1{font-size:46px;line-height:.95}
+.hero .art{display:flex;gap:5px;transform:rotate(-3deg);transform-origin:left center}
+.hero .art span{width:34px;height:34px;border-radius:7px;background:var(--tile);color:var(--tileInk);box-shadow:inset 0 -3px 0 var(--tileEdge),0 4px 10px #0005;display:grid;place-items:center;font:800 19px var(--f-tile);position:relative}
+.hero .art span i{position:absolute;right:3px;bottom:3px;font:700 9px/1 var(--f-body);font-style:normal;opacity:.8}
+.hero .art span:nth-child(2n){transform:translateY(3px)}
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px;color:var(--text)}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel);color:var(--accent)}
+.choice .ic svg{width:26px;height:26px}
+.choice b{display:block;font-size:17px}
+.choice span{color:var(--muted);font-size:14px}
+.choice:disabled{opacity:.5}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+
+/* instellen */
+.group{display:flex;flex-direction:column;gap:8px}
+.group > .t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px;min-height:42px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accentInk)}
+.seg.sm button{padding:7px 4px;font-size:14px;min-height:36px}
+.seat{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center;background:var(--room2);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.seat .avbtn{border:0;background:none;padding:0;width:52px;height:52px;border-radius:15px;position:relative}
+.seat .avbtn svg{display:block}
+.seat .avbtn .pen{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accentInk);display:grid;place-items:center;font-size:11px;font-weight:800}
+.seat .who{display:flex;flex-direction:column;gap:6px;min-width:0}
+.seat .nm{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.seat .nm b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.themepick{display:flex;align-items:center;gap:12px;background:var(--room2);border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-align:left;color:var(--text)}
+.themepick b{display:block}
+.themepick span.d{font-size:14px;color:var(--muted)}
+.swatch{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:3px;border-radius:8px;width:66px;flex:none}
+.swatch i{aspect-ratio:1;border-radius:2px;display:grid;place-items:center;font:800 9px/1 var(--f-body);font-style:normal}
+.row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0}
+.row .d{font-size:14px;color:var(--muted)}
+.toggle{width:52px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s}
+.toggle[aria-pressed="true"]{background:var(--good)}
+.toggle[aria-pressed="true"]::after{transform:translateX(22px)}
+
+/* spel */
+.bar{display:flex;align-items:center;gap:8px}
+.bar .info{flex:1;text-align:center;font-size:14px;color:var(--muted);line-height:1.2}
+.bar .info b{color:var(--text);font-variant-numeric:tabular-nums}
+.players{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.pl{display:flex;align-items:center;gap:7px;background:var(--room2);border:1.5px solid var(--line);border-radius:14px;padding:6px 8px;min-width:0}
+.pl.turn{border-color:var(--accent);background:var(--panel)}
+.pl svg{flex:none}
+.pl .tx{min-width:0;display:flex;flex-direction:column;line-height:1.1}
+.pl .nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .sc{font:800 20px/1.05 var(--f-display);font-variant-numeric:tabular-nums}
+.pl .ck{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pl .ck.over{color:var(--warn);font-weight:700}
+.pl.turn .ck{color:var(--text)}
+.boardbox{position:relative;border-radius:10px;overflow:hidden;background:var(--board);padding:3px;box-shadow:0 10px 30px #0006}
+.boardbox.zoom{overflow:auto;max-height:min(100vw,520px);-webkit-overflow-scrolling:touch}
+#board{display:grid;grid-template-columns:repeat(15,1fr);gap:1.5px;width:100%;touch-action:manipulation}
+.boardbox.zoom #board{width:170%}
+.cell{aspect-ratio:1;background:var(--cell);border-radius:3px;display:grid;place-items:center;position:relative;overflow:visible}
+.cell.dl{background:var(--dl)} .cell.tl{background:var(--tl)} .cell.dw,.cell.st{background:var(--dw)} .cell.tw{background:var(--tw)}
+.cell .lb{font:800 calc(var(--cs)*.34)/1 var(--f-body);color:var(--prInk);opacity:.85;letter-spacing:-.02em}
+.cell .em{font-size:calc(var(--cs)*.62);line-height:1}
+.cell .deco{font-size:calc(var(--cs)*.5);line-height:1;opacity:.28;filter:saturate(.6)}
+.cell.hover{outline:2px solid var(--accent);outline-offset:-1px;z-index:2}
+.tile{position:absolute;inset:0;border-radius:3px;background:var(--tile);color:var(--tileInk);box-shadow:inset 0 calc(var(--cs)*-.08) 0 var(--tileEdge);
+  display:grid;place-items:center;font:800 calc(var(--cs)*.6)/1 var(--f-tile);z-index:1}
+.tile i{position:absolute;right:calc(var(--cs)*.06);bottom:calc(var(--cs)*.08);font:700 calc(var(--cs)*.26)/1 var(--f-body);font-style:normal;opacity:.8}
+.tile.blank{color:var(--tileInk);opacity:.92;font-style:italic}
+.tile.last{box-shadow:inset 0 calc(var(--cs)*-.08) 0 var(--tileEdge),0 0 0 2px var(--accent)}
+.tile.new{background:var(--accent);color:var(--accentInk);box-shadow:inset 0 calc(var(--cs)*-.08) 0 #0004;touch-action:none;z-index:3}
+.tile.new.bad{background:var(--warn);color:#2a0b02}
+.status{text-align:center;font-weight:600;min-height:24px;font-size:15px}
+.status.wait{color:var(--muted);font-weight:500}
+.status.err{color:var(--warn)}
+.status.ok b{font-family:var(--f-tile);letter-spacing:.03em}
+.status .pts{display:inline-block;background:var(--good);color:#06240f;border-radius:8px;padding:1px 8px;margin-left:6px;font-weight:800}
+.rack{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px;background:var(--room2);border:1px solid var(--line);border-radius:16px;min-height:60px}
+.rtile,.slot{aspect-ratio:1;border-radius:9px}
+.slot{border:1.5px dashed var(--line)}
+.rtile{background:var(--tile);color:var(--tileInk);box-shadow:inset 0 -4px 0 var(--tileEdge),0 3px 6px #0004;display:grid;place-items:center;font:800 26px/1 var(--f-tile);position:relative;touch-action:none;transition:transform .12s}
+.rtile i{position:absolute;right:5px;bottom:5px;font:700 11px/1 var(--f-body);font-style:normal;opacity:.8}
+.rtile.sel{transform:translateY(-7px);box-shadow:inset 0 -4px 0 var(--tileEdge),0 0 0 3px var(--accent),0 8px 14px #0006}
+.rtile.drag{opacity:.25}
+.rtile.q::before{content:"";width:40%;height:40%;border-radius:50%;border:2px dashed var(--tileEdge)}
+.hidden-rack{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:15px;min-height:60px;background:var(--room2);border:1px solid var(--line);border-radius:16px}
+.ctrls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ctrls .btn{min-height:46px;padding:8px 4px;font-size:15px}
+.ctrls.two{grid-template-columns:1fr 2fr}
+#ghost{position:fixed;left:0;top:0;width:56px;height:56px;border-radius:10px;background:var(--tile);color:var(--tileInk);box-shadow:inset 0 -4px 0 var(--tileEdge),0 12px 24px #0008;
+  display:grid;place-items:center;font:800 30px/1 var(--f-tile);pointer-events:none;z-index:50}
+.netlost{background:#4a1f1a;color:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost span{flex:1}
+.netlost button{border:0;background:#fff;color:#2a1a10;border-radius:10px;padding:9px 12px;font-weight:700}
+
+/* doorgeven */
+.cover{position:fixed;inset:0;z-index:15;background:var(--room);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}
+.cover h2{font-size:34px}
+.cover .lastmv{background:var(--room2);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:15px;color:var(--muted);max-width:340px}
+.cover .btn{min-width:260px}
+
+/* vellen */
+.scrim{position:fixed;inset:0;background:#05080cb8;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;color:var(--text)}
+.sheet h2{font-size:26px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sheet-head .btn{min-height:40px;padding:8px 14px}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.letters{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.letters button{aspect-ratio:1;border:0;border-radius:9px;background:var(--tile);color:var(--tileInk);box-shadow:inset 0 -3px 0 var(--tileEdge);font:800 20px/1 var(--f-tile)}
+.letters button[aria-pressed="true"]{background:var(--accent);color:var(--accentInk);box-shadow:inset 0 -3px 0 #0004}
+.prow{display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;text-align:left;width:100%;color:var(--text)}
+.prow b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow:disabled{opacity:.45}
+.prow .ed{border:1px solid var(--line);background:var(--room2);border-radius:10px;padding:6px 10px;font-size:14px;font-weight:600;color:var(--text)}
+.editor{display:flex;flex-direction:column;gap:12px}
+.editor .big{display:flex;align-items:center;gap:14px}
+.ng-input,.inp{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:17px;color:var(--text);width:100%;-webkit-user-select:text;user-select:text}
+.inp:focus{outline:none;border-color:var(--accent)}
+.opts{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scrollbar-width:none}
+.opts::-webkit-scrollbar{display:none}
+.opts button{border:2px solid transparent;background:none;border-radius:13px;padding:1px;flex:none}
+.opts button[aria-pressed="true"]{border-color:var(--accent)}
+.opts button svg{display:block}
+.thgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.thc{display:flex;flex-direction:column;gap:8px;align-items:stretch;border:2px solid var(--line);border-radius:16px;padding:8px;text-align:left}
+.thc[aria-pressed="true"]{border-color:var(--accent)}
+.thc .swatch{width:100%}
+.thc .nm{font-weight:700;font-size:14px;display:flex;gap:6px;align-items:center}
+.log{display:flex;flex-direction:column;gap:6px}
+.lg{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+.lg .w{font-size:14px;line-height:1.35}
+.lg .w b{font-family:var(--f-tile);letter-spacing:.02em}
+.lg .w .who{color:var(--muted);font-size:12px;display:block}
+.lg .p{font:800 18px var(--f-display);font-variant-numeric:tabular-nums}
+.bingo{display:inline-block;background:var(--accent);color:var(--accentInk);border-radius:6px;padding:0 6px;font-size:12px;font-weight:800;margin-left:4px}
+.result{text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;padding:4px 0}
+.result h2{font-size:34px;line-height:1}
+.rank{display:flex;flex-direction:column;gap:8px}
+.rk{display:grid;grid-template-columns:24px 40px 1fr auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
+.rk.win{border-color:var(--accent)}
+.rk .n{font:800 18px var(--f-display);color:var(--muted)}
+.rk .s{font:800 24px var(--f-display);font-variant-numeric:tabular-nums}
+.rk .a{font-size:12px;color:var(--muted)}
+.statcard{display:grid;grid-template-columns:48px 1fr;gap:12px;background:var(--room2);border:1px solid var(--line);border-radius:16px;padding:12px}
+.statcard b{font-size:17px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin-top:6px}
+.stats div{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}
+.stats div span{font:800 18px var(--f-display);color:var(--text);font-variant-numeric:tabular-nums}
+.stats .wide{grid-column:1/-1}
+.stats .wide span{font-size:15px;font-family:var(--f-body)}
+.h2h{display:flex;align-items:center;gap:8px;background:var(--room2);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-size:15px}
+.h2h .vs{flex:1;text-align:center;font:800 20px var(--f-display);font-variant-numeric:tabular-nums}
+.h2h .side{display:flex;align-items:center;gap:6px;min-width:0;max-width:40%}
+.h2h .side span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:30px 0}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--accent);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+.ng-field{display:none!important} /* naam komt hier uit je gekozen speler */
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ghost" hidden></div>
+<script src="../w2.js"></script>
+<script src="../netgame.js"></script>
+<script src="engine.js"></script>
+<script src="themes.js"></script>
+<script src="avatar.js"></script>
+<script>
+(function () {
+const T = window.WB_THEMES, AV = window.WB_AVATAR;
+const app = document.getElementById('app'), ghost = document.getElementById('ghost');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + WB.rnd(1e9).toString(36);
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const LEVELS = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+const DICT_LABEL = { nl: 'Nederlands', en: 'Engels', mix: 'NL + EN' };
+const MOVE_TIMES = [[60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min']];
+const TOTAL_TIMES = [[600, '10 min'], [900, '15 min'], [1500, '25 min'], [3000, '50 min']];
+
+/* ---------------- instellingen en profielen ---------------- */
+const baseCfg = () => ({ dict: 'nl', board: 'classic', time: { mode: 'none', move: 120, total: 1500 }, theme: 'klassiek' });
+const S = Object.assign({ sound: true, vibrate: true, cfg: null, seatsCpu: null, seatsLocal: null, netCfg: null, netPid: null, theme: 'klassiek' }, store.get('wb-settings', {}));
+if (!S.netCfg) S.netCfg = baseCfg();
+const saveS = () => store.set('wb-settings', S);
+
+let profiles = store.get('wb-profiles', []);
+const saveProfiles = () => store.set('wb-profiles', profiles);
+function sharedName() { try { return localStorage.getItem('w2-name') || ''; } catch (e) { return ''; } }
+function setSharedName(n) { try { localStorage.setItem('w2-name', n); } catch (e) {} }
+if (!profiles.length) { profiles.push({ id: uid(), name: sharedName() || 'Speler 1', av: AV.random() }); saveProfiles(); }
+const prof = id => profiles.find(p => p.id === id);
+const profByName = n => profiles.find(p => p.name.toLowerCase() === String(n || '').toLowerCase());
+function freeProfile(used) {
+  let p = profiles.find(x => !used.includes(x.id));
+  if (!p) { p = { id: uid(), name: 'Speler ' + (profiles.length + 1), av: AV.random() }; profiles.push(p); saveProfiles(); }
+  return p;
+}
+function netProfile() { let p = prof(S.netPid); if (!p) { p = profiles[0]; S.netPid = p.id; saveS(); } return p; }
+
+/* ---------------- toestand ---------------- */
+let G = null, view = 'home';
+const ui = { sheet: null, place: [], sel: null, rv: [], rvKey: '', thinking: false, token: 0, cover: false, zoom: false, msg: '', msgBad: false,
+  setup: null, kind: 'cpu', who: null, edit: null, themeFor: null, blank: null, swapSel: new Set(), confirm: null, ts: null, lastSeen: {} };
+const GKEY = m => 'wb-game-' + m;
+const loadGame = m => { const g = store.get(GKEY(m), null); return g && g.gid ? g : null; };
+const saveGame = g => store.set(GKEY(g.mode), g);
+const inProgress = g => !!(g && !g.over);
+
+const net = window.W2NetGame('woordbord', {
+  storageKey: GKEY('net'),
+  inProgress,
+  startHost(saved, peer) {
+    if (inProgress(saved) && saved.players[1] && saved.players[1].name === peer) G = saved;
+    else G = newNetGame(peer);
+    G.seq++; view = 'game'; resetTurnUi(); render();
+    return G;
+  },
+  onState(s) {
+    const prevLen = G && G.gid === s.gid ? G.log.length : -1;
+    const wasOver = G && G.gid === s.gid && G.over;
+    G = s;
+    if (view !== 'game') { view = 'game'; resetTurnUi(); }
+    if (G.log.length > prevLen && prevLen >= 0) { ui.place = []; ui.sel = null; ui.msg = ''; const L = G.log[G.log.length - 1]; if (L && L.type === 'play') (L.bingo ? sBingo() : sPlay()); if (isMine(G.turn)) buzz(25); }
+    if (G.over && !wasOver) { recordStats(G); ui.sheet = 'result'; sEnd(); }
+    sendMyProfile();
+    render();
+  },
+  onChange() { render(); }
+});
+// de meedoende telefoon stuurt naam en avatar; de maker zet die in het spel
+function sendMyProfile() {
+  if (!G || G.mode !== 'net' || net.me() !== 1 || net.status !== 'connected') return;
+  const p = netProfile(), pl = G.players[1];
+  if (pl.av && pl.name === p.name && JSON.stringify(pl.av) === JSON.stringify(p.av)) return;
+  try { W2.net.send({ t: 'wb-me', game: 'woordbord', gid: G.gid, name: p.name, av: p.av }); } catch (e) {}
+}
+if (window.W2 && W2.net) W2.net.on(ev => {
+  if (ev.type !== 'message') return;
+  let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+  if (m.t !== 'wb-me' || m.game !== 'woordbord' || !G || G.mode !== 'net' || G.gid !== m.gid || net.me() !== 0) return;
+  G.players[1].name = String(m.name || G.players[1].name).slice(0, 18); G.players[1].av = AV.fix(m.av);
+  commit();
+});
+
+/* ---------------- woordenboeken ---------------- */
+const dicts = {}, loading = {};
+let dictErr = '';
+function needDict(id) {
+  if (dicts[id]) return true;
+  if (!loading[id]) {
+    loading[id] = true;
+    WB.loadDict(id).then(d => { dicts[id] = d; dictErr = ''; render(); schedule(); })
+      .catch(() => { loading[id] = false; dictErr = 'Het woordenboek kon niet geladen worden.'; render(); });
+  }
+  return false;
+}
+const ctx = () => ({ dict: dicts[G.dict], values: WB.SETS[G.setId].values, prem: G.prem });
+const vals = () => WB.SETS[G.setId].values;
+
+/* ---------------- geluid en trillen ---------------- */
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sTick = () => tone(520, 0.05, 'triangle', 0.1);
+const sPlay = () => { tone(392, 0.1, 'triangle', 0.14); tone(587, 0.16, 'triangle', 0.14, 0.08); };
+const sBingo = () => { [523, 659, 784, 1047].forEach((f, k) => tone(f, 0.18, 'triangle', 0.14, k * 0.09)); };
+const sErr = () => { tone(180, 0.14, 'square', 0.05); tone(140, 0.18, 'square', 0.05, 0.1); };
+const sEnd = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+/* ---------------- spel maken ---------------- */
+function cfgTime(c) { return { mode: c.time.mode, limit: c.time.mode === 'move' ? c.time.move : c.time.mode === 'total' ? c.time.total : 0 }; }
+function newGame(mode, cfg, players) {
+  const setId = WB.DICTS[cfg.dict].set;
+  const bag = WB.newBag(setId).split('');
+  const g = { v: 1, gid: uid(), mode, seq: 0, dict: cfg.dict, setId, boardKind: cfg.board,
+    prem: cfg.board === 'random' ? WB.randomPremiums() : WB.classicPremiums(), board: '.'.repeat(WB.SIZE),
+    theme: cfg.theme, time: cfgTime(cfg), turn: 0, log: [], scoreless: 0, last: [], over: null, created: Date.now(),
+    players: players.map(p => ({ name: p.name, av: p.av, type: p.type, level: p.level || null, pid: p.pid || null, score: 0, rack: '' })) };
+  g.players.forEach(p => { p.rack = bag.splice(-WB.RACK).join(''); });
+  g.bag = bag.join('');
+  g.clock = g.players.map(() => (g.time.mode === 'total' ? g.time.limit * 1000 : 0));
+  g.turn = WB.rnd(g.players.length);
+  return g;
+}
+function seatPlayers(seats) {
+  const cpus = seats.filter(s => s.type === 'cpu').length;
+  let cn = 0;
+  return seats.map(s => {
+    if (s.type === 'cpu') { cn++; return { type: 'cpu', level: s.level, name: 'Computer' + (cpus > 1 ? ' ' + cn : ''), av: AV.robot(s.level) }; }
+    const p = prof(s.pid) || profiles[0];
+    return { type: 'human', pid: p.id, name: p.name, av: p.av };
+  });
+}
+function newNetGame(peer) {
+  const me = netProfile(), c = S.netCfg;
+  const g = newGame('net', c, [{ type: 'human', pid: me.id, name: me.name, av: me.av }, { type: 'human', name: peer || 'Tegenstander', av: null }]);
+  return g;
+}
+function gameCfg(g) { return { dict: g.dict, board: g.boardKind, theme: g.theme, time: { mode: g.time.mode, move: g.time.mode === 'move' ? g.time.limit : 120, total: g.time.mode === 'total' ? g.time.limit : 1500 } }; }
+
+/* ---------------- wie is wie ---------------- */
+const me = () => (G && G.mode === 'net' ? net.me() : -1);
+function isMine(p) {
+  if (!G) return false;
+  if (G.mode === 'net') return p === net.me() && net.status === 'connected';
+  return G.players[p].type === 'human';
+}
+const humansHere = () => G.players.filter(p => p.type === 'human').length;
+const needsCover = () => G && G.mode === 'local' && !G.over && humansHere() > 1 && G.players[G.turn].type === 'human';
+function rackOwner() {
+  if (!G) return -1;
+  if (G.mode === 'net') return net.me();
+  if (G.over) return -1;
+  if (G.players[G.turn].type === 'human' && !ui.cover) return G.turn;
+  if (humansHere() === 1) return G.players.findIndex(p => p.type === 'human');
+  return -1;
+}
+function canAct() {
+  return !!(G && view === 'game' && !G.over && !ui.cover && !ui.thinking && isMine(G.turn) && G.players[G.turn].type === 'human' && dicts[G.dict] && !ui.sheet);
+}
+function resetTurnUi() { ui.place = []; ui.sel = null; ui.msg = ''; ui.thinking = false; ui.token++; ui.cover = needsCover(); ui.zoom = false; ui.ts = null; }
+
+/* ---------------- rek ---------------- */
+function syncRack(p) {
+  const r = G.players[p].rack, key = G.gid + ':' + p;
+  const same = ui.rvKey === key && ui.rv.slice().sort().join('') === r.split('').sort().join('');
+  if (same) return;
+  const pool = r.split(''), out = [];
+  if (ui.rvKey === key) for (const ch of ui.rv) { const k = pool.indexOf(ch); if (k >= 0) { out.push(ch); pool.splice(k, 1); } }
+  ui.rv = out.concat(pool); ui.rvKey = key; ui.place = []; ui.sel = null;
+}
+
+/* ---------------- klok ---------------- */
+const turnKey = () => G.gid + ':' + G.log.length;
+function timerRunning() { return G && !G.over && !ui.cover && view === 'game'; }
+function touchTimer() { if (timerRunning() && (!ui.ts || ui.ts.key !== turnKey())) ui.ts = { key: turnKey(), start: Date.now() }; }
+function elapsed() { return ui.ts && G && ui.ts.key === turnKey() ? Date.now() - ui.ts.start : 0; }
+function clockLeft(p) {
+  if (!G || G.time.mode === 'none') return null;
+  const run = p === G.turn && !G.over && G.players[p].type === 'human';
+  if (G.time.mode === 'total') return G.clock[p] - (run ? elapsed() : 0);
+  return run ? G.time.limit * 1000 - elapsed() : G.time.limit * 1000;
+}
+function fmtClock(ms) {
+  const neg = ms < 0; let s = Math.ceil(Math.abs(ms) / 1000);
+  if (neg) s = Math.floor(Math.abs(ms) / 1000);
+  return (neg ? '−' : '') + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function chargeClock(p) {
+  if (G.time.mode === 'total' && isMine(p) && G.players[p].type === 'human') G.clock[p] -= elapsed();
+}
+setInterval(() => {
+  if (!G || view !== 'game' || G.over || G.time.mode === 'none') return;
+  touchTimer();
+  for (let p = 0; p < G.players.length; p++) {
+    const el = document.querySelector(`[data-clock="${p}"]`); if (!el) continue;
+    const ms = clockLeft(p); el.textContent = fmtClock(ms); el.classList.toggle('over', ms < 0);
+  }
+  if (G.time.mode === 'move' && !ui.cover && isMine(G.turn) && G.players[G.turn].type === 'human' && clockLeft(G.turn) <= 0) {
+    ui.sheet = null; ui.place = []; ui.sel = null;
+    applyPass(G.turn, 'timeout'); buzz([60, 40, 60]);
+  }
+}, 250);
+
+/* ---------------- zetten uitvoeren ---------------- */
+function commit() {
+  G.seq++; saveGame(G);
+  if (G.mode === 'net') net.publish(G);
+  render(); schedule();
+}
+function nextTurn() {
+  G.turn = (G.turn + 1) % G.players.length;
+  ui.place = []; ui.sel = null; ui.cover = needsCover();
+}
+function removeFromRack(rack, letters) {
+  const r = rack.split('');
+  for (const ch of letters) { const k = r.indexOf(ch); if (k >= 0) r.splice(k, 1); }
+  return r.join('');
+}
+function applyPlay(p, tiles) {
+  const ev = WB.evaluate(ctx(), G.board, tiles);
+  if (!ev.ok) return ev;
+  chargeClock(p);
+  const B = G.board.split(''); tiles.forEach(([i, ch]) => { B[i] = ch; }); G.board = B.join('');
+  let rack = removeFromRack(G.players[p].rack, tiles.map(([, ch]) => (ch >= 'A' && ch <= 'Z' ? '?' : ch)));
+  const bag = G.bag.split(''); const n = Math.min(WB.RACK - rack.length, bag.length);
+  rack += bag.splice(bag.length - n, n).join('');
+  G.bag = bag.join(''); G.players[p].rack = rack;
+  G.players[p].score += ev.score; G.scoreless = 0; G.last = tiles.map(t => t[0]);
+  G.log.push({ p, type: 'play', words: ev.words.map(w => [w.w, w.score]), score: ev.score, bingo: ev.bingo, n: tiles.length });
+  ev.bingo ? (sBingo(), buzz([40, 30, 40, 30, 120])) : (sPlay(), buzz(18));
+  if (!rack.length && !G.bag.length) endGame('out', p); else nextTurn();
+  commit();
+  return ev;
+}
+function applySwap(p, letters) {
+  if (G.bag.length < WB.RACK || !letters.length) return;
+  chargeClock(p);
+  const bag = G.bag.split('');
+  const drawn = bag.splice(bag.length - letters.length, letters.length);
+  bag.push(...letters.split('')); WB.shuffle(bag);
+  G.players[p].rack = removeFromRack(G.players[p].rack, letters.split('')) + drawn.join('');
+  G.bag = bag.join(''); G.scoreless++; G.last = [];
+  G.log.push({ p, type: 'swap', n: letters.length });
+  sTick();
+  if (G.scoreless >= 2 * G.players.length) endGame('pass'); else nextTurn();
+  commit();
+}
+function applyPass(p, kind) {
+  chargeClock(p);
+  G.scoreless++; G.last = [];
+  G.log.push({ p, type: kind || 'pass' });
+  if (G.scoreless >= 2 * G.players.length) endGame('pass'); else nextTurn();
+  commit();
+}
+function rackValue(q) { return [...G.players[q].rack].reduce((a, ch) => a + WB.tileValue(ch, vals()), 0); }
+function endGame(reason, by) {
+  const n = G.players.length, adj = G.players.map(() => ({ rack: 0, time: 0 }));
+  if (reason === 'out') {
+    let sum = 0;
+    for (let q = 0; q < n; q++) if (q !== by) { const v = rackValue(q); adj[q].rack -= v; sum += v; }
+    adj[by].rack += sum;
+  } else if (reason !== 'resign') for (let q = 0; q < n; q++) adj[q].rack -= rackValue(q);
+  if (G.time.mode === 'total') G.players.forEach((pl, q) => { if (G.clock[q] < 0) adj[q].time -= 10 * Math.ceil(-G.clock[q] / 60000); });
+  G.players.forEach((pl, q) => { pl.score += adj[q].rack + adj[q].time; });
+  let winners;
+  if (reason === 'resign') winners = G.players.map((_, q) => q).filter(q => q !== by);
+  else { const best = Math.max(...G.players.map(p => p.score)); winners = G.players.map((p, q) => (p.score === best ? q : -1)).filter(q => q >= 0); }
+  G.over = { reason, by: by === undefined ? -1 : by, adj, winners, at: Date.now() };
+  ui.place = []; ui.sel = null; ui.cover = false; ui.sheet = 'result';
+  recordStats(G); sEnd(); buzz([60, 40, 60, 40, 160]);
+}
+
+/* ---------------- computer ---------------- */
+let worker = null, workerOk = true;
+function think(msg, cb) {
+  const id = ++ui.token;
+  const fallback = () => setTimeout(() => {
+    if (!dicts[msg.dict]) return;
+    const set = WB.DICTS[msg.dict].set;
+    cb(id, WB.choose({ dict: dicts[msg.dict], values: WB.SETS[set].values, prem: msg.prem }, msg.board, msg.rack, msg.level, msg.bag, set));
+  }, 40);
+  if (workerOk && window.Worker) {
+    try {
+      worker = worker || new Worker('ai-worker.js');
+      worker.onmessage = e => { if (e.data.id !== id) return; if (e.data.error) { workerOk = false; fallback(); } else cb(id, e.data.mv); };
+      worker.onerror = () => { workerOk = false; fallback(); };
+      worker.postMessage(Object.assign({ id }, msg));
+      return;
+    } catch (e) { workerOk = false; }
+  }
+  fallback();
+}
+function schedule() {
+  if (!G || view !== 'game' || G.mode !== 'local' || G.over || ui.thinking) return;
+  const p = G.turn, pl = G.players[p];
+  if (pl.type !== 'cpu') return;
+  if (!needDict(G.dict)) return;
+  ui.thinking = true; render();
+  const gid = G.gid, n = G.log.length, t0 = Date.now();
+  think({ dict: G.dict, prem: G.prem, board: G.board, rack: pl.rack, level: pl.level, bag: G.bag.length }, (id, mv) => {
+    setTimeout(() => {
+      if (!G || G.gid !== gid || G.log.length !== n || view !== 'game') { if (id === ui.token) ui.thinking = false; return; }
+      ui.thinking = false;
+      if (mv.type === 'play') { const ev = applyPlay(p, mv.tiles); if (!ev.ok) applyPass(p); }
+      else if (mv.type === 'swap') applySwap(p, mv.letters);
+      else applyPass(p);
+    }, Math.max(0, 900 - (Date.now() - t0)));
+  });
+}
+
+/* ---------------- statistieken ---------------- */
+function statKey(pl) {
+  if (pl.type === 'cpu') return 'cpu:' + pl.level;
+  if (pl.pid && prof(pl.pid)) return pl.pid;
+  const p = profByName(pl.name);
+  return p ? p.id : 'n:' + String(pl.name).toLowerCase();
+}
+function recordStats(g) {
+  const st = store.get('wb-stats', { players: {}, h2h: {}, done: [] });
+  if (st.done.includes(g.gid)) return;
+  st.done.push(g.gid); if (st.done.length > 400) st.done = st.done.slice(-400);
+  const keys = g.players.map(statKey);
+  g.players.forEach((pl, q) => {
+    const k = keys[q];
+    const r = st.players[k] = Object.assign({ name: pl.name, av: pl.av, games: 0, wins: 0, draws: 0, total: 0, high: 0, best: null, bingos: 0, moves: 0 }, st.players[k] || {});
+    r.name = pl.type === 'cpu' ? 'Computer ' + LEVELS[pl.level].toLowerCase() : pl.name; r.av = pl.av || r.av;
+    r.games++;
+    const win = g.over.winners.includes(q);
+    if (win && g.over.winners.length > 1) r.draws++; else if (win) r.wins++;
+    r.total += pl.score; r.high = Math.max(r.high, pl.score);
+    for (const L of g.log) if (L.p === q && L.type === 'play') {
+      r.moves++; if (L.bingo) r.bingos++;
+      if (!r.best || L.score > r.best.s) r.best = { s: L.score, w: L.words.map(w => w[0]).join(', ') };
+    }
+  });
+  for (let a = 0; a < g.players.length; a++) for (let b = a + 1; b < g.players.length; b++) {
+    const ka = keys[a], kb = keys[b]; if (ka === kb) continue;
+    const key = [ka, kb].sort().join('|');
+    const h = st.h2h[key] = st.h2h[key] || { w: {}, d: 0, games: 0 };
+    h.games++;
+    let wa = g.players[a].score, wb = g.players[b].score;
+    if (g.over.reason === 'resign') { wa = a === g.over.by ? -1 : 1; wb = b === g.over.by ? -1 : 1; }
+    if (wa === wb) h.d++; else { const w = wa > wb ? ka : kb; h.w[w] = (h.w[w] || 0) + 1; }
+  }
+  store.set('wb-stats', st);
+}
+
+/* ---------------- tekenen ---------------- */
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  zoom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>'
+};
+const avatar = (av, s) => AV.svg(av, s);
+
+function swatchHTML(t) {
+  const c = [t.tw, t.cell, t.dl, t.cell, t.tw, t.cell, 'T:W', 'T:B', t.dw, t.cell, t.dl, t.cell, t.tl, t.cell, t.dl];
+  return `<span class="swatch" style="background:${t.board}">${c.map(x => x.startsWith('T:')
+    ? `<i style="background:${t.tile};color:${t.tileInk};box-shadow:inset 0 -2px 0 ${t.tileEdge};font-family:${t.fontStack.replace(/"/g, "'")}">${x.slice(2)}</i>`
+    : `<i style="background:${x}"></i>`).join('')}</span>`;
+}
+
+function vHome() {
+  const loc = loadGame('local'), ng = loadGame('net');
+  const th = T.byId[S.theme] || T.list[0];
+  const who = g => g.players.map(p => esc(p.name)).join(', ');
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><div class="art" aria-hidden="true">${['w', 'o', 'o', 'r', 'd'].map(c => `<span>${c.toUpperCase()}<i>${WB.SETS.nl.values[c.charCodeAt(0) - 97]}</i></span>`).join('')}</div>
+      <div><h1>Woordbord</h1><p class="muted" style="margin-top:6px">Woorden leggen met 2 tot 4 spelers</p></div></div>
+    <div class="choices">
+      ${inProgress(loc) ? `<div class="choice" style="flex-direction:column;align-items:stretch;gap:10px"><span><b>Lopend spel</b><span>${who(loc)} · ${loc.log.length} beurten · ${loc.bag.length} in de zak</span></span>
+        <div class="resume"><button class="btn" data-a="resume" data-m="local">Doorgaan</button><button class="btn quiet" data-a="abandon">Stoppen</button></div></div>` : ''}
+      <button class="choice" data-a="setup" data-k="cpu"><span class="ic">${IC.cpu}</span><span><b>Tegen de computer</b><span>Makkelijk, normaal of sterk, met 1 tot 3 computers</span></span></button>
+      <button class="choice" data-a="setup" data-k="local"><span class="ic">${IC.one}</span><span><b>Samen op één telefoon</b><span>2 tot 4 spelers, letters blijven geheim bij het doorgeven</span></span></button>
+      <button class="choice" data-a="netview" ${net.available() ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${net.available() ? 'Via Bluetooth en wifi, internet niet nodig' : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && net.available() ? `<p class="note">Er loopt nog een spel tegen ${esc(ng.players[net.me() ? 0 : 1].name)}. Verbind opnieuw om verder te spelen.</p>` : ''}
+      <button class="choice" data-a="stats"><span class="ic">${IC.chart}</span><span><b>Statistieken</b><span>Gewonnen, hoogste score, beste woord en onderlinge stand</span></span></button>
+    </div>
+    <p class="note" style="text-align:center">Thema op dit scherm: ${esc(th.name)} · woordenlijsten: OpenTaal (NL) en ENABLE (EN)</p>
+  </div>`;
+}
+
+function segBtns(act, key, cur, opts, extra) { return `<div class="seg ${extra || ''}">${opts.map(([v, l]) => `<button data-a="${act}" data-k="${key}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`; }
+function cfgHTML(c) {
+  const th = T.byId[c.theme] || T.list[0];
+  const tm = c.time.mode;
+  return `<div class="group"><span class="t">Woordenboek</span>${segBtns('cfg', 'dict', c.dict, [['nl', 'Nederlands'], ['en', 'Engels'], ['mix', 'Allebei']])}
+      <p class="note">${c.dict === 'en' ? 'Engelse letters en punten.' : c.dict === 'mix' ? 'Woorden uit beide lijsten zijn goed. Nederlandse letters en punten.' : 'Nederlandse letters en punten.'} Foute woorden worden meteen geweigerd.</p></div>
+    <div class="group"><span class="t">Bord</span>${segBtns('cfg', 'board', c.board, [['classic', 'Klassiek'], ['random', 'Willekeurig']])}
+      <p class="note">${c.board === 'random' ? 'Elk spel liggen de bonusvakken ergens anders.' : 'De bekende indeling van de bonusvakken.'}</p></div>
+    <div class="group"><span class="t">Tijd</span>${segBtns('cfg', 'tmode', tm, [['none', 'Geen klok'], ['move', 'Per beurt'], ['total', 'Totaal']])}
+      ${tm === 'move' ? segBtns('cfg', 'tmove', c.time.move, MOVE_TIMES, 'sm') + '<p class="note">Tijd op? Dan is je beurt voorbij.</p>' : ''}
+      ${tm === 'total' ? segBtns('cfg', 'ttotal', c.time.total, TOTAL_TIMES, 'sm') + '<p class="note">Per speler voor het hele spel. Daarna mag je door, maar kost elke begonnen minuut 10 punten.</p>' : ''}</div>
+    <div class="group"><span class="t">Thema</span>
+      <button class="themepick" data-a="themes">${swatchHTML(th)}<span><b>${th.emo[0] || ''} ${esc(th.name)}</b><span class="d">Kies uit ${T.list.length} thema's</span></span></button></div>`;
+}
+function vSetup() {
+  const s = ui.setup;
+  const seats = s.seats.map((st, k) => {
+    if (st.type === 'cpu') {
+      return `<div class="seat"><span class="avbtn">${avatar(AV.robot(st.level), 52)}</span><div class="who">
+        <div class="nm"><b>Computer</b>${segBtns('seattype', k, 'cpu', [['human', 'Mens'], ['cpu', 'Computer']], 'sm')}</div>
+        ${segBtns('seatlevel', k, st.level, [['easy', 'Makkelijk'], ['normal', 'Normaal'], ['strong', 'Sterk']], 'sm')}</div></div>`;
+    }
+    const p = prof(st.pid) || profiles[0];
+    return `<div class="seat"><button class="avbtn" data-a="who" data-k="${k}" aria-label="Speler kiezen">${avatar(p.av, 52)}<span class="pen">✎</span></button><div class="who">
+      <div class="nm"><b>${esc(p.name)}</b>${segBtns('seattype', k, 'human', [['human', 'Mens'], ['cpu', 'Computer']], 'sm')}</div>
+      <span class="note">Tik op het gezicht om een andere speler te kiezen of je avatar te maken</span></div></div>`;
+  }).join('');
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Woordbord</button></div>
+    <h1 style="font-size:36px">Nieuw spel</h1>
+    <div class="group"><span class="t">Aantal spelers</span>${segBtns('seats', 'n', s.seats.length, [[2, '2'], [3, '3'], [4, '4']])}</div>
+    <div class="group">${seats}</div>
+    ${cfgHTML(s.cfg)}
+    <button class="btn" data-a="start" style="margin-top:4px">Start</button>
+  </div>`;
+}
+function vNet() {
+  const p = netProfile();
+  const c = S.netCfg;
+  const tm = c.time.mode === 'none' ? 'geen klok' : c.time.mode === 'move' ? `${c.time.move / 60} min per beurt` : `${c.time.total / 60} min per speler`;
+  const showCfg = net.status === 'idle' || net.status === 'lost';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Woordbord</button></div>
+    <h1 style="font-size:36px">Twee telefoons</h1>
+    <div class="group"><span class="t">Jij speelt als</span>
+      <button class="prow" data-a="who" data-k="net">${avatar(p.av, 40)}<b>${esc(p.name)}</b><span class="ed">Wisselen</span></button></div>
+    ${net.lobbyHTML(`${{ nl: 'Nederlands', en: 'Engels', mix: 'Nederlands + Engels' }[c.dict]} woordenboek, ${c.board === 'random' ? 'willekeurige' : 'klassieke'} bonusvakken, ${tm}, thema ${(T.byId[c.theme] || T.list[0]).name.toLowerCase()}`)}
+    ${showCfg ? `<h2 style="font-size:22px;margin-top:6px">Als jij het spel maakt</h2>${cfgHTML(c)}` : ''}
+  </div>`;
+}
+
+function boardHTML() {
+  const th = T.byId[G.theme] || T.list[0];
+  const placed = new Map(ui.place.map(x => [x.i, x]));
+  const last = new Set(G.last || []);
+  const v = vals();
+  const bad = ui.preview && !ui.preview.ok;
+  let h = '';
+  for (let i = 0; i < WB.SIZE; i++) {
+    const b = G.board[i], p = G.prem[i];
+    const cls = p === 'd' ? 'dl' : p === 't' ? 'tl' : p === 'D' ? 'dw' : p === 'T' ? 'tw' : p === '*' ? 'st' : '';
+    const tp = placed.get(i);
+    let inner = '';
+    if (b !== '.' || tp) {
+      const ch = tp ? tp.ch : b, blank = ch >= 'A' && ch <= 'Z';
+      inner = `<span class="tile${tp ? ' new' + (bad ? ' bad' : '') : ''}${!tp && last.has(i) ? ' last' : ''}${blank ? ' blank' : ''}" ${tp ? `data-pi="${i}"` : ''}>${ch.toUpperCase()}${blank ? '' : `<i>${v[ch.charCodeAt(0) - 97]}</i>`}</span>`;
+    } else if (p === '*') inner = th.emo[0] ? `<span class="em">${th.emo[0]}</span>` : '<span class="lb">★</span>';
+    else if (cls) inner = `<span class="lb">${{ dl: '2L', tl: '3L', dw: '2W', tw: '3W' }[cls]}</span>`;
+    else if (th.emo.length && (i * 37 + 11) % 23 === 0) inner = `<span class="deco">${th.emo[(i >> 2) % th.emo.length]}</span>`;
+    h += `<div class="cell ${cls}" data-i="${i}">${inner}</div>`;
+  }
+  return h;
+}
+function playersHTML() {
+  const n = G.players.length;
+  return `<div class="players">${G.players.map((p, q) => {
+    const ck = clockLeft(q);
+    return `<div class="pl ${!G.over && G.turn === q ? 'turn' : ''}">${avatar(p.av || AV.fix(null), n > 3 ? 26 : 30)}<div class="tx">
+      <span class="nm">${esc(p.name)}${G.mode === 'net' && q === me() ? ' (jij)' : ''}</span><span class="sc">${p.score}</span>
+      ${ck !== null ? `<span class="ck ${ck < 0 ? 'over' : ''}" data-clock="${q}">${fmtClock(ck)}</span>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+function rackHTML(p) {
+  if (p < 0) {
+    const tp = G.players[G.turn];
+    return `<div class="hidden-rack">${G.over ? 'Spel afgelopen' : `Letters van ${esc(tp.name)} zijn verborgen`}</div>`;
+  }
+  syncRack(p);
+  const used = new Set(ui.place.map(x => x.r)), v = vals();
+  let h = '';
+  for (let r = 0; r < WB.RACK; r++) {
+    if (r >= ui.rv.length || used.has(r)) { h += '<span class="slot"></span>'; continue; }
+    const ch = ui.rv[r];
+    h += ch === '?' ? `<span class="rtile q${ui.sel === r ? ' sel' : ''}" data-r="${r}" aria-label="Blanco"></span>`
+      : `<span class="rtile${ui.sel === r ? ' sel' : ''}" data-r="${r}">${ch.toUpperCase()}<i>${v[ch.charCodeAt(0) - 97]}</i></span>`;
+  }
+  return `<div class="rack">${h}</div>`;
+}
+function describe(L) {
+  if (L.type === 'play') return L.words.map(w => `<b>${esc(w[0].toUpperCase())}</b> ${w[1]}`).join(' · ') + (L.bingo ? '<span class="bingo">+50</span>' : '');
+  if (L.type === 'swap') return `ruilde ${L.n} letter${L.n === 1 ? '' : 's'}`;
+  if (L.type === 'timeout') return 'tijd voorbij, beurt overgeslagen';
+  return 'paste';
+}
+function statusHTML() {
+  if (!dicts[G.dict]) return dictErr ? `<div class="status err">${esc(dictErr)}</div>` : '<div class="status wait">Woordenboek laden…</div>';
+  if (G.over) return `<div class="status">Spel afgelopen · <button class="btn quiet" style="min-height:34px;padding:4px 12px" data-a="showresult">Uitslag</button></div>`;
+  const tp = G.turn, nm = esc(G.players[tp].name);
+  if (ui.place.length) {
+    const ev = ui.preview;
+    if (ev && ev.ok) return `<div class="status ok"><b>${ev.words.map(w => esc(w.w.toUpperCase())).join(' + ')}</b><span class="pts">+${ev.score}</span>${ev.bingo ? '<span class="bingo">alle 7!</span>' : ''}</div>`;
+    return `<div class="status err">${esc(ev ? ev.err : '')}</div>`;
+  }
+  if (ui.msg) return `<div class="status ${ui.msgBad ? 'err' : ''}">${ui.msg}</div>`;
+  if (ui.thinking || G.players[tp].type === 'cpu') return `<div class="status wait">${nm} denkt na…</div>`;
+  if (isMine(tp)) {
+    const L = G.log[G.log.length - 1];
+    const prev = L ? `${esc(G.players[L.p].name)}: ${describe(L)}${L.type === 'play' ? '' : ''}` : (G.log.length ? '' : 'Eerste woord over het middelste vakje.');
+    return `<div class="status">${G.mode === 'local' && humansHere() > 1 ? nm + ' is aan zet' : 'Jij bent aan zet'}${prev ? `<div class="note" style="font-weight:500">${prev}</div>` : ''}</div>`;
+  }
+  return `<div class="status wait">${nm} is aan zet…</div>`;
+}
+function ctrlsHTML() {
+  if (!canAct()) return '';
+  if (ui.place.length) {
+    const ok = ui.preview && ui.preview.ok;
+    return `<div class="ctrls two"><button class="btn quiet" data-a="recall">Terug</button><button class="btn" data-a="play" ${ok ? '' : 'disabled'}>Leggen${ok ? ' +' + ui.preview.score : ''}</button></div>`;
+  }
+  return `<div class="ctrls"><button class="btn quiet" data-a="shuffle">Schudden</button><button class="btn quiet" data-a="sort">A→Z</button>
+    <button class="btn quiet" data-a="swap" ${G.bag.length >= WB.RACK ? '' : 'disabled'}>Ruilen</button><button class="btn quiet" data-a="pass">Passen</button></div>`;
+}
+function vGame() {
+  T.apply(G.theme);
+  needDict(G.dict);
+  touchTimer();
+  ui.preview = ui.place.length && dicts[G.dict] ? WB.evaluate(ctx(), G.board, ui.place.map(x => [x.i, x.ch])) : null;
+  const lost = G.mode === 'net' && net.status !== 'connected' && !G.over
+    ? `<div class="netlost"><span>Verbinding met ${esc(G.players[1 - me()].name)} is weg. De stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>` : '';
+  const ro = rackOwner();
+  return `<div class="wrap" style="gap:10px">
+    <div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button>
+      <span class="info"><b>${G.bag.length}</b> letters in de zak<br>${DICT_LABEL[G.dict]}</span>
+      <button class="iconbtn" data-a="zoom" aria-pressed="${ui.zoom}" aria-label="Inzoomen">${IC.zoom}</button>
+      <button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${lost}
+    ${playersHTML()}
+    <div class="boardbox${ui.zoom ? ' zoom' : ''}" id="boardbox"><div id="board">${boardHTML()}</div></div>
+    ${statusHTML()}
+    ${rackHTML(ro)}
+    ${ctrlsHTML()}
+  </div>`;
+}
+function vStats() {
+  const st = store.get('wb-stats', { players: {}, h2h: {}, done: [] });
+  const rows = Object.entries(st.players).sort((a, b) => b[1].games - a[1].games);
+  const nameOf = k => { const p = prof(k); return p ? p.name : st.players[k] ? st.players[k].name : k; };
+  const avOf = k => { const p = prof(k); return p ? p.av : st.players[k] ? st.players[k].av : null; };
+  const cards = rows.map(([k, r]) => `<div class="statcard">${avatar(avOf(k), 48)}<div><b>${esc(nameOf(k))}</b>
+    <div class="stats"><div><span>${r.games}</span>gespeeld</div><div><span>${r.wins}</span>gewonnen${r.draws ? ` (+${r.draws} gelijk)` : ''}</div><div><span>${r.games ? Math.round(r.wins / r.games * 100) : 0}%</span>winst</div>
+      <div><span>${r.games ? Math.round(r.total / r.games) : 0}</span>gem. score</div><div><span>${r.high}</span>hoogste score</div><div><span>${r.bingos}</span>keer alle 7</div>
+      ${r.best ? `<div class="wide"><span><b>${esc(r.best.w.toUpperCase())}</b> · ${r.best.s} punten</span>beste beurt</div>` : ''}</div></div></div>`).join('');
+  const h2h = Object.entries(st.h2h).sort((a, b) => b[1].games - a[1].games).map(([key, h]) => {
+    const [a, b] = key.split('|');
+    return `<div class="h2h"><span class="side">${avatar(avOf(a), 26)}<span>${esc(nameOf(a))}</span></span><span class="vs">${h.w[a] || 0} – ${h.w[b] || 0}</span><span class="side" style="justify-content:flex-end"><span>${esc(nameOf(b))}</span>${avatar(avOf(b), 26)}</span></div>
+      ${h.d ? `<p class="note" style="text-align:center;margin-top:-4px">${h.d}× gelijk</p>` : ''}`;
+  }).join('');
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Woordbord</button></div>
+    <h1 style="font-size:36px">Statistieken</h1>
+    ${rows.length ? cards : '<p class="muted">Nog geen gespeelde spellen. Na je eerste spel staat hier wie er wint, de hoogste scores en het beste woord.</p>'}
+    ${h2h ? `<h2 style="font-size:22px;margin-top:6px">Onderling</h2>${h2h}` : ''}
+    ${rows.length ? '<button class="btn quiet" data-a="askclear" style="margin-top:10px">Statistieken wissen</button>' : ''}
+  </div>`;
+}
+
+/* ---------------- vellen ---------------- */
+const head = (title, btn) => `<div class="sheet-head"><h2>${title}</h2><button class="btn quiet" data-a="close">${btn || 'Sluiten'}</button></div>`;
+function sheetSettings() {
+  const tog = (key, title, desc) => `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`;
+  return `${head('Instellingen', 'Klaar')}<div class="group">${tog('sound', 'Geluid')}${tog('vibrate', 'Trillen')}</div>
+    <button class="btn quiet" data-a="themes" data-for="home">Thema van het startscherm</button>`;
+}
+function sheetMenu() {
+  const canNew = G.mode !== 'net' || net.status === 'connected';
+  return `${head('Menu')}<div class="list">
+    <button class="btn quiet" data-a="log">Gelegde woorden</button>
+    <button class="btn quiet" data-a="themes" data-for="game">Thema wijzigen</button>
+    <button class="btn quiet" data-a="settings">Geluid en trillen</button>
+    ${!G.over && G.mode === 'local' ? '<button class="btn quiet" data-a="askstop">Spel beëindigen</button>' : ''}
+    ${!G.over && G.mode === 'net' && net.status === 'connected' ? '<button class="btn quiet" data-a="askresign">Opgeven</button>' : ''}
+    ${G.over && canNew ? '<button class="btn quiet" data-a="again">Nieuw spel, zelfde spelers</button>' : ''}
+    ${G.mode === 'net' ? '<button class="btn quiet" data-a="leave">Verbinding verbreken</button>' : ''}
+  </div>`;
+}
+function sheetLog() {
+  const items = G.log.slice().reverse().map(L => `<div class="lg">${avatar(G.players[L.p].av, 28)}<div class="w"><span class="who">${esc(G.players[L.p].name)}</span>${describe(L)}</div><span class="p">${L.type === 'play' ? '+' + L.score : '–'}</span></div>`).join('');
+  return `${head('Gelegde woorden')}<div class="log">${items || '<p class="muted">Nog niets gelegd.</p>'}</div>`;
+}
+function sheetBlank() {
+  return `${head('Welke letter wordt de blanco?', 'Annuleren')}<div class="letters">${WB.A.split('').map(c => `<button data-a="blank" data-v="${c}">${c.toUpperCase()}</button>`).join('')}</div>
+    <p class="note">De blanco telt 0 punten.</p>`;
+}
+function sheetSwap() {
+  const v = vals();
+  return `${head('Letters ruilen', 'Annuleren')}<p class="note">Kies welke letters je terug in de zak doet. Je pakt er evenveel nieuwe voor terug en je beurt is voorbij.</p>
+    <div class="letters">${ui.rv.map((c, r) => `<button data-a="swapsel" data-v="${r}" aria-pressed="${ui.swapSel.has(r)}">${c === '?' ? '?' : c.toUpperCase()}</button>`).join('')}</div>
+    <div class="btnrow"><button class="btn quiet" data-a="swapall">Alles</button><button class="btn" data-a="doswap" ${ui.swapSel.size ? '' : 'disabled'}>Ruil ${ui.swapSel.size || ''} letter${ui.swapSel.size === 1 ? '' : 's'}</button></div>`;
+}
+function sheetConfirm() {
+  const c = ui.confirm;
+  return `<h2>${c.title}</h2>${c.text ? `<p class="muted">${c.text}</p>` : ''}<div class="btnrow"><button class="btn quiet" data-a="close">Nee</button><button class="btn" data-a="${c.yes}">${c.ok || 'Ja'}</button></div>`;
+}
+function sheetThemes() {
+  const cur = ui.themeFor === 'game' ? G.theme : ui.themeFor === 'net' ? S.netCfg.theme : ui.themeFor === 'home' ? S.theme : ui.setup.cfg.theme;
+  return `${head('Kies een thema', 'Klaar')}<div class="thgrid">${T.list.map(t => `<button class="thc" data-a="settheme" data-v="${t.id}" aria-pressed="${t.id === cur}" style="background:${t.room};color:${t.text}">
+    ${swatchHTML(t)}<span class="nm">${t.emo[0] || '◻️'} ${esc(t.name)}</span></button>`).join('')}</div>`;
+}
+function sheetWho() {
+  const w = ui.who;
+  const used = w.k === 'net' ? [] : ui.setup.seats.filter((s, k) => s.type === 'human' && k !== w.k).map(s => s.pid);
+  const cur = w.k === 'net' ? S.netPid : ui.setup.seats[w.k].pid;
+  return `${head('Wie speelt er?')}<div class="list">
+    ${profiles.map(p => `<div class="prow" style="padding:6px 8px"><button class="prow" style="border:0;padding:0;background:none" data-a="pickwho" data-v="${p.id}" ${used.includes(p.id) ? 'disabled' : ''}>${avatar(p.av, 40)}<b>${esc(p.name)}${p.id === cur ? ' ✓' : ''}</b></button>
+      <button class="ed" data-a="editwho" data-v="${p.id}">Aanpassen</button></div>`).join('')}
+    <button class="btn" data-a="newwho">+ Nieuwe speler</button></div>`;
+}
+function sheetAvatar() {
+  const e = ui.edit, av = AV.fix(e.av);
+  const rows = Object.keys(AV.OPT).map(k => `<div class="group"><span class="t">${AV.LABEL[k]}</span><div class="opts">${AV.OPT[k].map(o => {
+    const t = Object.assign({}, av, { [k]: o });
+    if (k === 'eyes' && o === 'robot') t.skin = '#d6d6de';
+    return `<button data-a="avopt" data-k="${k}" data-v="${esc(o)}" aria-pressed="${av[k] === o}">${avatar(t, 44)}</button>`;
+  }).join('')}</div></div>`).join('');
+  return `${head(e.id ? 'Speler aanpassen' : 'Nieuwe speler', 'Annuleren')}<div class="editor">
+    <div class="big">${avatar(av, 88)}<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+      <input class="inp" id="nm" data-in="name" value="${esc(e.name)}" maxlength="18" placeholder="Naam" autocomplete="off">
+      <button class="btn quiet" data-a="avrandom" style="min-height:42px">🎲 Willekeurig</button></div></div>
+    ${rows}
+    <div class="btnrow">${e.id && profiles.length > 1 ? '<button class="btn quiet" data-a="delwho">Verwijderen</button>' : ''}<button class="btn" data-a="savewho">Opslaan</button></div></div>`;
+}
+function sheetResult() {
+  const O = G.over; if (!O) return '';
+  const why = { out: `${esc(G.players[O.by] ? G.players[O.by].name : '')} heeft alle letters gelegd`, pass: 'Iedereen heeft twee keer achter elkaar gepast of geruild', stop: 'Spel beëindigd', resign: `${esc(G.players[O.by] ? G.players[O.by].name : '')} heeft opgegeven` }[O.reason];
+  let title;
+  if (O.winners.length > 1) title = 'Gelijkspel!';
+  else if (G.mode === 'net' && O.winners[0] === me()) title = 'Je wint!';
+  else if (G.mode === 'local' && humansHere() === 1 && G.players[O.winners[0]].type === 'human') title = 'Je wint!';
+  else title = `${esc(G.players[O.winners[0]].name)} wint!`;
+  const order = G.players.map((p, q) => q).sort((a, b) => G.players[b].score - G.players[a].score);
+  const adjTxt = a => [a.rack > 0 ? `+${a.rack} letters van de rest` : a.rack < 0 ? `${a.rack} letters over` : '', a.time < 0 ? `${a.time} tijd` : ''].filter(Boolean).join(' · ');
+  const canNew = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${title}</h2><p class="muted">${why}</p></div>
+    <div class="rank">${order.map((q, k) => `<div class="rk ${O.winners.includes(q) ? 'win' : ''}"><span class="n">${k + 1}</span>${avatar(G.players[q].av, 40)}
+      <div><b>${esc(G.players[q].name)}</b><div class="a">${adjTxt(O.adj[q])}</div></div><span class="s">${G.players[q].score}</span></div>`).join('')}</div>
+    <div class="list"><button class="btn" data-a="again" ${canNew ? '' : 'disabled'}>Nieuw spel, zelfde spelers</button>
+      <button class="btn quiet" data-a="log">Gelegde woorden</button><button class="btn quiet" data-a="close">Bord bekijken</button></div>`;
+}
+function coverHTML() {
+  const p = G.players[G.turn];
+  const L = G.log[G.log.length - 1];
+  return `<div class="cover">${avatar(p.av, 110)}<h2>Beurt voor ${esc(p.name)}</h2>
+    <p class="muted">Geef de telefoon aan ${esc(p.name)}. Pas als alleen jij kijkt, laat je je letters zien.</p>
+    ${L ? `<div class="lastmv">${esc(G.players[L.p].name)}: ${describe(L)}</div>` : ''}
+    <button class="btn" data-a="reveal">Ik ben ${esc(p.name)}, laat zien</button>
+    <button class="btn quiet" data-a="home" style="min-width:0">Pauze, naar het menu</button></div>`;
+}
+
+function themeForView() {
+  if (view === 'game' && G) return G.theme;
+  if (view === 'setup' && ui.setup) return ui.setup.cfg.theme;
+  if (view === 'net') return S.netCfg.theme;
+  return S.theme;
+}
+function render() {
+  T.apply(themeForView());
+  let html = view === 'setup' && ui.setup ? vSetup() : view === 'net' ? vNet() : view === 'stats' ? vStats() : view === 'game' && G ? vGame() : vHome();
+  if (view === 'game' && G && ui.cover && !ui.sheet) html += coverHTML();
+  if (ui.sheet) {
+    const inner = { settings: sheetSettings, menu: sheetMenu, log: sheetLog, blank: sheetBlank, swap: sheetSwap, confirm: sheetConfirm,
+      themes: sheetThemes, who: sheetWho, avatar: sheetAvatar, result: sheetResult }[ui.sheet];
+    const needsG = ['menu', 'log', 'blank', 'swap', 'result'].includes(ui.sheet);
+    if (inner && (!needsG || G)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  // scrollstand bewaren (ingezoomd bord, lange lijsten)
+  const bb = document.getElementById('boardbox'), sx = bb ? bb.scrollLeft : 0, sy = bb ? bb.scrollTop : 0;
+  const sh = document.querySelector('.sheet'), shy = sh ? sh.scrollTop : 0, sheetWas = ui.lastSheet;
+  const focusId = document.activeElement && document.activeElement.id, caret = focusId ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  const bb2 = document.getElementById('boardbox');
+  if (bb2) { const w = bb2.clientWidth - 6; bb2.style.setProperty('--cs', ((ui.zoom ? w * 1.7 : w) / 15) + 'px'); bb2.scrollLeft = sx; bb2.scrollTop = sy; }
+  const sh2 = document.querySelector('.sheet'); if (sh2 && sheetWas === ui.sheet) sh2.scrollTop = shy;
+  ui.lastSheet = ui.sheet;
+  if (focusId) { const el = document.getElementById(focusId); if (el && el.tagName === 'INPUT') { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
+}
+window.addEventListener('resize', () => { const bb = document.getElementById('boardbox'); if (bb) { const w = bb.clientWidth - 6; bb.style.setProperty('--cs', ((ui.zoom ? w * 1.7 : w) / 15) + 'px'); } });
+
+/* ---------------- leggen ---------------- */
+function placeTile(r, i, ch) {
+  if (!canAct() || G.board[i] !== '.' || ui.place.some(x => x.i === i)) return;
+  if (r === null || r === undefined || r >= ui.rv.length || ui.place.some(x => x.r === r)) return;
+  ch = ch || ui.rv[r];
+  if (ch === '?') { ui.blank = { r, i }; ui.sheet = 'blank'; render(); return; }
+  ui.place.push({ i, r, ch }); ui.sel = null; ui.msg = '';
+  sTick(); buzz(8); render();
+}
+function moveTile(from, to) {
+  const t = ui.place.find(x => x.i === from); if (!t) return;
+  if (G.board[to] !== '.' || ui.place.some(x => x.i === to)) { render(); return; }
+  t.i = to; sTick(); render();
+}
+function returnTile(i) { ui.place = ui.place.filter(x => x.i !== i); render(); }
+function doPlay() {
+  if (!canAct() || !ui.place.length) return;
+  const tiles = ui.place.map(x => [x.i, x.ch]);
+  const ev = WB.evaluate(ctx(), G.board, tiles);
+  if (!ev.ok) { ui.msg = esc(ev.err); ui.msgBad = true; sErr(); buzz([30, 40, 30]); render(); return; }
+  // de letters uit de rekweergave halen, zodat de volgorde van de rest blijft
+  const usedR = new Set(ui.place.map(x => x.r));
+  ui.rv = ui.rv.filter((_, r) => !usedR.has(r));
+  ui.place = []; ui.sel = null; ui.msg = '';
+  applyPlay(G.turn, tiles);
+}
+
+/* ---------------- slepen ---------------- */
+let drag = null;
+function dropTarget(x, y) { const el = document.elementFromPoint(x, y); return el ? (el.closest('.cell') || el.closest('.rack')) : null; }
+function clearHover() { document.querySelectorAll('.cell.hover').forEach(c => c.classList.remove('hover')); }
+app.addEventListener('pointerdown', e => {
+  const rt = e.target.closest('.rtile'), pt = e.target.closest('.tile.new');
+  if ((!rt && !pt) || !canAct()) return;
+  const r = rt ? +rt.dataset.r : null, pi = pt ? +pt.dataset.pi : null;
+  const ch = rt ? ui.rv[r] : ui.place.find(q => q.i === pi).ch;
+  drag = { r, pi, ch, x: e.clientX, y: e.clientY, moved: false, id: e.pointerId, src: rt || pt };
+});
+window.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+    drag.moved = true; ghost.hidden = false;
+    ghost.textContent = drag.ch === '?' ? '' : drag.ch.toUpperCase();
+    if (drag.src) drag.src.classList.add('drag');
+  }
+  ghost.style.transform = `translate(${e.clientX - 28}px,${e.clientY - 70}px)`;
+  clearHover();
+  const t = dropTarget(e.clientX, e.clientY - 42);
+  if (t && t.classList.contains('cell')) t.classList.add('hover');
+});
+function endDrag(e, cancel) {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag; drag = null; ghost.hidden = true; clearHover();
+  if (cancel) { render(); return; }
+  if (!d.moved) {
+    if (d.r !== null) { ui.sel = ui.sel === d.r ? null : d.r; render(); }
+    else if (d.pi !== null) returnTile(d.pi);
+    return;
+  }
+  const t = dropTarget(e.clientX, e.clientY - 42);
+  if (t && t.dataset.i !== undefined) { const i = +t.dataset.i; if (d.r !== null) placeTile(d.r, i); else moveTile(d.pi, i); }
+  else if (t && t.classList.contains('rack') && d.pi !== null) returnTile(d.pi);
+  else render();
+}
+window.addEventListener('pointerup', e => endDrag(e, false));
+window.addEventListener('pointercancel', e => endDrag(e, true));
+
+/* ---------------- klikken ---------------- */
+function startSetup(kind) {
+  ui.kind = kind;
+  const cfg = S.cfg ? JSON.parse(JSON.stringify(S.cfg)) : baseCfg();
+  let seats = kind === 'cpu' ? S.seatsCpu : S.seatsLocal;
+  if (!seats || !seats.length) {
+    const a = profiles[0].id;
+    seats = kind === 'cpu' ? [{ type: 'human', pid: a }, { type: 'cpu', level: 'normal' }] : [{ type: 'human', pid: a }, { type: 'human', pid: freeProfile([a]).id }];
+  }
+  seats = seats.map(s => (s.type === 'human' && !prof(s.pid) ? { type: 'human', pid: freeProfile(seats.map(x => x.pid)).id } : s));
+  ui.setup = { cfg, seats: JSON.parse(JSON.stringify(seats)) };
+  view = 'setup'; ui.sheet = null;
+}
+function setSeats(n) {
+  const s = ui.setup.seats;
+  while (s.length > n) s.pop();
+  while (s.length < n) {
+    if (ui.kind === 'cpu') s.push({ type: 'cpu', level: (s.find(x => x.type === 'cpu') || { level: 'normal' }).level });
+    else s.push({ type: 'human', pid: freeProfile(s.filter(x => x.type === 'human').map(x => x.pid)).id });
+  }
+}
+function startGame() {
+  const s = ui.setup;
+  if (!s.seats.some(x => x.type === 'human')) { s.seats[0] = { type: 'human', pid: profiles[0].id }; }
+  S.cfg = JSON.parse(JSON.stringify(s.cfg)); S.theme = s.cfg.theme;
+  if (ui.kind === 'cpu') S.seatsCpu = s.seats; else S.seatsLocal = s.seats;
+  saveS();
+  G = newGame('local', s.cfg, seatPlayers(s.seats));
+  view = 'game'; resetTurnUi(); ui.sheet = null;
+  needDict(G.dict);
+  commit();
+}
+function rematch() {
+  const cfg = gameCfg(G);
+  const players = G.players.map(p => ({ type: p.type, level: p.level, name: p.name, av: p.av, pid: p.pid }));
+  if (G.mode === 'net') { const keep = G.players; G = newGame('net', cfg, players); G.players.forEach((p, q) => { p.name = keep[q].name; p.av = keep[q].av; }); }
+  else G = newGame('local', cfg, players);
+  ui.sheet = null; resetTurnUi(); commit();
+}
+function cfgSet(c, k, v) {
+  if (k === 'dict' || k === 'board') c[k] = v;
+  else if (k === 'tmode') c.time.mode = v;
+  else if (k === 'tmove') c.time.move = +v;
+  else if (k === 'ttotal') c.time.total = +v;
+  if (view === 'net') saveS();
+}
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-i]');
+  if (!el) return;
+  if (el.dataset.i !== undefined && !el.dataset.a) {
+    if (e.target.closest('.tile.new')) return;
+    if (ui.sel !== null && canAct()) placeTile(ui.sel, +el.dataset.i);
+    return;
+  }
+  if (net.handleClick(el)) return;
+  const a = el.dataset.a, v = el.dataset.v, k = el.dataset.k;
+  if (a === 'scrim') {
+    if (e.target.closest('[data-stop]')) return;
+    if (ui.sheet === 'avatar' || ui.sheet === 'blank') return;
+    ui.sheet = null; render(); return;
+  }
+  switch (a) {
+    case 'exit': location.href = '../index.html'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.token++; ui.thinking = false; ui.place = []; net.stopSearching(); break;
+    case 'setup': startSetup(k); break;
+    case 'netview': view = 'net'; net.error = ''; if (net.status === 'lost') net.status = 'idle'; setSharedName(netProfile().name);
+      if (net.status === 'connected') { const s = loadGame('net'); if (inProgress(s)) { G = s; view = 'game'; resetTurnUi(); } } break;
+    case 'stats': view = 'stats'; break;
+    case 'resume': G = loadGame(el.dataset.m); if (!G) break; view = 'game'; resetTurnUi(); if (G.over) ui.sheet = 'result'; render(); schedule(); return;
+    case 'abandon': ui.confirm = { title: 'Lopend spel stoppen?', text: 'Het spel telt dan niet mee in de statistieken.', yes: 'doabandon', ok: 'Stoppen' }; ui.sheet = 'confirm'; break;
+    case 'doabandon': try { localStorage.removeItem(GKEY('local')); } catch (err) {} ui.sheet = null; break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; ui.blank = null; ui.edit = null; break;
+    case 'tog': S[k] = !S[k]; saveS(); if (k === 'sound' && S.sound) sPlay(); if (k === 'vibrate') buzz(30); break;
+    case 'seats': setSeats(+v); break;
+    case 'seattype': { const st = ui.setup.seats[+k]; if (v === st.type) break;
+      if (v === 'cpu') ui.setup.seats[+k] = { type: 'cpu', level: 'normal' };
+      else ui.setup.seats[+k] = { type: 'human', pid: freeProfile(ui.setup.seats.filter(x => x.type === 'human').map(x => x.pid)).id };
+      break; }
+    case 'seatlevel': ui.setup.seats[+k].level = v; break;
+    case 'cfg': cfgSet(view === 'net' ? S.netCfg : ui.setup.cfg, k, v); break;
+    case 'themes': ui.themeFor = el.dataset.for || (view === 'net' ? 'net' : view === 'game' ? 'game' : 'setup'); ui.sheet = 'themes'; break;
+    case 'settheme':
+      if (ui.themeFor === 'game') { G.theme = v; if (G.mode === 'net') commit(); else saveGame(G); }
+      else if (ui.themeFor === 'net') { S.netCfg.theme = v; saveS(); }
+      else if (ui.themeFor === 'home') { S.theme = v; saveS(); }
+      else ui.setup.cfg.theme = v;
+      break;
+    case 'who': ui.who = { k: k === 'net' ? 'net' : +k }; ui.sheet = 'who'; break;
+    case 'pickwho': {
+      if (ui.who.k === 'net') { S.netPid = v; saveS(); setSharedName(prof(v).name); }
+      else ui.setup.seats[ui.who.k].pid = v;
+      ui.sheet = null; break; }
+    case 'editwho': { const p = prof(v); ui.edit = { id: p.id, name: p.name, av: AV.fix(p.av), back: 'who' }; ui.sheet = 'avatar'; break; }
+    case 'newwho': ui.edit = { id: null, name: '', av: AV.random(), back: 'who' }; ui.sheet = 'avatar'; break;
+    case 'avopt': ui.edit.av[k] = v; if (k === 'eyes' && v === 'robot') ui.edit.av.skin = '#d6d6de'; break;
+    case 'avrandom': ui.edit.av = AV.random(); break;
+    case 'savewho': {
+      const nm = (ui.edit.name || '').trim().slice(0, 18) || 'Speler ' + (profiles.length + 1);
+      let p;
+      if (ui.edit.id) { p = prof(ui.edit.id); p.name = nm; p.av = ui.edit.av; }
+      else { p = { id: uid(), name: nm, av: ui.edit.av }; profiles.push(p); }
+      saveProfiles();
+      if (ui.who && ui.who.k === 'net') { if (!ui.edit.id) S.netPid = p.id; if (S.netPid === p.id) setSharedName(p.name); saveS(); }
+      else if (ui.who && ui.setup && !ui.edit.id) ui.setup.seats[ui.who.k].pid = p.id;
+      ui.edit = null; ui.sheet = 'who'; break; }
+    case 'delwho': {
+      const id = ui.edit.id; profiles = profiles.filter(p => p.id !== id); saveProfiles();
+      if (ui.setup) ui.setup.seats.forEach(s => { if (s.type === 'human' && s.pid === id) s.pid = freeProfile(ui.setup.seats.filter(x => x.type === 'human').map(x => x.pid)).id; });
+      if (S.netPid === id) { S.netPid = profiles[0].id; saveS(); }
+      ui.edit = null; ui.sheet = 'who'; break; }
+    case 'start': startGame(); return;
+    case 'reveal': ui.cover = false; ui.ts = null; touchTimer(); buzz(15); break;
+    case 'zoom': ui.zoom = !ui.zoom; break;
+    case 'shuffle': ui.place = []; ui.sel = null; WB.shuffle(ui.rv); sTick(); break;
+    case 'sort': ui.place = []; ui.sel = null; ui.rv.sort((x, y) => (x === '?') - (y === '?') || x.localeCompare(y)); sTick(); break;
+    case 'recall': ui.place = []; ui.sel = null; break;
+    case 'play': doPlay(); return;
+    case 'blank': { const b = ui.blank; ui.sheet = null; ui.blank = null; if (b) { placeTile(b.r, b.i, v.toUpperCase()); return; } break; }
+    case 'swap': if (!canAct()) break; ui.place = []; ui.swapSel = new Set(); ui.sheet = 'swap'; break;
+    case 'swapsel': { const r = +v; ui.swapSel.has(r) ? ui.swapSel.delete(r) : ui.swapSel.add(r); break; }
+    case 'swapall': ui.swapSel = new Set(ui.rv.map((_, r) => r)); break;
+    case 'doswap': { const letters = [...ui.swapSel].map(r => ui.rv[r]).join(''); ui.sheet = null; ui.rv = ui.rv.filter((_, r) => !ui.swapSel.has(r)); if (isMine(G.turn)) applySwap(G.turn, letters); return; }
+    case 'pass': ui.confirm = { title: 'Beurt overslaan?', text: 'Je legt niets en krijgt geen punten.', yes: 'dopass', ok: 'Passen' }; ui.sheet = 'confirm'; break;
+    case 'dopass': ui.sheet = null; if (canAct() || isMine(G.turn)) { ui.place = []; applyPass(G.turn); } return;
+    case 'log': ui.sheet = 'log'; break;
+    case 'showresult': ui.sheet = 'result'; break;
+    case 'again': rematch(); return;
+    case 'askstop': ui.confirm = { title: 'Spel beëindigen?', text: 'Iedereen krijgt de waarde van de eigen letters in het rek van de score af. De uitslag telt mee.', yes: 'dostop', ok: 'Beëindigen' }; ui.sheet = 'confirm'; break;
+    case 'dostop': ui.sheet = null; ui.token++; ui.thinking = false; endGame('stop', -1); commit(); return;
+    case 'askresign': ui.confirm = { title: 'Opgeven?', text: 'De ander wint dit spel.', yes: 'doresign', ok: 'Opgeven' }; ui.sheet = 'confirm'; break;
+    case 'doresign': ui.sheet = null; endGame('resign', me()); commit(); return;
+    case 'askclear': ui.confirm = { title: 'Statistieken wissen?', text: 'Alle uitslagen en records op deze telefoon worden gewist. Spelers en avatars blijven.', yes: 'doclear', ok: 'Wissen' }; ui.sheet = 'confirm'; break;
+    case 'doclear': try { localStorage.removeItem('wb-stats'); } catch (err) {} ui.sheet = null; break;
+    case 'reconnect': view = 'net'; net.reconnect(); break;
+    case 'leave': ui.sheet = null; net.stop(); view = 'home'; break;
+  }
+  render();
+});
+app.addEventListener('input', e => {
+  if (net.handleInput(e)) return;
+  if (e.target.dataset.in === 'name' && ui.edit) ui.edit.name = e.target.value;
+});
+
+window.__w2back = function () {
+  if (ui.sheet) { ui.sheet = null; ui.blank = null; ui.edit = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.token++; ui.thinking = false; ui.place = []; net.stopSearching(); render(); return true; }
+  return false;
+};
+
+// al verbonden vanuit een ander spel en er loopt een spel? Dan meteen naar het bord
+if (net.status === 'connected') { const s = loadGame('net'); if (inProgress(s)) { G = s; view = 'game'; resetTurnUi(); } }
+render();
+})();
+</script>
+</body>
+</html>

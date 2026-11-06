@@ -1,0 +1,436 @@
+/* Woordbord — spelregels, woordenboek en computerspeler.
+   Werkt in de pagina, in een Web Worker en in Node (voor tests).
+
+   Bord: string/array van 225 tekens. '.' = leeg, 'a'-'z' = gewone steen,
+   'A'-'Z' = blanco steen die voor die letter staat (telt 0 punten).
+   Bonusvakken: '.', 'd' = 2×letter, 't' = 3×letter, 'D' = 2×woord, 'T' = 3×woord, '*' = midden (2×woord).
+   Rek: string met letters en '?' voor blanco.
+   Woordenboek: DAWG als Uint32Array (zie build_dawg.py): bits 0-4 letter, 5 = einde woord,
+   6 = laatste rand van de knoop, 7-31 = eerste rand van het kind. Wortel op index 1. */
+(function (root) {
+  'use strict';
+  const N = 15, SIZE = 225, CENTER = 112, ALL = (1 << 26) - 1, BINGO = 50, RACK = 7;
+  const A = 'abcdefghijklmnopqrstuvwxyz';
+
+  /* ---------------- lettersets ---------------- */
+  function parse(spec) {
+    const out = new Array(26).fill(0);
+    spec.replace(/([a-z])(\d+)/g, (m, l, n) => { out[l.charCodeAt(0) - 97] = +n; });
+    return out;
+  }
+  const SETS = {
+    nl: { name: 'Nederlands', counts: parse('a6b2c2d5e18f2g3h2i4j2k3l3m3n10o6p2q1r5s5t5u3v2w2x1y1z2'),
+      values: parse('a1b3c5d2e1f4g3h4i1j4k3l3m3n1o1p3q10r2s2t2u4v4w5x8y8z4'), blanks: 2 },
+    en: { name: 'Engels', counts: parse('a9b2c2d4e12f2g3h2i9j1k1l4m2n6o8p2q1r6s4t6u4v2w2x1y2z1'),
+      values: parse('a1b3c3d2e1f4g2h4i1j8k5l1m3n1o1p3q10r1s1t1u1v4w4x8y4z10'), blanks: 2 }
+  };
+  const DICTS = { nl: { file: 'dict-nl.bin', set: 'nl', name: 'Nederlands' }, en: { file: 'dict-en.bin', set: 'en', name: 'Engels' }, mix: { file: 'dict-mix.bin', set: 'nl', name: 'Nederlands + Engels' } };
+
+  /* ---------------- toeval ---------------- */
+  function rnd(n) {
+    try {
+      const c = (root.crypto || (typeof require === 'function' && require('crypto').webcrypto));
+      if (c && c.getRandomValues) { const a = new Uint32Array(1); c.getRandomValues(a); return a[0] % n; }
+    } catch (e) {}
+    return Math.floor(Math.random() * n);
+  }
+  function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(i + 1); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
+  function newBag(setId) {
+    const s = SETS[setId], bag = [];
+    s.counts.forEach((n, i) => { for (let k = 0; k < n; k++) bag.push(A[i]); });
+    for (let k = 0; k < s.blanks; k++) bag.push('?');
+    return shuffle(bag).join('');
+  }
+
+  /* ---------------- woordenboek ---------------- */
+  function Dict(buf) { this.e = buf instanceof Uint32Array ? buf : new Uint32Array(buf); }
+  Dict.prototype.edge = function (list, code) {
+    if (!list) return 0;
+    const e = this.e;
+    for (let i = list; ; i++) {
+      const v = e[i], c = v & 31;
+      if (c === code) return v;
+      if (c > code || (v & 64)) return 0;
+    }
+  };
+  Dict.prototype.has = function (word) {
+    word = word.toLowerCase();
+    if (word.length < 2) return false;
+    let list = 1, v = 0;
+    for (let i = 0; i < word.length; i++) {
+      v = this.edge(list, word.charCodeAt(i) - 96);
+      if (!v) return false;
+      list = v >>> 7;
+    }
+    return !!(v & 32);
+  };
+
+  /* ---------------- bord ---------------- */
+  const rc = i => [Math.floor(i / N), i % N];
+  function classicPremiums() {
+    const p = new Array(SIZE).fill('.');
+    const put = (t, list) => list.forEach(([r, c]) => { p[r * N + c] = t; });
+    put('T', [[0, 0], [0, 7], [0, 14], [7, 0], [7, 14], [14, 0], [14, 7], [14, 14]]);
+    for (let k = 1; k <= 4; k++) put('D', [[k, k], [k, 14 - k], [14 - k, k], [14 - k, 14 - k]]);
+    put('t', [[1, 5], [1, 9], [5, 1], [5, 5], [5, 9], [5, 13], [9, 1], [9, 5], [9, 9], [9, 13], [13, 5], [13, 9]]);
+    put('d', [[0, 3], [0, 11], [2, 6], [2, 8], [3, 0], [3, 7], [3, 14], [6, 2], [6, 6], [6, 8], [6, 12], [7, 3], [7, 11],
+      [8, 2], [8, 6], [8, 8], [8, 12], [11, 0], [11, 7], [11, 14], [12, 6], [12, 8], [14, 3], [14, 11]]);
+    p[CENTER] = '*';
+    return p.join('');
+  }
+  // willekeurige bonusvakken, wel symmetrisch zodat het bord rustig oogt
+  function randomPremiums() {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const p = new Array(SIZE).fill('.');
+      p[CENTER] = '*';
+      const orbit = (r, c) => {
+        const s = new Set();
+        for (const [a, b] of [[r, c], [c, r]]) for (const [x, y] of [[a, b], [14 - a, b], [a, 14 - b], [14 - a, 14 - b]]) s.add(x * N + y);
+        return [...s];
+      };
+      const near = (i, t) => {
+        const [r, c] = rc(i);
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || cc < 0 || rr >= N || cc >= N) continue;
+          const q = p[rr * N + cc];
+          if (q !== '.' && (Math.abs(dr) + Math.abs(dc) === 1 || q === t)) return true;
+        }
+        return false;
+      };
+      const target = { T: 8, D: 16, t: 12, d: 24 }, have = { T: 0, D: 0, t: 0, d: 0 };
+      for (const t of ['T', 'D', 't', 'd']) {
+        for (let tries = 0; tries < 600 && have[t] < target[t]; tries++) {
+          const r = rnd(8), c = rnd(r + 1);
+          const o = orbit(r, c);
+          if (o.some(i => p[i] !== '.' || near(i, t))) continue;
+          if (have[t] + o.length > target[t] + 2) continue;
+          o.forEach(i => { p[i] = t; }); have[t] += o.length;
+        }
+      }
+      if (have.T >= 4 && have.D >= 12 && have.t >= 8 && have.d >= 16) return p.join('');
+    }
+    return classicPremiums();
+  }
+
+  const isEmpty = ch => ch === '.';
+  const lower = ch => ch.toLowerCase();
+  function tileValue(ch, vals) { return ch >= 'a' && ch <= 'z' ? vals[ch.charCodeAt(0) - 97] : 0; }
+  function boardEmpty(B) { for (let i = 0; i < SIZE; i++) if (B[i] !== '.') return false; return true; }
+
+  /* ---------------- zet controleren en scoren ---------------- */
+  // tiles: [[index, teken]], teken hoofdletter = blanco
+  function evaluate(ctx, board, tiles) {
+    const B = Array.from(board), P = ctx.prem, vals = ctx.values;
+    const res = { ok: false, err: '', words: [], bad: [], score: 0, bingo: false, horiz: true };
+    if (!tiles.length) { res.err = 'Leg eerst letters op het bord.'; return res; }
+    const placed = new Map();
+    for (const [i, ch] of tiles) {
+      if (i < 0 || i >= SIZE || !isEmpty(B[i]) || placed.has(i)) { res.err = 'Dat vakje is al bezet.'; return res; }
+      placed.set(i, ch);
+    }
+    const first = boardEmpty(B);
+    const rows = new Set(tiles.map(t => Math.floor(t[0] / N))), cols = new Set(tiles.map(t => t[0] % N));
+    let horiz;
+    if (tiles.length === 1) {
+      const [r, c] = rc(tiles[0][0]);
+      const hn = (c > 0 && !isEmpty(B[tiles[0][0] - 1])) || (c < 14 && !isEmpty(B[tiles[0][0] + 1]));
+      const vn = (r > 0 && !isEmpty(B[tiles[0][0] - N])) || (r < 14 && !isEmpty(B[tiles[0][0] + N]));
+      horiz = hn || !vn;
+    } else if (rows.size === 1) horiz = true;
+    else if (cols.size === 1) horiz = false;
+    else { res.err = 'Leg alle letters op één rij of één kolom.'; return res; }
+    res.horiz = horiz;
+    const step = horiz ? 1 : N, perp = horiz ? N : 1;
+    tiles.forEach(([i, ch]) => { B[i] = ch; });
+    // aaneengesloten?
+    const idxs = tiles.map(t => t[0]).sort((a, b) => a - b);
+    for (let i = idxs[0]; i <= idxs[idxs.length - 1]; i += step) if (isEmpty(B[i])) { res.err = 'Er mag geen gat tussen je letters zitten.'; return res; }
+    if (first) {
+      if (!placed.has(CENTER)) { res.err = 'Het eerste woord moet over het middelste vakje.'; return res; }
+      if (tiles.length < 2) { res.err = 'Het eerste woord heeft minstens twee letters.'; return res; }
+    } else {
+      let touches = false;
+      for (const [i] of tiles) {
+        const [r, c] = rc(i);
+        const nb = [r > 0 ? i - N : -1, r < 14 ? i + N : -1, c > 0 ? i - 1 : -1, c < 14 ? i + 1 : -1];
+        if (nb.some(j => j >= 0 && !placed.has(j) && !isEmpty(B[j]))) { touches = true; break; }
+      }
+      if (!touches) { res.err = 'Je woord moet aansluiten op letters die al liggen.'; return res; }
+    }
+    const lineStart = (i, s) => { while (true) { const j = i - s; if (j < 0 || (s === 1 && Math.floor(j / N) !== Math.floor(i / N)) || isEmpty(B[j])) return i; i = j; } };
+    function wordAt(i, s) {
+      const start = lineStart(i, s), cells = [];
+      let j = start;
+      while (j < SIZE && (s !== 1 || Math.floor(j / N) === Math.floor(start / N)) && !isEmpty(B[j])) { cells.push(j); j += s; }
+      return cells;
+    }
+    function scoreCells(cells) {
+      let sum = 0, mult = 1;
+      for (const j of cells) {
+        let v = tileValue(B[j], vals);
+        if (placed.has(j)) {
+          const p = P[j];
+          if (p === 'd') v *= 2; else if (p === 't') v *= 3; else if (p === 'D' || p === '*') mult *= 2; else if (p === 'T') mult *= 3;
+        }
+        sum += v;
+      }
+      return sum * mult;
+    }
+    const main = wordAt(idxs[0], step);
+    if (main.length >= 2) res.words.push({ w: main.map(j => lower(B[j])).join(''), cells: main, score: scoreCells(main) });
+    for (const [i] of tiles) {
+      const cw = wordAt(i, perp);
+      if (cw.length >= 2) res.words.push({ w: cw.map(j => lower(B[j])).join(''), cells: cw, score: scoreCells(cw) });
+    }
+    if (!res.words.length) { res.err = 'Een woord heeft minstens twee letters.'; return res; }
+    res.score = res.words.reduce((a, w) => a + w.score, 0);
+    if (tiles.length === RACK) { res.bingo = true; res.score += BINGO; }
+    res.bad = res.words.filter(w => !ctx.dict.has(w.w)).map(w => w.w);
+    if (res.bad.length) { res.err = (res.bad.length === 1 ? 'Geen geldig woord: ' : 'Geen geldige woorden: ') + res.bad.map(w => w.toUpperCase()).join(', '); return res; }
+    res.ok = true;
+    return res;
+  }
+
+  /* ---------------- zetten zoeken (Appel-Jacobson) ---------------- */
+  function crossChecks(ctx, B, perp) {
+    const D = ctx.dict, vals = ctx.values;
+    const mask = new Int32Array(SIZE), sc = new Int32Array(SIZE), has = new Uint8Array(SIZE);
+    for (let i = 0; i < SIZE; i++) {
+      if (!isEmpty(B[i])) continue;
+      const r = Math.floor(i / N);
+      const ok = j => j >= 0 && j < SIZE && (perp !== 1 || Math.floor(j / N) === r) && !isEmpty(B[j]);
+      let s = i; while (ok(s - perp)) s -= perp;
+      let e = i; while (ok(e + perp)) e += perp;
+      if (s === i && e === i) { mask[i] = ALL; continue; }
+      has[i] = 1;
+      let list = 1, score = 0, alive = true;
+      for (let j = s; j < i; j += perp) { score += tileValue(B[j], vals); const v = D.edge(list, lower(B[j]).charCodeAt(0) - 96); if (!v) { alive = false; break; } list = v >>> 7; }
+      for (let j = i + perp; j <= e; j += perp) score += tileValue(B[j], vals);
+      sc[i] = score;
+      if (!alive) continue;
+      let m = 0;
+      for (let k = list; list; k++) {
+        const v = D.e[k], code = v & 31;
+        let l2 = v >>> 7, end = !!(v & 32), good = true;
+        for (let j = i + perp; j <= e; j += perp) {
+          const w = D.edge(l2, lower(B[j]).charCodeAt(0) - 96);
+          if (!w) { good = false; break; }
+          l2 = w >>> 7; end = !!(w & 32);
+        }
+        if (good && end) m |= 1 << (code - 1);
+        if (v & 64) break;
+      }
+      mask[i] = m;
+    }
+    return { mask, sc, has };
+  }
+
+  function generate(ctx, board, rack, opts) {
+    opts = opts || {};
+    const B = Array.from(board), D = ctx.dict, E = D.e, P = ctx.prem, vals = ctx.values;
+    const counts = new Int8Array(27);
+    for (const ch of rack) { if (ch === '?') counts[26]++; else counts[ch.charCodeAt(0) - 97]++; }
+    const rackSize = rack.length;
+    const empty = boardEmpty(B);
+    const out = [], seen = new Set();
+    const maxMoves = opts.maxMoves || 400000;
+
+    for (const horiz of [true, false]) {
+      const cross = crossChecks(ctx, B, horiz ? N : 1);
+      for (let line = 0; line < N; line++) {
+        const cells = new Array(N);
+        for (let k = 0; k < N; k++) cells[k] = horiz ? line * N + k : k * N + line;
+        const anchor = new Uint8Array(N);
+        for (let k = 0; k < N; k++) {
+          const i = cells[k];
+          if (!isEmpty(B[i])) continue;
+          if (empty) { anchor[k] = i === CENTER ? 1 : 0; continue; }
+          const [r, c] = rc(i);
+          if ((r > 0 && !isEmpty(B[i - N])) || (r < 14 && !isEmpty(B[i + N])) || (c > 0 && !isEmpty(B[i - 1])) || (c < 14 && !isEmpty(B[i + 1]))) anchor[k] = 1;
+        }
+        const cur = new Array(N).fill(null); // nieuw gelegde letters op deze lijn
+        let anchorK = 0, startK = 0;
+
+        const record = endK => {
+          // woord loopt van startK t/m endK-1
+          if (endK - startK < 2) return;
+          const tiles = [];
+          let sum = 0, mult = 1, extra = 0;
+          for (let k = startK; k < endK; k++) {
+            const i = cells[k];
+            if (cur[k] !== null) {
+              const ch = cur[k];
+              tiles.push([i, ch]);
+              let v = tileValue(ch, vals), lm = 1, wm = 1;
+              const p = P[i];
+              if (p === 'd') lm = 2; else if (p === 't') lm = 3; else if (p === 'D' || p === '*') wm = 2; else if (p === 'T') wm = 3;
+              sum += v * lm; mult *= wm;
+              if (cross.has[i]) extra += (cross.sc[i] + v * lm) * wm;
+            } else sum += tileValue(B[i], vals);
+          }
+          if (!tiles.length) return;
+          if (tiles.length === 1) { const key = tiles[0][0] + tiles[0][1]; if (seen.has(key)) return; seen.add(key); }
+          let score = sum * mult + extra;
+          if (tiles.length === RACK) score += BINGO;
+          if (out.length < maxMoves) out.push({ t: tiles, s: score, h: horiz, len: endK - startK });
+        };
+
+        const extendRight = (k, list, end, placedAny) => {
+          if (k >= N || isEmpty(B[cells[k]])) {
+            if (end && placedAny && k > anchorK) record(k);
+            if (k >= N || !list) return;
+            const i = cells[k], m = cross.mask[i];
+            for (let x = list; ; x++) {
+              const v = E[x], code = v & 31, bit = 1 << (code - 1);
+              if (m & bit) {
+                if (counts[code - 1] > 0) {
+                  counts[code - 1]--; cur[k] = A[code - 1];
+                  extendRight(k + 1, v >>> 7, !!(v & 32), true);
+                  counts[code - 1]++; cur[k] = null;
+                }
+                if (counts[26] > 0) {
+                  counts[26]--; cur[k] = A[code - 1].toUpperCase();
+                  extendRight(k + 1, v >>> 7, !!(v & 32), true);
+                  counts[26]++; cur[k] = null;
+                }
+              }
+              if (v & 64) break;
+            }
+          } else {
+            const v = D.edge(list, lower(B[cells[k]]).charCodeAt(0) - 96);
+            if (v) extendRight(k + 1, v >>> 7, !!(v & 32), placedAny);
+          }
+        };
+
+        const leftPart = (list, len, limit) => {
+          startK = anchorK - len;
+          extendRight(anchorK, list, false, false);
+          if (limit <= 0 || !list) return;
+          // linkerdeel groeit: verschuif de bestaande letters één vakje naar links
+          for (let x = list; ; x++) {
+            const v = E[x], code = v & 31;
+            const tryCh = ch => {
+              for (let k = anchorK - len - 1; k < anchorK - 1; k++) cur[k] = cur[k + 1];
+              cur[anchorK - 1] = ch;
+              leftPart(v >>> 7, len + 1, limit - 1);
+              for (let k = anchorK - 1; k > anchorK - len - 1; k--) cur[k] = cur[k - 1];
+              cur[anchorK - len - 1] = null;
+            };
+            if (counts[code - 1] > 0) { counts[code - 1]--; tryCh(A[code - 1]); counts[code - 1]++; }
+            if (counts[26] > 0) { counts[26]--; tryCh(A[code - 1].toUpperCase()); counts[26]++; }
+            if (v & 64) break;
+          }
+        };
+
+        for (let k = 0; k < N; k++) {
+          if (!anchor[k]) continue;
+          anchorK = k;
+          if (k > 0 && !isEmpty(B[cells[k - 1]])) {
+            let s = k - 1; while (s > 0 && !isEmpty(B[cells[s - 1]])) s--;
+            let list = 1, ok = true;
+            for (let j = s; j < k; j++) { const v = D.edge(list, lower(B[cells[j]]).charCodeAt(0) - 96); if (!v) { ok = false; break; } list = v >>> 7; }
+            if (!ok) continue;
+            startK = s;
+            extendRight(k, list, false, false);
+          } else {
+            let lim = 0;
+            for (let j = k - 1; j >= 0 && isEmpty(B[cells[j]]) && !anchor[j]; j--) lim++;
+            leftPart(1, 0, Math.min(lim, rackSize - 1));
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  /* ---------------- computerspeler ---------------- */
+  const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+  const LEAVE = {
+    nl: { '?': 22, s: 6, e: 4, n: 3, r: 2, t: 2, d: 1.5, a: 1, i: 1, o: 1, l: 1, q: -8, x: -2, y: -3, c: -3, w: -2, u: -1, v: -2 },
+    en: { '?': 25, s: 8, e: 4, r: 2, a: 1, n: 1, t: 1, l: 1, i: 0, d: 1, q: -8, v: -4, w: -3, u: -2, j: -2, x: 2, z: 2 }
+  };
+  function leaveValue(setId, left) {
+    const tab = LEAVE[setId] || LEAVE.nl;
+    let v = 0, vow = 0, con = 0;
+    const seen = {};
+    for (const ch of left) {
+      v += tab[ch] || 0;
+      seen[ch] = (seen[ch] || 0) + 1;
+      if (seen[ch] > 1 && ch !== '?') v -= seen[ch] === 2 ? 3 : 5;
+      if (ch === '?') continue;
+      if (VOWELS.has(ch)) vow++; else con++;
+    }
+    const n = vow + con;
+    if (n) { const ideal = n * 0.42; v -= Math.abs(vow - ideal) * 2.5; }
+    return v;
+  }
+  function rackAfter(rack, tiles) {
+    const r = rack.split('');
+    for (const [, ch] of tiles) { const want = ch === ch.toUpperCase() ? '?' : ch; const k = r.indexOf(want); if (k >= 0) r.splice(k, 1); }
+    return r.join('');
+  }
+  // kiest een zet: {type:'play', tiles, score} | {type:'swap', letters} | {type:'pass'}
+  function choose(ctx, board, rack, level, bagCount, setId) {
+    const moves = generate(ctx, board, rack);
+    const canSwap = bagCount >= RACK;
+    if (!moves.length) {
+      if (!canSwap) return { type: 'pass' };
+      if (level === 'strong') return { type: 'swap', letters: worstLetters(setId, rack) };
+      return { type: 'swap', letters: rack };
+    }
+    moves.sort((a, b) => b.s - a.s);
+    let pick;
+    if (level === 'easy') {
+      let pool = moves.filter(m => m.t.length <= 4 && m.len <= 6);
+      if (!pool.length) pool = moves;
+      const lo = Math.floor(pool.length * 0.35), hi = Math.max(lo + 1, Math.floor(pool.length * 0.75));
+      pick = pool[lo + rnd(hi - lo)];
+    } else if (level === 'normal') {
+      const r = rnd(100);
+      if (r < 50) pick = moves[0];
+      else { const top = Math.max(1, Math.min(moves.length, Math.max(4, Math.floor(moves.length * 0.04)))); pick = moves[rnd(top)]; }
+    } else {
+      let best = null, bestEq = -1e9;
+      for (const m of moves.slice(0, 600)) {
+        const eq = m.s + (bagCount > 0 ? leaveValue(setId, rackAfter(rack, m.t)) : (m.t.length === rack.length ? 12 : 0));
+        if (eq > bestEq) { bestEq = eq; best = m; }
+      }
+      if (canSwap && bestEq < 8 && best.s < 14) return { type: 'swap', letters: worstLetters(setId, rack) };
+      pick = best;
+    }
+    return { type: 'play', tiles: pick.t, score: pick.s };
+  }
+  function worstLetters(setId, rack) {
+    // houd de beste combinatie van hooguit 3 letters, ruil de rest
+    const r = rack.split('');
+    let best = '', bestV = -1e9;
+    const n = r.length;
+    for (let mask = 0; mask < (1 << n); mask++) {
+      let cnt = 0; for (let k = 0; k < n; k++) if (mask & (1 << k)) cnt++;
+      if (cnt > 3) continue;
+      const keep = r.filter((_, k) => mask & (1 << k)).join('');
+      const v = leaveValue(setId, keep) + cnt * 0.5;
+      if (v > bestV) { bestV = v; best = keep; }
+    }
+    const out = r.slice();
+    for (const ch of best) out.splice(out.indexOf(ch), 1);
+    return out.join('') || rack;
+  }
+
+  /* ---------------- laden ---------------- */
+  const cache = {};
+  function loadDict(id, base) {
+    if (cache[id]) return cache[id];
+    const url = (base || '') + DICTS[id].file;
+    cache[id] = fetch(url).then(r => { if (!r.ok) throw new Error('woordenboek ' + r.status); return r.arrayBuffer(); }).then(b => new Dict(b));
+    cache[id].catch(() => { delete cache[id]; });
+    return cache[id];
+  }
+
+  const WB = { N, SIZE, CENTER, RACK, BINGO, A, SETS, DICTS, Dict, rnd, shuffle, newBag, classicPremiums, randomPremiums,
+    tileValue, boardEmpty, evaluate, generate, choose, leaveValue, rackAfter, loadDict };
+  root.WB = WB;
+  if (typeof module !== 'undefined' && module.exports) module.exports = WB;
+})(typeof self !== 'undefined' ? self : this);

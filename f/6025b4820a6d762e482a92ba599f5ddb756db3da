@@ -1,0 +1,477 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><link rel="stylesheet" href="../fonts/fonts.css"><style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Vingerspel</title>
+<meta name="theme-color" content="#12131a">
+<style>
+/* Layout: full-bleed touch stage; floating mode bar on top and a status line at the bottom, both fade away while fingers are down */
+:root{
+  color-scheme: dark;
+  --bg:#12131a;
+  --surface:#1e202b;
+  --surface-2:#2a2d3c;
+  --line:#363a50;
+  --fg:#f4f2ec;
+  --muted:#a2a4b8;
+  --accent:#ffd23f;
+  --accent-ink:#1c1604;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --ui:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;
+  overflow:hidden;overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+#stage{position:fixed;inset:0;touch-action:none}
+#stage canvas{display:block;width:100%;height:100%}
+
+/* top bar */
+.bar{
+  position:fixed;top:0;left:0;right:0;z-index:5;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  transition:opacity .25s ease,transform .25s ease;
+}
+.row{display:flex;gap:8px;align-items:center;max-width:100%}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;gap:2px;min-width:0}
+.seg button{
+  font:600 15px/1 var(--ui);color:var(--muted);background:none;border:0;border-radius:999px;
+  padding:11px 14px;cursor:pointer;white-space:nowrap;
+}
+.seg button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
+.icon-btn{
+  flex:none;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
+  color:var(--fg);display:grid;place-items:center;cursor:pointer;
+}
+.icon-btn svg{width:22px;height:22px}
+.stepper{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 16px}
+.stepper span{color:var(--muted);font-weight:600}
+.stepper button{
+  width:38px;height:38px;border-radius:50%;border:0;background:var(--surface-2);color:var(--fg);
+  font:700 20px/1 var(--ui);cursor:pointer;
+}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper output{font:800 22px/1 var(--display);min-width:1.4ch;text-align:center;font-variant-numeric:tabular-nums}
+
+/* center hint */
+.hint{
+  position:fixed;left:0;right:0;top:50%;transform:translateY(-50%);z-index:2;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;
+  transition:opacity .2s ease;
+}
+.hint h1{margin:0;font:800 clamp(44px,13vw,84px)/.95 var(--display);letter-spacing:-.02em;text-wrap:balance}
+.hint p{margin:0;font-size:18px;color:var(--muted);max-width:28ch;text-wrap:balance}
+.dots{display:flex;gap:10px}
+.dots i{width:14px;height:14px;border-radius:50%;display:block;animation:bob 1.6s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}.dots i:nth-child(4){animation-delay:.45s}.dots i:nth-child(5){animation-delay:.6s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* bottom status */
+.status{
+  position:fixed;left:0;right:0;bottom:0;z-index:4;pointer-events:none;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+}
+.status .title{font:800 28px/1.05 var(--display);letter-spacing:-.01em;text-wrap:balance}
+.status .sub{color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-weight:600;font-variant-numeric:tabular-nums}
+.chip b{width:12px;height:12px;border-radius:50%;display:block}
+
+.playing .bar{opacity:0;pointer-events:none;transform:translateY(-10px)}
+
+.homebtn{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:6;text-decoration:none;transition:opacity .25s}
+.playing .homebtn{opacity:0;pointer-events:none}
+.status{padding-left:72px!important;padding-right:72px!important}
+/* settings sheet */
+.scrim{position:fixed;inset:0;z-index:8;background:rgba(6,7,12,.6)}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:9;margin:0 auto;max-width:520px;box-sizing:border-box;
+  background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;
+  padding-top:20px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:6px;
+}
+.sheet h2{margin:0 0 8px;font:800 24px/1.1 var(--display)}
+.field{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);font-weight:600}
+.field input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.field output{min-width:3.2ch;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.field input[type=checkbox]{
+  appearance:none;-webkit-appearance:none;width:50px;height:30px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--line);position:relative;cursor:pointer;margin:0;flex:none;transition:background .15s;
+}
+.field input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.field input[type=checkbox]:checked{background:var(--accent)}
+.field input[type=checkbox]:checked::after{transform:translateX(20px);background:var(--accent-ink)}
+.note{margin:10px 0 4px;color:var(--muted);font-size:14px;line-height:1.45}
+.done{margin-top:8px;font:700 16px/1 var(--ui);padding:15px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none}.bar,.hint{transition:none}}
+</style>
+
+</head>
+<body>
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<header class="bar" id="bar">
+  <div class="row">
+    <div class="seg" role="radiogroup" aria-label="Spelvorm">
+      <button type="button" role="radio" id="m-winner" data-mode="winner">Winnaar</button>
+      <button type="button" role="radio" id="m-groups" data-mode="groups">Groepjes</button>
+      <button type="button" role="radio" id="m-order" data-mode="order">Volgorde</button>
+    </div>
+    <button type="button" class="icon-btn" id="openSettings" aria-label="Instellingen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none"/><circle cx="10" cy="17" r="2.2" fill="none"/></svg>
+    </button>
+  </div>
+  <div class="stepper" id="stepper">
+    <span id="stepLabel">Winnaars</span>
+    <button type="button" id="minus" aria-label="Minder">−</button>
+    <output id="stepVal">1</output>
+    <button type="button" id="plus" aria-label="Meer">+</button>
+  </div>
+</header>
+
+<div class="hint" id="hint">
+  <h1 id="hintTitle">Vingerspel</h1>
+  <p id="hintText">Leg allemaal een vinger op het scherm</p>
+  <div class="dots" id="dots" aria-hidden="true"><i style="background:#ff5d5d"></i><i style="background:#ffb547"></i><i style="background:#5ee07a"></i><i style="background:#4d8dff"></i><i style="background:#ff6bd6"></i></div>
+</div>
+
+<a class="homebtn icon-btn" href="../index.html" aria-label="Terug naar spellen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></a>
+<div class="status" id="status"></div>
+
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle">Instellingen</h2>
+  <label class="field" for="dur"><span>Aftellen</span><input type="range" id="dur" min="1" max="5" step="1"><output id="durVal">3 s</output></label>
+  <label class="field" for="snd"><span>Geluid</span><input type="checkbox" id="snd"></label>
+  <label class="field" for="vib"><span>Trillen</span><input type="checkbox" id="vib"></label>
+  <p class="note">Komt er een vinger bij of laat iemand los, dan begint het aftellen opnieuw. De meeste telefoons herkennen maximaal 10 vingers tegelijk.</p>
+  <button type="button" class="done" id="closeSettings">Klaar</button>
+</section>
+
+<script src="../w2.js"></script>
+<script>
+(() => {
+  // ---------- settings ----------
+  const LIMITS = { winners: [1, 9], groups: [2, 6] };
+  const settings = { mode: 'winner', winners: 1, groups: 2, duration: 3, sound: true, vibrate: true };
+  try {
+    const saved = JSON.parse(localStorage.getItem('vingerspel') || 'null');
+    if (saved && typeof saved === 'object') Object.assign(settings, saved);
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem('vingerspel', JSON.stringify(settings)); } catch (e) {} };
+
+  // ---------- colors ----------
+  const hex = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const FINGER = ['#ff5d5d', '#ffb547', '#ffe14d', '#5ee07a', '#3fd0d4', '#4d8dff', '#9b6bff', '#ff6bd6', '#ff8a5c', '#b6f05a'].map(hex);
+  const GROUP = ['#ff5d5d', '#4d8dff', '#ffe14d', '#5ee07a', '#ff6bd6', '#3fd0d4'].map(hex);
+  const INK = '#12131a';
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+
+  // ---------- fair randomness ----------
+  function rand(n) {
+    if (window.crypto && crypto.getRandomValues) {
+      const buf = new Uint32Array(1), limit = Math.floor(0x100000000 / n) * n;
+      let x; do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+      return x % n;
+    }
+    return Math.floor(Math.random() * n);
+  }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  // ---------- canvas ----------
+  const stage = document.getElementById('stage');
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  // ---------- game state ----------
+  const fingers = new Map();      // pointerId -> {x, y, color, born}
+  let state = 'idle';             // idle | count | result
+  let countStart = 0, lastTick = -1;
+  let result = null;              // {mode, at, items: Map, flood, endAt}
+
+  const needed = () => settings.mode === 'winner' ? settings.winners + 1 : settings.mode === 'groups' ? settings.groups : 2;
+
+  function nextColor() {
+    const used = new Set([...fingers.values()].map(f => f.color));
+    return FINGER.find(c => !used.has(c)) || FINGER[rand(FINGER.length)];
+  }
+
+  function onChange() {
+    if (state === 'result') {
+      const allUp = [...result.items.values()].every(i => i.lifted);
+      if (allUp && !result.endAt) result.endAt = performance.now();
+      updateUI(); return;
+    }
+    if (fingers.size >= needed()) { state = 'count'; countStart = performance.now(); lastTick = -1; }
+    else state = 'idle';
+    updateUI();
+  }
+
+  function decide(now) {
+    const ids = shuffle([...fingers.keys()]);
+    const mode = settings.mode;
+    const items = new Map();
+    ids.forEach((id, i) => {
+      const f = fingers.get(id);
+      const it = { x: f.x, y: f.y, from: f.color, color: f.color, lifted: false };
+      if (mode === 'winner') it.win = i < settings.winners;
+      if (mode === 'groups') { it.group = i % settings.groups; it.color = GROUP[it.group]; }
+      if (mode === 'order') it.order = i + 1;
+      items.set(id, it);
+    });
+    let flood = null;
+    if (mode === 'winner' && settings.winners === 1) flood = [...items.values()].find(i => i.win);
+    result = { mode, at: now, items, flood, endAt: null };
+    state = 'result';
+    chime(); buzz([40, 40, 110]);
+    updateUI();
+  }
+
+  // ---------- input ----------
+  stage.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    unlockAudio(); keepAwake();
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY, color: nextColor(), born: performance.now() });
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+    if (state !== 'result') buzz(12);
+    onChange();
+  });
+  stage.addEventListener('pointermove', e => {
+    const f = fingers.get(e.pointerId); if (!f) return;
+    f.x = e.clientX; f.y = e.clientY;
+    if (result) { const it = result.items.get(e.pointerId); if (it && !it.lifted) { it.x = f.x; it.y = f.y; } }
+  });
+  const lift = e => {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.delete(e.pointerId);
+    if (result) { const it = result.items.get(e.pointerId); if (it) it.lifted = true; }
+    onChange();
+  };
+  stage.addEventListener('pointerup', lift);
+  stage.addEventListener('pointercancel', lift);
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ---------- sound, vibration, wake lock ----------
+  let actx = null;
+  function unlockAudio() {
+    if (!settings.sound) return;
+    try {
+      if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function tone(freq, start, len, vol, type) {
+    if (!actx || !settings.sound) return;
+    try {
+      const t = actx.currentTime + start, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + len + 0.03);
+    } catch (e) {}
+  }
+  const tick = () => tone(660, 0, 0.07, 0.05);
+  const chime = () => { tone(784, 0, 0.2, 0.09, 'triangle'); tone(1175, 0.1, 0.35, 0.08, 'triangle'); };
+  function buzz(p) { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } }
+  let wake = null;
+  function keepAwake() {
+    if (wake || !('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').then(l => { wake = l; l.addEventListener('release', () => { wake = null; }); }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && fingers.size) keepAwake(); });
+
+  // ---------- drawing ----------
+  const R = 40;
+  const ease = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function disc(x, y, r, c, alpha, label) {
+    if (r <= 0.5 || alpha <= 0.01) return;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = rgba(c, 0.16);
+    ctx.beginPath(); ctx.arc(x, y, r * 1.55, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(3, r * 0.13); ctx.strokeStyle = rgba(c, 1);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = rgba(c, 1);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.66, 0, Math.PI * 2); ctx.fill();
+    if (label != null) {
+      ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `800 ${Math.round(r * 0.78)}px "Bricolage Grotesque", system-ui, sans-serif`;
+      ctx.fillText(String(label), x, y + r * 0.04);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    ctx.clearRect(0, 0, W, H);
+
+    if (state === 'count') {
+      const el = (now - countStart) / 1000, d = settings.duration;
+      const sec = Math.floor(el);
+      if (sec !== lastTick && sec < d) { lastTick = sec; if (sec > 0) { tick(); buzz(10); } }
+      if (el >= d) decide(now);
+    }
+
+    if (state === 'result' && result) {
+      const fade = result.endAt ? 1 - ease((now - result.endAt) / 420) : 1;
+      const t = (now - result.at);
+      if (result.flood) {
+        const k = reduce ? 1 : ease(t / 650);
+        ctx.fillStyle = rgba(result.flood.color, 0.26 * fade);
+        ctx.beginPath(); ctx.arc(result.flood.x, result.flood.y, Math.hypot(W, H) * k, 0, Math.PI * 2); ctx.fill();
+      }
+      const items = [...result.items.values()];
+      if (result.mode === 'order') {
+        const seq = items.slice().sort((a, b) => a.order - b.order);
+        ctx.globalAlpha = 0.45 * fade * ease(t / 400);
+        ctx.strokeStyle = '#f4f2ec'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]);
+        ctx.beginPath(); seq.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+      for (const it of items) {
+        if (result.mode === 'winner') {
+          if (it.win) disc(it.x, it.y, R * (1 + 0.38 * ease(t / 420)) * (1 + 0.03 * Math.sin(now / 180)), it.color, fade, null);
+          else disc(it.x, it.y, R * (1 - ease(t / 340)), it.color, (1 - ease(t / 340)) * fade, null);
+        } else if (result.mode === 'groups') {
+          disc(it.x, it.y, R * (1 + 0.18 * ease(t / 400)), mix(it.from, it.color, ease(t / 320)), fade, it.group + 1);
+        } else {
+          disc(it.x, it.y, R * (1 + 0.18 * ease(t / 400)), it.color, fade, it.order);
+        }
+      }
+      if (result.endAt && now - result.endAt > 440) {
+        result = null; state = 'idle'; onChange();
+      }
+    } else {
+      const counting = state === 'count';
+      const p = counting ? Math.min(1, (now - countStart) / 1000 / settings.duration) : 0;
+      for (const f of fingers.values()) {
+        const grow = reduce ? 1 : ease((now - f.born) / 220);
+        const pulse = reduce ? 1 : 1 + (counting ? 0.05 + 0.05 * p : 0.035) * Math.sin(now / (counting ? 110 - 50 * p : 320));
+        const r = R * grow * pulse;
+        disc(f.x, f.y, r, f.color, 1, null);
+        if (counting) {
+          const rr = R * 1.55 + 6;
+          ctx.lineWidth = 5; ctx.lineCap = 'round';
+          ctx.strokeStyle = rgba(f.color, 0.18);
+          ctx.beginPath(); ctx.arc(f.x, f.y, rr, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rgba(f.color, 0.95);
+          ctx.beginPath(); ctx.arc(f.x, f.y, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke();
+          ctx.lineCap = 'butt';
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const hint = $('hint'), hintTitle = $('hintTitle'), hintText = $('hintText'), dots = $('dots'), status = $('status');
+  const vingers = n => `${n} ${n === 1 ? 'vinger' : 'vingers'}`;
+
+  function modeLine() {
+    if (settings.mode === 'winner') return settings.winners === 1 ? 'Kiest 1 winnaar' : `Kiest ${settings.winners} winnaars`;
+    if (settings.mode === 'groups') return `Verdeelt in ${settings.groups} groepjes`;
+    return 'Bepaalt wie begint en wie daarna';
+  }
+
+  function updateUI() {
+    document.body.classList.toggle('playing', fingers.size > 0 || state === 'result');
+
+    if (state === 'idle') {
+      hint.style.opacity = 1;
+      const none = fingers.size === 0;
+      hintTitle.hidden = !none; dots.hidden = !none;
+      hintText.textContent = none ? 'Leg allemaal een vinger op het scherm' : `Nog ${vingers(needed() - fingers.size)} nodig`;
+    } else hint.style.opacity = 0;
+
+    status.innerHTML = '';
+    const add = (cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; status.appendChild(d); return d; };
+    if (state === 'result' && result) {
+      if (result.mode === 'winner') add('title', settings.winners === 1 ? 'Gekozen!' : `${settings.winners} winnaars gekozen`);
+      if (result.mode === 'order') add('title', 'Nummer 1 begint');
+      if (result.mode === 'groups') {
+        add('title', 'De groepjes staan');
+        const counts = Array(settings.groups).fill(0);
+        for (const it of result.items.values()) counts[it.group]++;
+        const chips = document.createElement('div'); chips.className = 'chips';
+        counts.forEach((n, g) => {
+          const c = document.createElement('div'); c.className = 'chip';
+          const dot = document.createElement('b'); dot.style.background = rgba(GROUP[g], 1);
+          c.appendChild(dot); c.appendChild(document.createTextNode(`Groep ${g + 1} · ${n}`));
+          chips.appendChild(c);
+        });
+        status.appendChild(chips);
+      }
+      add('sub', 'Laat allemaal los voor een nieuw rondje');
+    } else if (state === 'count') {
+      add('sub', 'Blijf liggen…');
+    } else if (fingers.size === 0) {
+      add('sub', `${modeLine()} · minstens ${needed()} spelers`);
+    }
+  }
+
+  function renderBar() {
+    for (const b of document.querySelectorAll('.seg button')) b.setAttribute('aria-checked', String(b.dataset.mode === settings.mode));
+    const key = settings.mode === 'winner' ? 'winners' : settings.mode === 'groups' ? 'groups' : null;
+    $('stepper').hidden = !key;
+    if (key) {
+      $('stepLabel').textContent = key === 'winners' ? 'Winnaars' : 'Groepjes';
+      $('stepVal').textContent = settings[key];
+      $('minus').disabled = settings[key] <= LIMITS[key][0];
+      $('plus').disabled = settings[key] >= LIMITS[key][1];
+    }
+    updateUI();
+  }
+
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { settings.mode = b.dataset.mode; save(); renderBar(); }));
+  const step = d => {
+    const key = settings.mode === 'winner' ? 'winners' : 'groups';
+    settings[key] = Math.min(LIMITS[key][1], Math.max(LIMITS[key][0], settings[key] + d));
+    save(); renderBar();
+  };
+  $('minus').addEventListener('click', () => step(-1));
+  $('plus').addEventListener('click', () => step(1));
+
+  // settings sheet
+  const sheet = $('sheet'), scrim = $('scrim');
+  const dur = $('dur'), durVal = $('durVal'), snd = $('snd'), vib = $('vib');
+  function openSheet() {
+    dur.value = settings.duration; durVal.textContent = `${settings.duration} s`;
+    snd.checked = settings.sound; vib.checked = settings.vibrate;
+    sheet.hidden = false; scrim.hidden = false; $('closeSettings').focus();
+  }
+  function closeSheet() { sheet.hidden = true; scrim.hidden = true; $('openSettings').focus(); }
+  $('openSettings').addEventListener('click', openSheet);
+  $('closeSettings').addEventListener('click', closeSheet);
+  scrim.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  dur.addEventListener('input', () => { settings.duration = +dur.value; durVal.textContent = `${settings.duration} s`; save(); });
+  snd.addEventListener('change', () => { settings.sound = snd.checked; save(); if (settings.sound) { unlockAudio(); tick(); } });
+  vib.addEventListener('change', () => { settings.vibrate = vib.checked; save(); buzz(30); });
+
+  renderBar();
+})();
+</script>
+
+</body></html>

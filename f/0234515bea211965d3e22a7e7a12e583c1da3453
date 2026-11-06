@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Schaken</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+/* Schaakavond: inktblauwe kamer, koel leisteenbord, één amber accent voor selectie en laatste zet. */
+:root{
+  --room:#0f1620; --room-2:#18212d; --panel:#1e2937; --line:#2e3b4d;
+  --light:#e4e1d8; --dark:#7f93a8; --amber:#f2b134; --amber-ink:#2a1c02;
+  --text:#eef0f2; --muted:#9aa8b8; --good:#7fd19b; --warn:#ff8a6b;
+  --pw:#f7f3ea; --pw-line:#1b2330; --pb:#232b38; --pb-line:#0a0e14;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  --ng-accent:var(--amber); --ng-accent-ink:var(--amber-ink); --ng-panel:var(--panel); --ng-line:var(--line); --ng-warn:var(--warn);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(14px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+p{margin:0}
+.muted{color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.back{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-weight:600;padding:10px 4px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:22px;height:22px}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--amber);color:var(--amber-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+
+/* start */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:4px}
+.hero h1{font-size:48px;line-height:.95}
+.hero svg{width:92px;height:92px;flex:none}
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.choice b{display:block;font-size:17px}
+.choice span{color:var(--muted);font-size:14px}
+.choice:disabled{opacity:.5}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+
+/* spel */
+.bar{display:flex;align-items:center;gap:8px}
+.bar .info{flex:1;text-align:center;font-size:14px;color:var(--muted)}
+.player{display:flex;align-items:center;gap:10px;min-height:34px}
+.player .sw{width:18px;height:18px;border-radius:5px;flex:none;box-shadow:inset 0 0 0 1.5px #0006}
+.player .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.player.turn .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-left:8px;vertical-align:middle}
+.caps{display:flex;align-items:center;flex-wrap:wrap;gap:0;flex:1;min-width:0;justify-content:flex-end}
+.caps svg{width:18px;height:18px;margin-left:-4px}
+.caps .adv{font-size:13px;color:var(--muted);margin-left:6px;font-weight:700}
+.player .sc{font-family:var(--f-display);font-weight:800;font-size:20px;min-width:2ch;text-align:right;font-variant-numeric:tabular-nums}
+.boardwrap{border-radius:10px;overflow:hidden;box-shadow:0 10px 30px #0008, 0 0 0 1px #000}
+#board{display:block;width:100%;height:auto;touch-action:manipulation}
+.status{text-align:center;font-weight:600;min-height:24px}
+.status.wait{color:var(--muted);font-weight:500}
+.moves{display:flex;gap:4px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none;font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+.moves::-webkit-scrollbar{display:none}
+.moves span{white-space:nowrap;padding:3px 6px;border-radius:6px}
+.moves span.n{padding-right:0;opacity:.6}
+.moves span.last{background:var(--panel);color:var(--text)}
+.netlost{background:#4a1f1a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost span{flex:1}
+.netlost button{border:0;background:var(--light);color:#1b2330;border-radius:10px;padding:9px 12px;font-weight:700}
+
+/* vellen */
+.scrim{position:fixed;inset:0;background:#05080cb8;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.sheet h2{font-size:26px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group > .t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0}
+.row .d{font-size:14px;color:var(--muted)}
+.toggle{width:52px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--light);transition:transform .15s}
+.toggle[aria-pressed="true"]{background:var(--good)}
+.toggle[aria-pressed="true"]::after{transform:translateX(22px)}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.promo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.promo button{background:var(--light);border:0;border-radius:14px;aspect-ratio:1;display:grid;place-items:center;padding:6px}
+.promo svg{width:100%;height:100%}
+.result{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:6px 0}
+.result h2{font-size:34px;line-height:1}
+.scoreline{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+#pc-B .dt{stroke:var(--dt)}
+#pc-N .dt{fill:var(--dt);stroke:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Eigen getekende stukken, 100x100. Vulkleur en lijn komen van het gebruik (wit/zwart). -->
+    <g id="pc-P"><circle cx="50" cy="30" r="12"/><path d="M40 44h20l-2 6c6 10 9 20 9 32H33c0-12 3-22 9-32z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+    <g id="pc-R"><path d="M28 18h10v8h7v-8h10v8h7v-8h10v20H28z"/><path d="M34 40h32l-3 42H37z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+    <g id="pc-B"><circle cx="50" cy="12" r="5"/><path d="M50 18c-13 10-18 22-12 34h24c6-12 1-24-12-34z"/><path d="M41 54h18l4 28H37z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/><path class="dt" d="M55 26l-9 14" fill="none" stroke-width="3.5" stroke-linecap="round"/></g>
+    <g id="pc-N"><path d="M66 84H32c0-14 4-24 12-32-6 2-11 5-15 3-5-2-5-8-1-12 6-6 10-12 12-19l3-9 5 7c15 2 26 14 26 34 0 11-2 20-2 28z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/><circle class="dt" cx="47" cy="32" r="3.2"/></g>
+    <g id="pc-Q"><circle cx="22" cy="28" r="5"/><circle cx="36" cy="18" r="5"/><circle cx="50" cy="14" r="5"/><circle cx="64" cy="18" r="5"/><circle cx="78" cy="28" r="5"/><path d="M22 32l10 36h36l10-36-14 14-6-24-8 22-8-22-6 24z"/><path d="M30 70h40l4 12H26z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+    <g id="pc-K"><path d="M46 6h8v8h8v8h-8v10h-8V22h-8v-8h8z"/><path d="M28 40c0-10 44-10 44 0l-6 28H34z"/><path d="M30 70h40l4 12H26z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+  </defs>
+</svg>
+<script src="../w2.js"></script>
+<script src="../netgame.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const C = window.CHESS;
+const app = document.getElementById('app');
+
+/* ---------------- instellingen ---------------- */
+const SKEY = 'chess-settings';
+const S = Object.assign({ level: 'normal', color: 'w', hints: true, flip: false, sound: true, vibrate: true }, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const LEVELS = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+
+/* ---------------- opslag ---------------- */
+const GKEY = m => 'chess-game-' + m;
+const load = m => { try { const g = JSON.parse(localStorage.getItem(GKEY(m)) || 'null'); return g && g.gid ? g : null; } catch (e) { return null; } };
+const save = g => { try { localStorage.setItem(GKEY(g.mode), JSON.stringify(g)); } catch (e) {} };
+const inProgress = g => g && !g.result;
+
+/* ---------------- toestand ---------------- */
+let G = null, view = 'home';
+const ui = { sel: null, sheet: null, promo: null, thinking: false, token: 0 };
+const net = window.W2NetGame('chess', {
+  storageKey: GKEY('net'),
+  inProgress,
+  startHost(saved, peer, mine) {
+    if (inProgress(saved) && saved.names[1] === peer) G = saved;
+    else G = newMatch('net', [mine, peer]);
+    G.seq++; view = 'game'; ui.sel = null; render();
+    return G;
+  },
+  onState(s) {
+    const before = G && G.mode === 'net' ? G.moves.length : -1;
+    G = s; if (view === 'lobby' || view === 'home') view = 'game';
+    ui.sel = null;
+    if (G.result) ui.sheet = 'result'; else if (ui.sheet === 'result') ui.sheet = null;
+    if (G.moves.length > before && before >= 0) { const m = G.moves[G.moves.length - 1]; m && m.s.includes('x') ? sCap() : sMove(); if (isMine(turnPlayer())) buzz(25); }
+    render();
+  },
+  onChange() { render(); }
+});
+
+/* ---------------- geluid ---------------- */
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sMove = () => { tone(220, 0.07, 'triangle', 0.22); tone(110, 0.08, 'sine', 0.16, 0.01); };
+const sCap = () => { tone(160, 0.12, 'triangle', 0.25); tone(320, 0.08, 'square', 0.05, 0.02); };
+const sCheck = () => tone(880, 0.15, 'sine', 0.1);
+const sEnd = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+/* ---------------- spel ---------------- */
+const uid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+function newMatch(mode, names) {
+  const g = { v: 1, gid: uid(), mode, names, score: [0, 0], gameNo: 0, seq: 0, level: S.level };
+  let white = 0;
+  if (mode === 'cpu' || mode === 'net') white = S.color === 'b' ? 1 : S.color === 'r' ? Math.round(Math.random()) : 0;
+  startGame(g, white);
+  return g;
+}
+function startGame(g, white) {
+  g.white = white; g.pos = C.newGame(); g.moves = []; g.keys = [C.hash(C.posKey(g.pos))];
+  g.result = null; g.drawOffer = null; g.gameNo++;
+}
+const colorOfPlayer = pl => (G.white === pl ? 'w' : 'b');
+const playerOfColor = c => (c === 'w' ? G.white : 1 - G.white);
+const turnPlayer = () => playerOfColor(G.pos.turn);
+const me = () => (G && G.mode === 'net' ? net.me() : 0);
+const isCpu = pl => G.mode === 'cpu' && pl === 1;
+function isMine(pl) {
+  if (G.mode === 'local') return true;
+  if (G.mode === 'cpu') return pl === 0;
+  return pl === me() && net.status === 'connected';
+}
+function viewColor() {
+  // welke kleur staat onderaan
+  if (G.mode === 'local') return S.flip ? G.pos.turn : 'w';
+  return colorOfPlayer(me());
+}
+
+function commit() {
+  G.seq++; save(G);
+  if (G.mode === 'net') net.publish(G);
+  render(); schedule();
+}
+function play(m) {
+  const sanStr = C.san(G.pos, m);
+  G.pos = C.make(G.pos, m);
+  G.moves.push({ f: m.from, t: m.to, p: m.promo || null, s: sanStr });
+  G.keys.push(C.hash(C.posKey(G.pos)));
+  G.drawOffer = null; ui.sel = null;
+  m.cap ? sCap() : sMove(); buzz(12);
+  const st = C.status(G.pos, G.keys);
+  if (st) finish(st);
+  else if (C.inCheck(G.pos)) { sCheck(); buzz([20, 40, 20]); }
+  commit();
+}
+function finish(st) {
+  const winner = st.winner ? playerOfColor(st.winner) : null;
+  G.result = Object.assign({}, st, { winner });
+  if (winner === null) { G.score[0] += 0.5; G.score[1] += 0.5; } else G.score[winner] += 1;
+  ui.sheet = 'result'; sEnd(); buzz([60, 40, 60, 40, 160]);
+}
+function rebuild(moves) {
+  // stand opnieuw opbouwen uit de zettenlijst (voor terugnemen)
+  let p = C.newGame(); const keys = [C.hash(C.posKey(p))];
+  for (const mv of moves) {
+    const m = C.legal(p).find(x => x.from === mv.f && x.to === mv.t && (x.promo || null) === (mv.p || null));
+    if (!m) break;
+    p = C.make(p, m); keys.push(C.hash(C.posKey(p)));
+  }
+  return { p, keys };
+}
+function takeBack() {
+  if (!G.moves.length || G.result) return;
+  // tegen de computer: terug tot jij weer aan zet bent
+  let n = 1;
+  if (G.mode === 'cpu') n = turnPlayer() === 0 ? 2 : 1;
+  const moves = G.moves.slice(0, Math.max(0, G.moves.length - n));
+  const r = rebuild(moves);
+  G.moves = moves; G.pos = r.p; G.keys = r.keys; ui.sel = null; ui.token++; ui.thinking = false;
+  commit();
+}
+function resign(pl) {
+  G.result = { type: 'opgegeven', winner: 1 - pl, loser: pl };
+  G.score[1 - pl] += 1; ui.sheet = 'result'; sEnd(); commit();
+}
+function agreeDraw() {
+  G.result = { type: 'remise', winner: null }; G.score[0] += 0.5; G.score[1] += 0.5; ui.sheet = 'result'; sEnd(); commit();
+}
+function nextGame() {
+  ui.sheet = null;
+  // volgende partij: kleuren wisselen (behalve tegen de computer, daar telt je instelling)
+  const white = G.mode === 'cpu' ? (S.color === 'b' ? 1 : S.color === 'r' ? Math.round(Math.random()) : 0) : 1 - G.white;
+  startGame(G, white); commit();
+}
+
+/* ---------------- computer ---------------- */
+let worker = null, workerOk = true;
+function think(pos, level, cb) {
+  if (workerOk) {
+    try {
+      worker = worker || new Worker('ai-worker.js');
+      const id = ++ui.token;
+      worker.onmessage = e => { if (e.data.id === id) cb(e.data.mv); };
+      worker.onerror = () => { workerOk = false; setTimeout(() => cb(C.chooseMove(pos, level)), 30); };
+      worker.postMessage({ pos, level, id });
+      return;
+    } catch (e) { workerOk = false; }
+  }
+  const id = ++ui.token;
+  setTimeout(() => { if (id === ui.token) cb(C.chooseMove(pos, level)); }, 60);
+}
+function schedule() {
+  if (!G || view !== 'game' || G.mode !== 'cpu' || G.result) return;
+  if (!isCpu(turnPlayer()) || ui.thinking) return;
+  ui.thinking = true; render();
+  const gid = G.gid, n = G.moves.length, started = Date.now();
+  think(G.pos, G.level || S.level, mv => {
+    if (!G || G.gid !== gid || G.moves.length !== n) { ui.thinking = false; return; }
+    const wait = Math.max(0, 450 - (Date.now() - started)); // korte pauze zodat je de zet ziet aankomen
+    setTimeout(() => {
+      if (!G || G.gid !== gid || G.moves.length !== n) { ui.thinking = false; return; }
+      ui.thinking = false;
+      if (mv) play(Object.assign({}, mv)); else render();
+    }, wait);
+  });
+}
+
+/* ---------------- tekenen ---------------- */
+const SQ = 100;
+function pieceUse(p, x, y, size) {
+  const white = p === p.toUpperCase();
+  const fill = white ? 'var(--pw)' : 'var(--pb)', line = white ? 'var(--pw-line)' : 'var(--pb-line)';
+  const dt = white ? 'var(--pw-line)' : 'var(--pw)';
+  return `<g transform="translate(${x},${y}) scale(${size / 100})" fill="${fill}" stroke="${line}" stroke-width="3.2" stroke-linejoin="round" style="--dt:${dt}">
+    <use href="#pc-${p.toUpperCase()}"/></g>`;
+}
+function pieceSVG(p, px) {
+  const white = p === p.toUpperCase();
+  return `<svg viewBox="0 0 100 100" width="${px || 18}" height="${px || 18}"><g fill="${white ? 'var(--pw)' : 'var(--pb)'}" stroke="${white ? 'var(--pw-line)' : 'var(--pb-line)'}" stroke-width="4" stroke-linejoin="round" style="--dt:${white ? 'var(--pw-line)' : 'var(--pw)'}"><use href="#pc-${p.toUpperCase()}"/></g></svg>`;
+}
+function boardSVG() {
+  const vc = viewColor();
+  const pos = G.pos, b = pos.b;
+  const xy = sq => { const r = C.rk(sq), f = C.fl(sq); return vc === 'w' ? [f * SQ, (7 - r) * SQ] : [(7 - f) * SQ, r * SQ]; };
+  const moving = !G.result && isMine(turnPlayer()) && !isCpu(turnPlayer()) && !ui.thinking;
+  const legal = moving ? C.legal(pos) : [];
+  const targets = ui.sel !== null ? legal.filter(m => m.from === ui.sel) : [];
+  const last = G.moves[G.moves.length - 1];
+  const checkSq = C.inCheck(pos) ? b.indexOf(pos.turn === 'w' ? 'K' : 'k') : -1;
+  let s = `<svg id="board" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schaakbord">`;
+  for (let sq = 0; sq < 64; sq++) {
+    const [x, y] = xy(sq), light = (C.rk(sq) + C.fl(sq)) % 2 === 1;
+    s += `<rect x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="${light ? 'var(--light)' : 'var(--dark)'}"/>`;
+    if (last && (sq === last.f || sq === last.t)) s += `<rect x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="var(--amber)" opacity=".38"/>`;
+    if (sq === ui.sel) s += `<rect x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="var(--amber)" opacity=".6"/>`;
+    if (sq === checkSq) s += `<circle cx="${x + 50}" cy="${y + 50}" r="46" fill="#e5484d" opacity=".55"/>`;
+  }
+  // coördinaten
+  for (let i = 0; i < 8; i++) {
+    const file = vc === 'w' ? i : 7 - i, rank = vc === 'w' ? 7 - i : i;
+    // labels in de tegengestelde kleur van het veld eronder
+    const bottomRank = vc === 'w' ? 0 : 7, leftFile = vc === 'w' ? 0 : 7;
+    const lightUnderFile = (bottomRank + file) % 2 === 1, lightUnderRank = (rank + leftFile) % 2 === 1;
+    s += `<text x="${i * SQ + 93}" y="793" text-anchor="end" font-family="Figtree" font-weight="800" font-size="21" fill="${lightUnderFile ? 'var(--dark)' : 'var(--light)'}">${'abcdefgh'[file]}</text>`;
+    s += `<text x="6" y="${i * SQ + 22}" font-family="Figtree" font-weight="800" font-size="21" fill="${lightUnderRank ? 'var(--dark)' : 'var(--light)'}">${rank + 1}</text>`;
+  }
+  // stukken
+  for (let sq = 0; sq < 64; sq++) {
+    const p = b[sq]; if (p === '.') continue;
+    const [x, y] = xy(sq);
+    s += pieceUse(p, x + 6, y + 4, 88);
+  }
+  // doelen
+  for (const m of targets) {
+    const [x, y] = xy(m.to);
+    if (m.cap) s += `<circle cx="${x + 50}" cy="${y + 50}" r="44" fill="none" stroke="#0f1620" stroke-opacity=".38" stroke-width="8"/>`;
+    else s += `<circle cx="${x + 50}" cy="${y + 50}" r="15" fill="#0f1620" opacity=".32"/>`;
+  }
+  // tikvlakken
+  for (let sq = 0; sq < 64; sq++) { const [x, y] = xy(sq); s += `<rect data-sq="${sq}" x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="transparent"/>`; }
+  return s + '</svg>';
+}
+// geslagen stukken + materiaalverschil
+function captured(color) {
+  // stukken van 'color' die van het bord zijn
+  const start = { P: 8, N: 2, B: 2, R: 2, Q: 1 }, now = { P: 0, N: 0, B: 0, R: 0, Q: 0 };
+  for (const ch of G.pos.b) { if (ch === '.') continue; const w = ch === ch.toUpperCase(); if ((w ? 'w' : 'b') !== color) continue; const t = ch.toUpperCase(); if (t in now) now[t]++; }
+  const out = [];
+  for (const t of ['Q', 'R', 'B', 'N', 'P']) for (let i = 0; i < Math.max(0, start[t] - now[t]); i++) out.push(color === 'w' ? t : t.toLowerCase());
+  return out;
+}
+function material(color) {
+  const v = { P: 1, N: 3, B: 3, R: 5, Q: 9 }; let n = 0;
+  for (const ch of G.pos.b) { if (ch === '.' || ch.toUpperCase() === 'K') continue; if ((ch === ch.toUpperCase() ? 'w' : 'b') === color) n += v[ch.toUpperCase()]; }
+  return n;
+}
+function playerRow(pl) {
+  const col = colorOfPlayer(pl), opp = col === 'w' ? 'b' : 'w';
+  const caps = captured(opp); // wat deze speler geslagen heeft
+  const adv = material(col) - material(opp);
+  const turn = !G.result && turnPlayer() === pl;
+  return `<div class="player ${turn ? 'turn' : ''}"><span class="sw" style="background:${col === 'w' ? 'var(--pw)' : 'var(--pb)'}"></span>
+    <span class="nm">${esc(G.names[pl])}</span>
+    <span class="caps">${caps.map(p => pieceSVG(p)).join('')}${adv > 0 ? `<span class="adv">+${adv}</span>` : ''}</span>
+    <span class="sc">${fmtScore(G.score[pl])}</span></div>`;
+}
+const fmtScore = n => (n % 1 ? (Math.floor(n) || '') + '½' : String(n));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function statusLine() {
+  if (G.result) return { text: 'Partij afgelopen', btns: `<button class="btn" data-a="showresult">Uitslag bekijken</button>` };
+  const tp = turnPlayer(), nm = esc(G.names[tp]);
+  let text = '', btns = '', wait = false;
+  const chk = C.inCheck(G.pos) ? ' Schaak!' : '';
+  if (G.drawOffer !== null && G.drawOffer !== undefined) {
+    const offerer = G.drawOffer;
+    if (isMine(1 - offerer) && !isCpu(1 - offerer)) {
+      text = `${esc(G.names[offerer])} biedt remise aan.`;
+      btns = `<button class="btn quiet" data-a="declinedraw">Doorspelen</button><button class="btn" data-a="acceptdraw">Remise</button>`;
+      return { text, btns };
+    }
+    text = 'Remise aangeboden, wachten op antwoord…'; wait = true;
+  } else if (isCpu(tp)) { text = 'Computer denkt na…'; wait = true; }
+  else if (isMine(tp)) text = (G.mode === 'local' ? `${nm} (${G.pos.turn === 'w' ? 'wit' : 'zwart'}) is aan zet.` : 'Jij bent aan zet.') + chk;
+  else { text = `${nm} is aan zet…` + chk; wait = true; }
+  if (G.mode === 'cpu') btns = `<button class="btn quiet" data-a="undo" ${G.moves.length ? '' : 'disabled'}>Zet terug</button><button class="btn quiet" data-a="resign">Opgeven</button>`;
+  if (G.mode === 'local') btns = `<button class="btn quiet" data-a="undo" ${G.moves.length ? '' : 'disabled'}>Zet terug</button><button class="btn quiet" data-a="localdraw">Remise</button>`;
+  if (G.mode === 'net' && net.status === 'connected') btns = `<button class="btn quiet" data-a="offerdraw" ${G.drawOffer !== null && G.drawOffer !== undefined ? 'disabled' : ''}>Remise aanbieden</button><button class="btn quiet" data-a="resign">Opgeven</button>`;
+  return { text, btns, wait };
+}
+function movesHTML() {
+  if (!G.moves.length) return '<div class="moves"><span>Nog geen zetten</span></div>';
+  let h = '';
+  G.moves.forEach((m, i) => {
+    if (i % 2 === 0) h += `<span class="n">${i / 2 + 1}.</span>`;
+    h += `<span class="${i === G.moves.length - 1 ? 'last' : ''}">${esc(m.s)}</span>`;
+  });
+  return `<div class="moves" id="moves">${h}</div>`;
+}
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>'
+};
+
+function vHome() {
+  const cpu = load('cpu'), loc = load('local'), ng = load('net');
+  const resume = (g, m) => inProgress(g) ? `<div class="resume"><button class="btn quiet" data-a="resume" data-m="${m}">Doorgaan · zet ${Math.ceil((g.moves.length + 1) / 2)}</button><button class="btn quiet" data-a="new" data-m="${m}">Nieuwe partij</button></div>` : '';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><div><h1>Schaken</h1><p class="muted" style="margin-top:8px">Computer: ${LEVELS[S.level].toLowerCase()} · jij speelt ${S.color === 'w' ? 'wit' : S.color === 'b' ? 'zwart' : 'een willekeurige kleur'}</p></div>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect x="0" y="0" width="50" height="50" fill="var(--light)"/><rect x="50" y="0" width="50" height="50" fill="var(--dark)"/><rect x="0" y="50" width="50" height="50" fill="var(--dark)"/><rect x="50" y="50" width="50" height="50" fill="var(--light)"/>
+        <g transform="translate(4,6) scale(.44)" fill="var(--pb)" stroke="var(--pb-line)" stroke-width="4"><use href="#pc-N"/></g>
+        <g transform="translate(52,54) scale(.44)" fill="var(--pw)" stroke="var(--pw-line)" stroke-width="4"><use href="#pc-K"/></g></svg></div>
+    <div class="choices">
+      <button class="choice" data-a="${inProgress(cpu) ? 'resume' : 'new'}" data-m="cpu"><span class="ic">${IC.cpu}</span><span><b>Tegen de computer</b><span>${LEVELS[S.level]} niveau</span></span></button>
+      ${resume(cpu, 'cpu')}
+      <button class="choice" data-a="lobby" ${net.available() ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${net.available() ? 'Via Bluetooth en wifi, internet niet nodig' : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && net.available() ? `<p class="note">Er loopt nog een partij tegen ${esc(ng.names[net.me() ? 0 : 1])}. Verbind opnieuw om verder te spelen.</p>` : ''}
+      <button class="choice" data-a="${inProgress(loc) ? 'resume' : 'new'}" data-m="local"><span class="ic">${IC.one}</span><span><b>Samen op één telefoon</b><span>Om de beurt, telefoon tussen jullie in</span></span></button>
+      ${resume(loc, 'local')}
+    </div>
+  </div>`;
+}
+function vLobby() {
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Schaken</button></div>
+    <h1 style="font-size:36px">Twee telefoons</h1>
+    ${net.lobbyHTML(`jij speelt ${S.color === 'w' ? 'wit' : S.color === 'b' ? 'zwart' : 'een willekeurige kleur'}`)}
+  </div>`;
+}
+function vGame() {
+  const bottom = G.mode === 'local' ? playerOfColor(viewColor()) : me();
+  const top = 1 - bottom;
+  const st = statusLine();
+  const info = G.mode === 'cpu' ? `Tegen computer · ${LEVELS[G.level || S.level].toLowerCase()}` : G.mode === 'net' ? `Partij ${G.gameNo}` : `Partij ${G.gameNo} · één telefoon`;
+  const lost = G.mode === 'net' && net.status !== 'connected'
+    ? `<div class="netlost"><span>Verbinding met ${esc(G.names[1 - me()])} is weg. De stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>` : '';
+  return `<div class="wrap" style="gap:10px">
+    <div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button><span class="info">${info}</span><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${lost}
+    ${playerRow(top)}
+    <div class="boardwrap">${boardSVG()}</div>
+    ${playerRow(bottom)}
+    <div class="status ${st.wait ? 'wait' : ''}">${st.text}</div>
+    ${st.btns ? `<div class="btnrow">${st.btns}</div>` : ''}
+    ${movesHTML()}
+  </div>`;
+}
+
+function segBtns(key, opts) { return `<div class="seg">${opts.map(([v, l]) => `<button data-a="set" data-k="${key}" data-v="${v}" aria-pressed="${S[key] === v}">${l}</button>`).join('')}</div>`; }
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Klaar</button></div>
+    <div class="group"><span class="t">Computer</span>${segBtns('level', [['easy', 'Makkelijk'], ['normal', 'Normaal'], ['strong', 'Sterk']])}
+      <p class="note">Geldt vanaf een nieuwe partij.</p></div>
+    <div class="group"><span class="t">Jouw kleur</span>${segBtns('color', [['w', 'Wit'], ['b', 'Zwart'], ['r', 'Willekeurig']])}
+      <p class="note">Tegen de computer en als jij het spel maakt op twee telefoons. Daarna wisselen jullie elke partij.</p></div>
+    <div class="group">
+      ${tog('flip', 'Bord draaien op één telefoon', 'Na elke zet draait het bord naar wie aan zet is')}
+      ${tog('sound', 'Geluid')}
+      ${tog('vibrate', 'Trillen')}
+    </div>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Sluiten</button></div>
+    <div class="list">
+      <button class="btn quiet" data-a="settings">Instellingen</button>
+      ${G.mode !== 'net' || net.me() === 0 ? `<button class="btn quiet" data-a="restart">Nieuwe partij</button>` : ''}
+      ${G.mode === 'local' ? `<button class="btn quiet" data-a="resign">${esc(G.names[turnPlayer()])} geeft op</button>` : ''}
+      ${G.mode === 'net' ? `<button class="btn quiet" data-a="leave">Verbinding verbreken</button>` : ''}
+    </div>`;
+}
+function sheetPromo() {
+  const w = G.pos.turn === 'w';
+  return `<div class="sheet-head"><h2>Promoveren tot</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Annuleren</button></div>
+    <div class="promo">${['Q', 'R', 'B', 'N'].map(t => `<button data-a="promo" data-p="${t}" aria-label="${{ Q: 'Dame', R: 'Toren', B: 'Loper', N: 'Paard' }[t]}">${pieceSVG(w ? t : t.toLowerCase(), 64)}</button>`).join('')}</div>`;
+}
+function sheetResult() {
+  const R = G.result; if (!R) return '';
+  const why = { mat: 'Schaakmat', pat: 'Pat', vijftig: '50 zetten zonder slag of pionzet', materiaal: 'Te weinig materiaal om mat te zetten', herhaling: 'Drie keer dezelfde stelling', opgegeven: 'Opgegeven', remise: 'Remise afgesproken' }[R.type];
+  let title;
+  if (R.winner === null || R.winner === undefined) title = 'Remise';
+  else if (G.mode === 'local') title = `${esc(G.names[R.winner])} wint`;
+  else title = isMine(R.winner) || (G.mode === 'net' && R.winner === me()) ? 'Je wint!' : `${esc(G.names[R.winner])} wint`;
+  const canNext = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${title}</h2><p class="muted">${why}</p>
+      <div class="scoreline">${esc(G.names[me()])} ${fmtScore(G.score[me()])} – ${fmtScore(G.score[1 - me()])} ${esc(G.names[1 - me()])}</div></div>
+    <div class="list"><button class="btn" data-a="next" ${canNext ? '' : 'disabled'}>Nieuwe partij</button><button class="btn quiet" data-a="close">Bord bekijken</button></div>`;
+}
+
+function render() {
+  let html = view === 'lobby' ? vLobby() : view === 'game' && G ? vGame() : vHome();
+  if (ui.sheet) {
+    const inner = { settings: sheetSettings, menu: sheetMenu, promo: sheetPromo, result: sheetResult }[ui.sheet];
+    if (inner && (ui.sheet === 'settings' || G)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  const focused = document.activeElement && document.activeElement.id === 'ng-name' ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  if (focused !== null) { const el = document.getElementById('ng-name'); if (el) { el.focus(); try { el.setSelectionRange(focused, focused); } catch (e) {} } }
+  const mv = document.getElementById('moves'); if (mv) mv.scrollLeft = mv.scrollWidth;
+}
+
+/* ---------------- invoer ---------------- */
+function tapSquare(sq) {
+  if (!G || G.result || ui.thinking) return;
+  const tp = turnPlayer();
+  if (!isMine(tp) || isCpu(tp)) return;
+  const legal = C.legal(G.pos);
+  if (ui.sel !== null) {
+    const ms = legal.filter(m => m.from === ui.sel && m.to === sq);
+    if (ms.length > 1) { ui.promo = ms; ui.sheet = 'promo'; render(); return; }
+    if (ms.length === 1) { play(ms[0]); return; }
+  }
+  const p = G.pos.b[sq];
+  if (p !== '.' && C.colorOf(p) === G.pos.turn && legal.some(m => m.from === sq)) ui.sel = ui.sel === sq ? null : sq;
+  else ui.sel = null;
+  render();
+}
+function startMode(mode) {
+  const nm = (window.W2NetGame && localStorage.getItem('w2-name')) || '';
+  if (mode === 'cpu') G = newMatch('cpu', [nm || 'Jij', 'Computer']);
+  else G = newMatch('local', ['Wit', 'Zwart']);
+  view = 'game'; ui.sheet = null; ui.sel = null; ui.thinking = false;
+  commit();
+}
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-sq]');
+  if (!el) return;
+  if (el.dataset.sq !== undefined) { tapSquare(+el.dataset.sq); return; }
+  if (net.handleClick(el)) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; if (ui.sheet !== 'promo') { ui.sheet = null; render(); } return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.token++; ui.thinking = false; net.stopSearching(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; ui.promo = null; break;
+    case 'set': S[el.dataset.k] = el.dataset.v; saveS(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'sound' && S.sound) sMove(); if (el.dataset.k === 'vibrate') buzz(30); break;
+    case 'new': startMode(el.dataset.m); return;
+    case 'resume': G = load(el.dataset.m); view = 'game'; ui.sel = null; ui.thinking = false; if (G.result) ui.sheet = 'result'; render(); schedule(); return;
+    case 'lobby': view = 'lobby'; net.error = ''; if (net.status === 'lost') net.status = 'idle';
+      if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } } break;
+    case 'reconnect': view = 'lobby'; net.reconnect(); break;
+    case 'leave': ui.sheet = null; net.stop(); view = 'home'; break;
+    case 'promo': { const m = ui.promo && ui.promo.find(x => x.promo === el.dataset.p); ui.sheet = null; ui.promo = null; if (m) { play(m); return; } break; }
+    case 'undo': takeBack(); return;
+    case 'resign': ui.sheet = null; resign(G.mode === 'local' ? turnPlayer() : me()); return;
+    case 'localdraw': agreeDraw(); return;
+    case 'offerdraw': G.drawOffer = me(); commit(); return;
+    case 'acceptdraw': G.drawOffer = null; agreeDraw(); return;
+    case 'declinedraw': G.drawOffer = null; commit(); return;
+    case 'showresult': ui.sheet = 'result'; break;
+    case 'next': nextGame(); return;
+    case 'restart': ui.sheet = null; G = newMatch(G.mode, G.names.slice()); commit(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => { if (net.handleInput(e)) return; });
+
+window.__w2back = function () {
+  if (ui.sheet) { ui.sheet = null; ui.promo = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.token++; ui.thinking = false; net.stopSearching(); render(); return true; }
+  return false;
+};
+
+// al verbonden vanuit een ander spel en er loopt een partij? Dan meteen naar het bord
+if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } }
+render();
+})();
+</script>
+</body>
+</html>

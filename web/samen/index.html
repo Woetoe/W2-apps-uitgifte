@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>W2 Samen</title>
-<link rel="manifest" href="manifest.webmanifest">
+<title>Samen</title>
+<link rel="manifest" href="../manifest.webmanifest">
 <meta name="theme-color" content="#14161f">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="../icon-192.png">
 
 <link rel="stylesheet" href="../fonts/fonts.css">
 <link rel="stylesheet" href="../w2ui.css">
@@ -92,7 +91,7 @@
 <div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Samen</h1><button class="st" id="st" type="button" hidden></button><button class="ib" id="menu" type="button" aria-label="Instellingen" hidden></button></div>
 <main class="page" id="app"></main>
 <button class="fab" id="fab" type="button" aria-label="Nieuwe lijst" hidden></button>
-<script>window.W2WEB = 1; if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<script>window.W2WEB = 1; if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});</script>
 <script src="../w2.js"></script>
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
@@ -206,7 +205,6 @@ function route() {
   $('#fab').hidden = view.kind !== 'home';
   $('#menu').hidden = view.kind === 'setup';
   $('#back').setAttribute('href', view.kind === 'lijst' ? '#' : '../index.html#samen');
-  $('#back').hidden = WEB && view.kind !== 'lijst';
   window.scrollTo(0, 0);
   if (view.kind === 'setup') renderSetup();
   else if (view.kind === 'home') renderHome();

@@ -1,8 +1,8 @@
 {
   "name": "W2 Samen",
   "short_name": "Samen",
-  "description": "Gedeelde boodschappen en to-do's, dezelfde lijsten als in W2 Apps.",
-  "start_url": "./",
+  "description": "Lijsten, reizen, recepten en aftellen die je samen bijhoudt; dezelfde gegevens als in W2 Apps.",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#14161f",

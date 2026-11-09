@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Recepten</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#14161f">
+<link rel="icon" href="../icon-192.png">
+
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ff8a3d;--acc-ink:#2a1206}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted)}
+.search .in{padding-left:40px}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;min-height:38px;padding:0 14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.chips button svg{width:16px;height:16px}
+.chips button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.rc .ico{background:#3a1e12;overflow:hidden;width:52px;height:52px;border-radius:14px}
+.rc .ico img{width:100%;height:100%;object-fit:cover}
+.photo{width:calc(100% + 32px);margin:-6px -16px 0;aspect-ratio:16/10;object-fit:cover;display:block}
+.rtitle{font:800 28px/1.1 var(--f-display);margin:4px 0 0;letter-spacing:-.01em}
+.meta{display:flex;gap:8px;flex-wrap:wrap}
+.serv{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 10px}
+.serv b{flex:1;font-weight:700}
+.serv button{width:44px;height:44px;border-radius:12px;border:0;background:var(--panel2);color:var(--text);display:grid;place-items:center;cursor:pointer}
+.serv button svg{width:20px;height:20px}
+.serv .n{font:800 22px var(--f-display);min-width:34px;text-align:center}
+.ing .check{padding:9px 2px}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.steps li{counter-increment:s;display:flex;gap:12px;line-height:1.5}
+.steps li::before{content:counter(s);flex:none;width:30px;height:30px;border-radius:15px;background:color-mix(in srgb,var(--acc) 22%,transparent);color:var(--acc);display:grid;place-items:center;font-weight:800;font-size:14px}
+.tips{color:var(--muted);white-space:pre-wrap}
+.sel{user-select:text;-webkit-user-select:text}
+/* Kookmodus */
+#cook{position:fixed;inset:0;z-index:40;background:#120b07;display:none;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 12px) 18px calc(env(safe-area-inset-bottom,0px) + 16px);gap:12px}
+#cook.on{display:flex}
+#cook .hd{display:flex;align-items:center;gap:8px}
+#cook .hd b{flex:1;font:800 18px var(--f-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cook .prog{height:6px;border-radius:3px;background:#3a2418;overflow:hidden}
+#cook .prog i{display:block;height:100%;background:var(--acc)}
+#cook .stepno{color:var(--acc);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:13px;margin-top:2vh}
+#cook .txt{font:600 clamp(22px,6vw,30px)/1.4 var(--f-body);flex:1;overflow:auto}
+#cook .txt ul{margin:0;padding-left:1.1em;font-size:.82em;line-height:1.6}
+#cook .timers{display:flex;gap:8px;flex-wrap:wrap}
+#cook .timers button{border:0;border-radius:14px;min-height:48px;padding:0 16px;background:#3a2418;color:#ffd2b0;font-weight:800;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px}
+#cook .timers button.run{background:var(--acc);color:var(--acc-ink)}
+#cook .timers button.done{background:#ff4d4d;color:#fff;animation:blink 1s infinite}
+#cook .timers svg{width:20px;height:20px}
+@keyframes blink{50%{opacity:.6}}
+#cook .nav{display:flex;gap:12px}
+#cook .nav button{flex:1;min-height:64px;border-radius:20px;border:0;font:800 18px var(--f-body);cursor:pointer}
+#cook .nav .p{background:#2a1a12;color:#fff}
+#cook .nav .n{background:var(--acc);color:var(--acc-ink);flex:2}
+.prev{max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.prev .f{background:var(--bg);border-radius:12px;padding:10px 12px}
+.prev .f b{display:block}
+.prev .f span{color:var(--muted);font-size:13px}
+input[type=file]{display:none}
+.more{text-align:center}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Recepten</h1><button class="ib" id="menu" type="button" aria-label="Meer"></button></div>
+<main class="page" id="app"></main>
+<button class="fab" id="fab" type="button" aria-label="Importeren" hidden></button>
+<input type="file" id="pick" multiple accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+<div id="cook" role="dialog" aria-label="Kookmodus">
+  <div class="hd"><button class="ib" id="c-close" type="button" aria-label="Sluiten"></button><b id="c-title"></b></div>
+  <div class="prog"><i id="c-prog"></i></div>
+  <div class="stepno" id="c-no"></div>
+  <div class="txt" id="c-txt"></div>
+  <div class="timers" id="c-timers"></div>
+  <div class="nav"><button class="p" id="c-prev" type="button">Vorige</button><button class="n" id="c-next" type="button">Volgende</button></div>
+</div>
+<script>window.W2WEB = 1; if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});</script>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="docx.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+// Elke wijziging in de opslag gaat ook naar je partner (als Samen gekoppeld is), via samen/deel.js
+let deel = null;
+const deelWrap = o => Object.assign({}, o, ...['put', 'del', 'putMany', 'clear'].map(m => ({ [m]: (...a) => o[m](...a).then(r => { if (deel) deel.push(); return r; }) })));
+const db = deelWrap(D.idb('w2-recepten')), fotos = deelWrap(D.idb('w2-recepten-foto'));
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('upload');
+$('#menu').innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+D.recent('recepten');
+
+let all = [], q = '', boek = '', favOnly = false, limit = 150, cur = null, servings = null;
+const strike = new Set();
+
+async function load() { all = (await db.all()) || []; all.sort((a, b) => a.titel.localeCompare(b.titel, 'nl')); }
+const byId = id => all.find(r => r.id === id);
+
+// ---------------------------------------------------------------- hoeveelheden omrekenen
+const FR = { '½': .5, '¼': .25, '¾': .75, '⅓': 1 / 3, '⅔': 2 / 3 };
+const QTY = /^(\d+(?:[.,]\d+)?(?:\s*[½¼¾⅓⅔])?|[½¼¾⅓⅔]|\d+\s*\/\s*\d+)(\s*(?:-|–|tot)\s*(\d+(?:[.,]\d+)?|[½¼¾]))?/;
+function num(s) {
+  s = s.trim();
+  if (FR[s] != null) return FR[s];
+  const f = /^(\d+)\s*\/\s*(\d+)$/.exec(s); if (f) return +f[1] / +f[2];
+  const m = /^(\d+(?:[.,]\d+)?)\s*([½¼¾⅓⅔])?$/.exec(s); if (m) return parseFloat(m[1].replace(',', '.')) + (m[2] ? FR[m[2]] : 0);
+  return NaN;
+}
+function fmt(n) {
+  if (n >= 10) return String(Math.round(n));
+  const w = Math.floor(n), r = n - w;
+  const fr = [[0, ''], [.25, '¼'], [1 / 3, '⅓'], [.5, '½'], [2 / 3, '⅔'], [.75, '¾'], [1, '']];
+  let best = fr[0], d = 9;
+  fr.forEach(f => { const x = Math.abs(r - f[0]); if (x < d) { d = x; best = f; } });
+  if (d < .04) { const ww = best[0] === 1 ? w + 1 : w; return (ww ? ww : '') + best[1] || '0'; }
+  return (Math.round(n * 10) / 10).toString().replace('.', ',');
+}
+function scale(line, f) {
+  if (f === 1) return esc(line);
+  const m = QTY.exec(line);
+  if (!m) return esc(line);
+  const a = num(m[1]); if (!isFinite(a)) return esc(line);
+  let s = fmt(a * f);
+  if (m[3]) { const b = num(m[3]); if (isFinite(b)) s += '–' + fmt(b * f); }
+  return `<b>${esc(s)}</b>` + esc(line.slice(m[0].length));
+}
+
+// ---------------------------------------------------------------- lijst
+function render() {
+  const r = cur && byId(cur);
+  $('#fab').hidden = !!r || !all.length;
+  $('#title').textContent = r ? '' : 'Recepten';
+  r ? renderRecipe(r) : renderList();
+}
+function filtered() {
+  let l = all;
+  if (boek) l = l.filter(r => r.boek === boek);
+  if (favOnly) l = l.filter(r => r.fav);
+  if (q) {
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    l = l.filter(r => { const h = (r.titel + ' ' + r.ingr.join(' ') + ' ' + (r.boek || '')).toLowerCase(); return words.every(w => h.includes(w)); });
+    const t = q.toLowerCase();
+    l = l.slice().sort((a, b) => (b.titel.toLowerCase().includes(t)) - (a.titel.toLowerCase().includes(t)));
+  }
+  return l;
+}
+async function renderList() {
+  if (!all.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen recepten</b>Kies je Word-bestanden (.docx) uit je Google Drive of telefoon. De app haalt de recepten eruit; alles blijft op je telefoon.<br><button class="btn" data-act="import" type="button">${icon('upload')}Word-bestanden kiezen</button>
+      <p class="small" style="margin-top:14px">Of <a href="#" data-act="new">typ zelf een recept</a>.</p></div>`;
+    return;
+  }
+  const books = Array.from(new Set(all.map(r => r.boek).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'nl'));
+  const list = filtered();
+  app.innerHTML = `
+    <div class="search">${icon('search')}<input class="in" id="q" type="search" placeholder="Zoek op naam of ingrediënt" value="${esc(q)}" enterkeyhint="search"></div>
+    <div class="chips"><button type="button" data-fav class="${favOnly ? 'on' : ''}">${icon('star')}Favorieten</button>${books.length > 1 ? `<button type="button" data-b="" class="${!boek ? 'on' : ''}">Alles</button>` + books.map(b => `<button type="button" data-b="${esc(b)}" class="${b === boek ? 'on' : ''}">${esc(b)}</button>`).join('') : ''}</div>
+    <div class="muted small">${list.length} recept${list.length === 1 ? '' : 'en'}</div>
+    <div class="list" id="list">${list.slice(0, limit).map(row).join('')}</div>
+    ${list.length > limit ? `<div class="more"><button class="btn q" data-act="more" type="button">Meer laten zien (${list.length - limit})</button></div>` : ''}`;
+  const qi = $('#q');
+  qi.oninput = () => { q = qi.value; limit = 150; const pos = qi.selectionStart; renderList(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
+  thumbs();
+}
+const row = r => `<button class="row rc" data-r="${r.id}" type="button"><span class="ico" data-thumb="${r.heeftFoto ? r.id : ''}">${r.heeftFoto ? '' : '🍲'}</span><span class="grow"><b>${r.fav ? '★ ' : ''}${esc(r.titel)}</b><span class="sub">${[r.boek, r.personen ? r.personen + ' pers.' : '', r.tijd ? r.tijd + ' min' : '', r.ingr.length ? r.ingr.length + ' ingrediënten' : ''].filter(Boolean).map(esc).join(' · ')}</span></span></button>`;
+// Fotootjes pas laden als ze in beeld komen
+let io = null;
+function thumbs() {
+  io && io.disconnect();
+  io = new IntersectionObserver(es => es.forEach(async e => {
+    if (!e.isIntersecting) return;
+    io.unobserve(e.target);
+    const src = await fotos.get(e.target.dataset.thumb);
+    if (src) e.target.innerHTML = `<img src="${src}" alt="">`;
+  }), { rootMargin: '200px' });
+  $$('[data-thumb]').forEach(el => el.dataset.thumb && io.observe(el));
+}
+
+// ---------------------------------------------------------------- recept
+async function renderRecipe(r) {
+  const base = r.personen || null;
+  const n = servings || base;
+  const f = base && n ? n / base : 1;
+  const foto = r.heeftFoto ? await fotos.get(r.id) : '';
+  app.innerHTML = `
+    ${foto ? `<img class="photo" src="${foto}" alt="">` : ''}
+    <h2 class="rtitle sel">${esc(r.titel)}</h2>
+    <div class="meta">${r.boek ? `<span class="pill">${esc(r.boek)}</span>` : ''}${r.tijd ? `<span class="pill">${icon('timer', 'width="14" height="14"')}${r.tijd} min</span>` : ''}</div>
+    <div class="btns"><button class="btn" data-act="cook" type="button" ${r.stappen.length ? '' : 'disabled'}>${icon('play')}Kookmodus</button><button class="btn q" data-act="fav" type="button" aria-label="Favoriet" style="flex:0 0 56px;color:${r.fav ? 'var(--acc)' : ''}">${icon('star', r.fav ? 'fill="currentColor"' : '')}</button><button class="btn q" data-act="edit" type="button" aria-label="Bewerken" style="flex:0 0 56px">${icon('edit')}</button></div>
+    ${r.intro && r.intro.length ? `<p class="muted sel" style="margin:0;white-space:pre-wrap">${esc(r.intro.join('\n'))}</p>` : ''}
+    ${r.ingr.length ? `<h2>Ingrediënten</h2>
+      ${base ? `<div class="serv"><b>Voor ${n} ${n === 1 ? 'persoon' : 'personen'}</b><button data-act="min" type="button" aria-label="Minder">${icon('minus')}</button><span class="n">${n}</span><button data-act="plus" type="button" aria-label="Meer">${icon('plus')}</button></div>` : ''}
+      <div class="card ing">${r.ingr.map((x, i) => `<div class="check${strike.has(i) ? ' on' : ''}" data-ing="${i}"><span class="box">${strike.has(i) ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${scale(x, f)}</span></div>`).join('')}</div>` : ''}
+    ${r.stappen.length ? `<h2>Bereiding</h2><ol class="steps sel">${r.stappen.map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol>` : ''}
+    ${r.tips && r.tips.length ? `<h2>Tips</h2><div class="tips sel">${esc(r.tips.join('\n'))}</div>` : ''}
+    <button class="btn danger wide" data-act="del" type="button" style="margin-top:16px">${icon('trash')}Recept verwijderen</button>`;
+}
+
+function open(id) { cur = id; servings = null; strike.clear(); history.replaceState(null, '', id ? '#' + id : '#'); window.scrollTo(0, 0); render(); }
+window.UIback = () => { if ($('#cook').classList.contains('on')) { closeCook(); return true; } if (cur) { open(null); return true; } return false; };
+$('#back').addEventListener('click', e => { if (cur) { e.preventDefault(); open(null); } });
+
+app.addEventListener('click', async e => {
+  const t = e.target.closest('[data-act],[data-r],[data-b],[data-fav],[data-ing]');
+  if (!t) return;
+  const ds = t.dataset, r = cur && byId(cur);
+  if (ds.r) return open(ds.r);
+  if (ds.b != null && !cur) { boek = ds.b; limit = 150; return renderList(); }
+  if (ds.fav != null && !cur) { favOnly = !favOnly; return renderList(); }
+  if (ds.ing != null) { const i = +ds.ing; strike.has(i) ? strike.delete(i) : strike.add(i); return renderRecipe(r); }
+  switch (ds.act) {
+    case 'import': return $('#pick').click();
+    case 'new': e.preventDefault(); return edit(null);
+    case 'more': limit += 300; return renderList();
+    case 'min': servings = Math.max(1, (servings || r.personen) - 1); return renderRecipe(r);
+    case 'plus': servings = Math.min(60, (servings || r.personen) + 1); return renderRecipe(r);
+    case 'fav': r.fav = !r.fav; await db.put(r.id, r); return renderRecipe(r);
+    case 'edit': return edit(r);
+    case 'cook': return startCook(r);
+    case 'del':
+      if (!(await confirm(`<b>${esc(r.titel)}</b> verwijderen?`, 'Verwijderen', true))) return;
+      await db.del(r.id); await fotos.del(r.id);
+      all = all.filter(x => x !== r); return open(null);
+  }
+});
+
+// ---------------------------------------------------------------- zelf maken / bewerken
+async function edit(r) {
+  const isNew = !r;
+  r = r || { titel: '', boek: 'Eigen recepten', personen: 4, tijd: '', ingr: [], stappen: [], tips: [], intro: [] };
+  const res = await sheet(isNew ? 'Nieuw recept' : 'Recept bewerken', `
+    <label class="f">Naam<input class="in" name="titel" value="${esc(r.titel)}"></label>
+    <div class="grid2"><label class="f">Personen<input class="in" name="personen" type="number" inputmode="numeric" value="${r.personen || ''}"></label><label class="f">Tijd (min)<input class="in" name="tijd" type="number" inputmode="numeric" value="${r.tijd || ''}"></label></div>
+    <label class="f">Categorie<input class="in" name="boek" value="${esc(r.boek || '')}" list="boeken"><datalist id="boeken">${Array.from(new Set(all.map(x => x.boek).filter(Boolean))).map(b => `<option value="${esc(b)}">`).join('')}</datalist></label>
+    <label class="f">Ingrediënten (één per regel)<textarea class="in" name="ingr" style="min-height:160px">${esc(r.ingr.join('\n'))}</textarea></label>
+    <label class="f">Bereiding (elke stap op een eigen regel)<textarea class="in" name="stappen" style="min-height:200px">${esc(r.stappen.join('\n'))}</textarea></label>
+    <label class="f">Tips<textarea class="in" name="tips">${esc((r.tips || []).join('\n'))}</textarea></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.titel.trim() ? '' : 'Geef het recept een naam.' }], { focus: isNew }).done;
+  if (res.value !== 'ok') return;
+  const f = res.form, lines = s => s.split('\n').map(x => x.trim()).filter(Boolean);
+  Object.assign(r, { titel: f.titel.trim(), boek: f.boek.trim(), personen: +f.personen || null, tijd: +f.tijd || null, ingr: lines(f.ingr), stappen: lines(f.stappen), tips: lines(f.tips) });
+  if (isNew) { r.id = D.uid(); r.added = Date.now(); all.push(r); all.sort((a, b) => a.titel.localeCompare(b.titel, 'nl')); }
+  await db.put(r.id, r);
+  isNew ? open(r.id) : render();
+}
+
+// ---------------------------------------------------------------- importeren
+$('#fab').onclick = () => $('#pick').click();
+$('#pick').addEventListener('change', async e => {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (files.length) importFiles(files);
+});
+async function parseAll(files, mode, photos) {
+  const out = [], errs = [];
+  for (let i = 0; i < files.length; i++) {
+    toast(`Lezen ${i + 1} van ${files.length}: ${files[i].name}`, 60000);
+    try { out.push({ file: files[i], recipes: await Docx.parse(files[i], { mode, photos }) }); }
+    catch (err) { errs.push(files[i].name + ': ' + err.message); }
+  }
+  toast('Klaar met lezen', 1200);
+  return { out, errs };
+}
+async function importFiles(files) {
+  let mode = 'auto', photos = true;
+  let { out, errs } = await parseAll(files, mode, photos);
+  for (;;) {
+    const total = out.reduce((s, x) => s + x.recipes.length, 0);
+    const s = sheet(`${total} recept${total === 1 ? '' : 'en'} gevonden`, `
+      <div class="prev">${out.map(x => `<div class="f"><b>${esc(x.file.name)}: ${x.recipes.length}</b><span>${x.recipes.slice(0, 6).map(r => esc(r.titel) + (r.ingr.length ? '' : ' (geen ingrediënten herkend)')).join(' · ')}${x.recipes.length > 6 ? ' …' : ''}</span></div>`).join('')}
+      ${errs.map(m => `<div class="notice">${esc(m)}</div>`).join('')}</div>
+      <div class="toggle"><div class="grow"><b>Elk bestand is één recept</b><div class="muted small">Aanzetten als de recepten verkeerd geknipt zijn.</div></div><button type="button" class="sw ${mode === 'one' ? 'on' : ''}" data-sw="mode" aria-label="Elk bestand is één recept"></button></div>
+      <div class="toggle"><div class="grow"><b>Foto's meenemen</b><div class="muted small">Eerste foto per recept, verkleind.</div></div><button type="button" class="sw ${photos ? 'on' : ''}" data-sw="photos" aria-label="Foto's meenemen"></button></div>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: `Importeren`, value: 'ok' }]);
+    s.el.addEventListener('click', e => {
+      const b = e.target.closest('[data-sw]'); if (!b) return;
+      if (b.dataset.sw === 'mode') mode = mode === 'one' ? 'auto' : 'one'; else photos = !photos;
+      s.close('again');
+    });
+    const r = await s.done;
+    if (r.value === 'again') { ({ out, errs } = await parseAll(files, mode, photos)); continue; }
+    if (r.value !== 'ok') return;
+    break;
+  }
+  // Bewaren; hetzelfde recept uit hetzelfde boek wordt bijgewerkt in plaats van dubbel gezet.
+  const key = r => (r.boek + '|' + r.titel).toLowerCase();
+  const have = new Map(all.map(r => [key(r), r]));
+  const rows = [], pics = [];
+  let added = 0, updated = 0;
+  out.forEach(x => x.recipes.forEach(r => {
+    const old = have.get(key(r));
+    const id = old ? old.id : D.uid();
+    const foto = r.foto; delete r.foto;
+    const rec = Object.assign({}, r, { id, fav: old ? old.fav : false, added: old ? old.added : Date.now(), heeftFoto: !!foto || !!(old && old.heeftFoto) });
+    if (foto) pics.push([id, foto]);
+    rows.push([id, rec]);
+    old ? updated++ : added++;
+    have.set(key(rec), rec);
+  }));
+  toast('Bewaren…', 20000);
+  for (let i = 0; i < rows.length; i += 200) await db.putMany(rows.slice(i, i + 200));
+  for (let i = 0; i < pics.length; i += 50) await fotos.putMany(pics.slice(i, i + 50));
+  await load();
+  toast(`${added} nieuw${updated ? ', ' + updated + ' bijgewerkt' : ''}`);
+  open(null);
+}
+
+// ---------------------------------------------------------------- menu
+$('#menu').onclick = async () => {
+  const books = Array.from(new Set(all.map(r => r.boek).filter(Boolean)));
+  const s = sheet('Recepten', `<div class="list">
+    <button class="row" data-m="import" type="button"><span class="ico">${icon('upload')}</span><span class="grow"><b>Word-bestanden importeren</b><span class="sub">.docx uit Drive of je telefoon</span></span></button>
+    <button class="row" data-m="new" type="button"><span class="ico">${icon('edit')}</span><span class="grow"><b>Zelf een recept typen</b></span></button>
+    ${books.length ? `<button class="row" data-m="delbook" type="button"><span class="ico">${icon('trash')}</span><span class="grow"><b>Een categorie weghalen</b><span class="sub">Bijvoorbeeld na een mislukte import</span></span></button>` : ''}
+  </div>`, []);
+  s.el.addEventListener('click', async e => {
+    const b = e.target.closest('[data-m]'); if (!b) return;
+    s.close(b.dataset.m);
+  });
+  const r = await s.done;
+  if (r.value === 'import') $('#pick').click();
+  if (r.value === 'new') edit(null);
+  if (r.value === 'delbook') {
+    const c = await sheet('Categorie weghalen', `<label class="f">Welke?<select class="in" name="b">${books.map(b => `<option>${esc(b)}</option>`).join('')}</select></label>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Weghalen', value: 'ok', kind: 'danger' }]).done;
+    if (c.value !== 'ok') return;
+    const gone = all.filter(x => x.boek === c.form.b);
+    if (!(await confirm(`Alle <b>${gone.length}</b> recepten uit <b>${esc(c.form.b)}</b> verwijderen?`, 'Verwijderen', true))) return;
+    for (const x of gone) { await db.del(x.id); await fotos.del(x.id); }
+    all = all.filter(x => x.boek !== c.form.b); boek = ''; open(null);
+  }
+};
+
+// ---------------------------------------------------------------- kookmodus
+let C = null;
+function startCook(r) {
+  const base = r.personen, f = base && servings ? servings / base : 1;
+  const pages = [];
+  if (r.ingr.length) pages.push({ ing: true, html: `<ul>${r.ingr.map(x => `<li>${scale(x, f)}</li>`).join('')}</ul>` });
+  r.stappen.forEach(s => pages.push({ html: esc(s), timers: timersIn(s) }));
+  C = { r, pages, i: 0, timers: C ? C.timers : [] };
+  $('#c-title').textContent = r.titel;
+  $('#cook').classList.add('on');
+  $('#c-close').innerHTML = icon('x');
+  showPage();
+}
+function timersIn(s) {
+  const out = [], rx = /(\d+)(?:\s*(?:-|–|à|tot)\s*(\d+))?\s*(minuten|minuut|min\b|uur|seconden|sec\b)/gi;
+  let m;
+  while ((m = rx.exec(s))) {
+    const v = +(m[2] || m[1]), u = m[3].toLowerCase();
+    const sec = u.startsWith('u') ? v * 3600 : u.startsWith('s') ? v : v * 60;
+    if (sec >= 10 && sec <= 6 * 3600) out.push({ label: m[0], sec });
+  }
+  return out;
+}
+function showPage() {
+  const p = C.pages[C.i], steps = C.pages.filter(x => !x.ing).length, stepNo = C.pages.slice(0, C.i + 1).filter(x => !x.ing).length;
+  $('#c-no').textContent = p.ing ? 'Eerst klaarzetten' : `Stap ${stepNo} van ${steps}`;
+  $('#c-txt').innerHTML = p.html;
+  $('#c-prog').style.width = ((C.i + 1) / C.pages.length * 100) + '%';
+  $('#c-prev').disabled = C.i === 0;
+  $('#c-next').textContent = C.i === C.pages.length - 1 ? 'Klaar' : 'Volgende';
+  drawTimers();
+}
+function drawTimers() {
+  if (!C) return;
+  const p = C.pages[C.i];
+  const running = C.timers.filter(t => t.end);
+  const here = (p.timers || []).filter(t => !running.some(r => r.label === t.label && r.page === C.i));
+  $('#c-timers').innerHTML = running.map((t, k) => {
+    const left = Math.round((t.end - Date.now()) / 1000);
+    return `<button type="button" class="${left <= 0 ? 'done' : 'run'}" data-tr="${k}">${icon('timer')}${left <= 0 ? 'Tijd!' : fmtT(left)}</button>`;
+  }).join('') + here.map((t, k) => `<button type="button" data-ts="${k}">${icon('timer')}${esc(t.label)}</button>`).join('');
+}
+const fmtT = s => (s >= 3600 ? Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') : Math.floor(s / 60)) + ':' + String(s % 60).padStart(2, '0');
+$('#c-timers').addEventListener('click', e => {
+  const s = e.target.closest('[data-ts]'), r = e.target.closest('[data-tr]');
+  if (s) { const t = C.pages[C.i].timers[+s.dataset.ts]; C.timers.push({ label: t.label, page: C.i, end: Date.now() + t.sec * 1000, rang: false }); drawTimers(); toast('Timer loopt: ' + t.label); }
+  if (r) { const k = +r.dataset.tr, t = C.timers.filter(x => x.end)[k]; t.end = 0; C.timers = C.timers.filter(x => x.end); drawTimers(); }
+});
+let ac = null;
+function alarm() {
+  try { navigator.vibrate && navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) {}
+  try {
+    ac = ac || new AudioContext();
+    [0, .35, .7].forEach(d => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + d; o.frequency.value = 880; g.gain.setValueAtTime(.4, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .32); });
+  } catch (e) {}
+}
+setInterval(() => {
+  if (!C || !C.timers.length) return;
+  C.timers.forEach(t => { if (t.end && !t.rang && t.end <= Date.now()) { t.rang = true; alarm(); toast('⏰ ' + t.label + ' is om'); } });
+  if ($('#cook').classList.contains('on')) drawTimers();
+}, 500);
+$('#c-prev').onclick = () => { if (C.i > 0) { C.i--; showPage(); } };
+$('#c-next').onclick = () => { if (C.i < C.pages.length - 1) { C.i++; showPage(); } else closeCook(); };
+function closeCook() { $('#cook').classList.remove('on'); }
+$('#c-close').onclick = closeCook;
+
+// ---------------------------------------------------------------- delen met je partner (Samen)
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'recepten',
+    lees: async () => Object.fromEntries(((await db.all()) || []).map(r => [r.id, r])),
+    schrijf: async (map, changed) => {
+      for (const id of changed) {
+        if (map[id]) await db.put(id, map[id]);
+        else { await db.del(id); await fotos.del(id); }
+      }
+      await load();
+      if (cur && !byId(cur)) open(null); else render();
+    },
+    bestanden: r => r.heeftFoto ? [{ id: 'foto-' + r.id, naam: r.titel, mime: 'image/jpeg', get: async () => (await fotos.get(r.id)) || '', put: v => fotos.put(r.id, v) }] : [],
+    bestandBinnen: id => { if (cur && 'foto-' + cur === id) render(); }
+  });
+  W2Deel.badge();
+}
+
+// ---------------------------------------------------------------- start
+(async () => {
+  try { await load(); } catch (e) { app.innerHTML = `<div class="notice">Recepten lezen lukte niet: ${esc(e.message)}</div>`; return; }
+  koppelDeel();
+  const h = location.hash.slice(1);
+  open(h && byId(h) ? h : null);
+})();
+</script>
+</body>
+</html>

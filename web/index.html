@@ -1,1 +1,182 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=samen/"><a href="samen/">W2 Samen</a>
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>W2 Samen</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14161f">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Startscherm: elke tegel draagt de kleuren van zijn eigen spel, de rest blijft rustig. */
+:root{--bg:#14161f;--panel:#1d202c;--line:#30344a;--text:#f2efe8;--muted:#a3a6b9;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;--f-body:"Figtree",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.wrap{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 28px) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:26px}
+header{display:flex;align-items:baseline;gap:12px}
+.mark{font:800 52px/0.9 var(--f-display);letter-spacing:-.04em}
+.mark sup{font-size:.45em;vertical-align:.95em;margin-left:2px;color:#ffc83d}
+header p{margin:0;color:var(--muted)}
+h2{font:800 20px/1.2 var(--f-display);margin:0 0 -12px}
+.tiles{display:grid;gap:12px}
+.tile{display:grid;grid-template-columns:84px 1fr;gap:16px;align-items:center;padding:12px 16px 12px 12px;border-radius:20px;text-decoration:none;color:inherit;min-height:108px;position:relative;overflow:hidden}
+.tile:active{transform:scale(.985)}
+.tile .art{width:84px;height:84px;border-radius:14px;display:block}
+.tile b{display:block;font:800 23px/1.1 var(--f-display);margin-bottom:4px}
+.tile span{font-size:15px;opacity:.85}
+.bg{background:#3b2419;color:#f4ecda}
+.lu{background:#17244f;color:#f3f5ff}
+.sc{background:#18212d;color:#eef0f2}
+.cd{background:#2a2236;color:#f3eef7}
+.vs{background:#232534;color:#f4f2ec}
+.wb{background:#16302a;color:#f3efe3}
+.kk{background:#1a1a2a;color:#f4f1ea}
+.tr{background:#0f2a33;color:#f3efe6}
+.soon{border:1.5px dashed var(--line);border-radius:20px;padding:18px;color:var(--muted);font-size:15px}
+footer{color:var(--muted);font-size:13px;text-align:center}
+.diag{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;padding:12px;border:1px dashed var(--line);border-radius:14px}
+.diag svg{width:18px;height:18px}
+@media (prefers-reduced-motion:reduce){.tile:active{transform:none}}
+
+/* Tabbladen onderin en het overzicht */
+body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+.wrap{gap:20px}
+header{justify-content:space-between;align-items:center}
+header .l{display:flex;align-items:baseline;gap:12px}
+.ib{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--muted);text-decoration:none}
+.ib:active{background:var(--panel)}
+.ib svg{width:24px;height:24px}
+.ib{position:relative}
+.ib.dot::after{content:"";position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:5px;background:#ffc83d;box-shadow:0 0 0 2px var(--bg)}
+.panel{display:none;flex-direction:column;gap:12px}
+.panel.on{display:flex}
+.panel>h2{margin:6px 0 0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;justify-content:center;background:rgba(20,22,31,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 6px) max(8px,env(safe-area-inset-left,0px))}
+nav.tabs .in{display:flex;width:100%;max-width:520px}
+nav.tabs button{flex:1;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 4px;font:600 12px var(--f-body);border-radius:14px;cursor:pointer}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button .pip{width:54px;height:30px;border-radius:15px;display:grid;place-items:center;transition:background .15s}
+nav.tabs button.on{color:var(--text)}
+nav.tabs button.on .pip{background:#3a3220;color:#ffc83d}
+.today{color:var(--muted);font-weight:600;margin:-8px 0 0}
+.today::first-letter{text-transform:uppercase}
+.dash{display:flex;flex-direction:column;gap:10px}
+.dcard{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;text-decoration:none;color:inherit;position:relative;overflow:hidden}
+.dcard:active{transform:scale(.99)}
+.dcard .big{flex:none;width:66px;height:66px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c,#2a2f44);color:var(--ci,#fff);line-height:1}
+.dcard .big b{font:800 26px/1 var(--f-display)}
+.dcard .big small{font-size:11px;font-weight:700;opacity:.85;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.dcard .big.em{font-size:30px}
+.dcard .tx{flex:1;min-width:0}
+.dcard .tx b{display:block;font:800 18px/1.2 var(--f-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcard .tx span{display:block;color:var(--muted);font-size:14px}
+.dcard .meter{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:8px}
+.dcard .meter i{display:block;height:100%;border-radius:3px;background:var(--c,#ffc83d)}
+.dcard .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.dcard .chips em{font-style:normal;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:#262a3b;color:#cfd1de}
+.dempty{border:1.5px dashed var(--line);border-radius:18px;padding:20px;color:var(--muted);text-align:center}
+.dempty b{display:block;color:var(--text);font:800 18px/1.2 var(--f-display);margin-bottom:4px}
+.quick{display:flex;gap:10px;flex-wrap:wrap}
+.quick a{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;color:var(--text);text-decoration:none;font-weight:600;font-size:15px}
+.quick a i{width:10px;height:10px;border-radius:5px;background:var(--c)}
+.run{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.run div{background:#181b26;border-radius:12px;padding:8px 10px}
+.run b{display:block;font:800 20px/1.1 var(--f-display)}
+.run span{font-size:12px;color:var(--muted)}
+.tile.ri{background:#0f2f2c;color:#eefaf6}
+.tile.kl{background:#2b2414;color:#fbf3df}
+.tile.af{background:#341b22;color:#fdeef0}
+.tile.hl{background:#1d2c12;color:#f1f8e6}
+.tile.rc{background:#3a1e12;color:#fdf0e6}
+.soon b{display:block;color:var(--text);font-weight:700}
+nav.tabs button{min-width:0}
+.sl{display:flex;flex-direction:column;gap:10px}
+.sl .dcard .big{font-size:28px;background:color-mix(in srgb,var(--c) 22%,#262a3b)}
+.sl .dcard .cnt{flex:none;text-align:right;font:800 24px/1 var(--f-display);color:var(--c)}
+.sl .dcard .cnt small{display:block;font:600 11px var(--f-body);color:var(--muted);margin-top:3px}
+.sl .new{display:inline-block;background:#ff7eb6;color:#2a0716;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.samenhero{display:flex;flex-direction:column;gap:10px;background:#2c1527;border:1px solid #5a2a4c;border-radius:20px;padding:18px;color:#fff1f8;text-decoration:none}
+.samenhero b{font:800 22px/1.15 var(--f-display)}
+.samenhero span{opacity:.85}
+.samenhero em{font-style:normal;align-self:flex-start;background:#ff7eb6;color:#2a0716;font-weight:800;border-radius:12px;padding:10px 16px}
+.who2{color:var(--muted);font-size:14px;margin:-4px 0 0}
+.alle{color:#ff7eb6;text-decoration:none;font-weight:700;text-align:center;padding:10px}
+
+body{padding-bottom:28px}
+.wrap{max-width:620px}
+.lijsten{display:flex;align-items:center;gap:16px}
+</style>
+</head>
+<body>
+<!-- Webversie (laptop) van W2 Apps: alleen wat je samen bijhoudt. Wordt door tools/uitgifte.py in web/ van het uitgifterepo gezet. -->
+<div class="wrap">
+  <header><div class="l"><span class="mark">W<sup>2</sup></span><p>Samen bijhouden, op je laptop.</p></div></header>
+  <section class="panel on" id="p-samen" aria-label="Samen">
+    <h2>Lijsten</h2>
+    <div id="samenwrap"></div>
+    <h2 style="margin-top:8px">Samen bijhouden</h2>
+    <div class="tiles">
+    <a class="tile ri" href="reizen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#13534b"/>
+        <circle cx="64" cy="20" r="9" fill="#ffd166"/>
+        <rect x="18" y="32" width="40" height="38" rx="7" fill="#2ec4b6"/><rect x="30" y="24" width="16" height="10" rx="3" fill="none" stroke="#e8fffb" stroke-width="3.5"/>
+        <rect x="18" y="44" width="40" height="5" fill="#13534b" opacity=".45"/><circle cx="26" cy="72" r="3.5" fill="#e8fffb"/><circle cx="50" cy="72" r="3.5" fill="#e8fffb"/>
+        <path d="M46 14l14 6-5 2 6 6-3 1-8-5-5 2z" fill="#e8fffb" transform="rotate(-12 52 20) translate(-10 0)"/>
+      </svg>
+      <div><b>Reizen</b><span>Tickets, paklijst en aftellen per reis</span></div>
+    </a>
+    <a class="tile rc" href="recepten/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#6b2d14"/>
+        <path d="M16 40h52v10a18 18 0 0 1-18 18H34a18 18 0 0 1-18-18z" fill="#ff8a3d"/>
+        <rect x="10" y="38" width="64" height="7" rx="3.5" fill="#ffd2b0"/><rect x="8" y="44" width="10" height="4" rx="2" fill="#ff8a3d"/><rect x="66" y="44" width="10" height="4" rx="2" fill="#ff8a3d"/>
+        <path d="M32 30c0-5 5-5 5-10M44 30c0-5 5-5 5-10" fill="none" stroke="#ffd2b0" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div><b>Recepten</b><span>Je receptenboek, met zoeken en kookmodus</span></div>
+    </a>
+    <a class="tile af" href="aftellen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#5c2532"/>
+        <rect x="12" y="16" width="60" height="56" rx="10" fill="#fff4f0"/><rect x="12" y="16" width="60" height="17" rx="10" fill="#ff6b6b"/><rect x="12" y="26" width="60" height="7" fill="#ff6b6b"/>
+        <rect x="24" y="10" width="6" height="13" rx="3" fill="#fff4f0"/><rect x="54" y="10" width="6" height="13" rx="3" fill="#fff4f0"/>
+        <text x="42" y="63" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="28" fill="#5c2532">12</text>
+      </svg>
+      <div><b>Aftellen</b><span>Toernooien, uitjes en verjaardagen</span></div>
+    </a>
+    </div>
+  </section>
+  <footer>Zelfde gegevens als in de app op je telefoon, via je koppelcode. Persoonlijke onderdelen en spellen staan alleen in de app.</footer>
+</div>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<script src="w2.js"></script>
+<script src="w2data.js"></script>
+<script src="samen/sync.js"></script>
+<script>
+(function () {
+  const D = W2D, S = Samen;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  function draw() {
+    const host = document.getElementById('samenwrap');
+    if (!S.cfg) {
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code uit de app op je telefoon (Samen › tandwiel › Iemand uitnodigen) en kies "Ik ben …". Daarna zie je hier dezelfde lijsten, reizen, recepten en aftellen.</span><em>Koppelen</em></a>`;
+      return;
+    }
+    const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };
+    host.innerHTML = `${(sm.leden || []).length ? `<p class="who2">Gedeeld met ${esc(sm.leden.join(' & '))}</p>` : ''}<div class="sl">${(sm.lijsten || []).map(l => {
+      const sub = l.soort === 'boodschappen' ? (l.open ? `${l.open} te halen` : 'Alles in huis') : (l.open ? `${l.open} open` : 'Alles af') + (l.laat ? ` · ${l.laat} te laat` : '');
+      return `<a class="dcard" href="samen/index.html#l=${esc(l.id)}" style="--c:${esc(l.kleur || '#ff7eb6')}"><div class="big em">${esc(l.emoji || '📝')}</div>
+        <div class="tx"><b>${esc(l.naam)}${l.nieuw ? `<span class="new">${l.nieuw} nieuw</span>` : ''}</b><span>${esc(sub)}</span></div>
+        <div class="cnt">${l.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
+    }).join('')}</div><a class="alle" href="samen/index.html">Alle lijsten ›</a>`;
+  }
+  draw();
+  S.peek().then(draw);
+  addEventListener('pageshow', () => { draw(); S.peek().then(draw); });
+})();
+</script>
+</body>
+</html>

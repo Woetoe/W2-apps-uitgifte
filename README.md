@@ -2,7 +2,7 @@
 
 Hier haalt de app W2 Apps zijn updates vandaan. De broncode staat in een privé repository.
 
-**Nieuwste versie: 1.0.23**
+**Nieuwste versie: 1.0.24**
 
 ## App installeren
 
@@ -10,4 +10,4 @@ Open op je Android-telefoon [Releases](../../releases/latest), download `W2-Apps
 
 ## Samen op je laptop
 
-De gedeelde lijsten (tabblad Samen) staan ook als webpagina: [web/samen](https://woetoe.github.io/W2-apps-uitgifte/web/samen/). Open hem in Chrome en kies *Installeren*; koppel met dezelfde code.
+Wat je samen bijhoudt (lijsten, reizen, recepten, aftellen) staat ook als webpagina: [woetoe.github.io/W2-apps-uitgifte/web](https://woetoe.github.io/W2-apps-uitgifte/web/). Open hem in Chrome en kies *Installeren*; koppel met dezelfde code.

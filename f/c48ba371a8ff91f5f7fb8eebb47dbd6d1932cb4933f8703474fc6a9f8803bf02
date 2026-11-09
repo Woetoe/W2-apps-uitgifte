@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reizen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#2ec4b6;--acc-ink:#06231f}
+.hero{border-radius:22px;padding:18px;background:linear-gradient(135deg,#13534b,#0f2f2c 70%);border:1px solid #1d6b62;display:flex;flex-direction:column;gap:6px}
+.hero .em{font-size:40px;line-height:1}
+.hero b{font:800 28px/1.1 var(--f-display);letter-spacing:-.01em}
+.hero .when{color:#bfe9e3}
+.hero .count{display:flex;align-items:baseline;gap:8px;margin-top:8px}
+.hero .count b{font-size:44px;color:#fff}
+.hero .count span{color:#bfe9e3;font-weight:600}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.sec h2{margin:0}
+.sec .btn{min-height:38px;padding:6px 12px;font-size:14px}
+.doc .ico{background:#13534b;color:#bff3ec}
+.code{display:flex;align-items:center;gap:6px;padding:11px 0;border-bottom:1px solid var(--line)}
+.code:last-child{border-bottom:0}
+.code .kv{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.code .k{color:var(--muted);font-size:13px;font-weight:600;line-height:1.3}
+.code .v{font-weight:700;font-size:16px;line-height:1.35;user-select:text;-webkit-user-select:text;overflow-wrap:anywhere}
+.code button{flex:none;width:42px;height:42px;border:0;background:var(--panel2);color:var(--text);border-radius:12px;display:grid;place-items:center;cursor:pointer}
+.code button svg{width:19px;height:19px}
+.notes{white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+.tpl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tpl label{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:600;cursor:pointer}
+.tpl input{width:20px;height:20px;accent-color:var(--acc)}
+.emojis{display:flex;gap:6px;flex-wrap:wrap}
+.emojis button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;cursor:pointer}
+.emojis button.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--bg))}
+.addline{display:flex;gap:8px;margin-top:8px}
+.addline .in{min-height:44px}
+.addline .btn{min-height:44px;padding:0 14px}
+.past{opacity:.7}
+.seg{position:sticky;top:var(--toph,60px);z-index:4;display:flex;gap:4px;margin:14px -4px 4px;padding:4px;background:var(--bg)}
+.seg button{flex:1 1 0;min-width:0;min-height:50px;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:12px;font:700 14px/1.15 var(--f-body);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;cursor:pointer;white-space:nowrap;overflow:hidden}
+.seg button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.seg .n{font-size:11px;font-weight:700;opacity:.85}
+.seg .n.late{opacity:1;color:#ff6b6b}
+.seg button.on .n.late{color:#7a0f0f}
+.next .check{cursor:pointer}
+.more{display:block;width:100%;border:0;background:transparent;color:var(--acc);font:700 14px var(--f-body);padding:12px 4px 4px;text-align:left;cursor:pointer}
+.plan{display:flex;flex-direction:column}
+.plan h3{font:800 13px var(--f-body);letter-spacing:.06em;color:var(--muted);margin:18px 0 6px}
+.plan h3:first-child{margin-top:0}
+.plan p{margin:0 0 6px;line-height:1.45}
+.plan .gap{height:6px}
+.day{display:grid;grid-template-columns:52px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.day .dt{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:var(--panel2);border-radius:12px;padding:6px 0;height:max-content}
+.day .dt small{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.day .dt b{font:800 20px/1.1 var(--f-display)}
+.day .dt span{font-size:11px;color:var(--muted)}
+.day .tx b{display:block;font-weight:700;margin-bottom:2px}
+.day .tx ul{margin:0;padding-left:16px;color:var(--text)}
+.day .tx li{margin:2px 0;line-height:1.4}
+.day.today .dt{background:var(--acc);color:var(--acc-ink)}
+.day.today .dt small,.day.today .dt span{color:var(--acc-ink)}
+.day.past{opacity:.55}
+.todo .t{display:flex;flex-direction:column;gap:2px;min-width:0;cursor:pointer}
+.todo .t b{font-weight:600}
+.todo .dl{font-size:12px;font-weight:700;color:var(--muted)}
+.todo .dl.soon{color:#f2b53a}
+.todo .dl.late{color:#ff6b6b}
+.todo .info{font-size:13px;color:var(--muted);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.check.on .t b{color:var(--muted);text-decoration:line-through}
+.check.on .t .dl{color:var(--muted)}
+.todo .box{cursor:pointer}
+.late-n{color:#ff6b6b;font-weight:700}
+.done-h{font-size:13px;color:var(--muted);font-weight:700;padding:10px 4px 0;cursor:pointer}
+.xl{margin-top:16px}
+.imp .row{cursor:default}
+.imp .warn{margin-top:10px;font-size:13px;color:var(--muted);max-height:120px;overflow:auto}
+.imp .warn div{padding:2px 0}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Reizen</h1><button class="ib" id="lockbtn" type="button" aria-label="Slot" hidden></button></div>
+<main class="page" id="app"></main>
+<button class="fab" id="fab" type="button" aria-label="Nieuwe reis" hidden></button>
+<input type="file" id="pick" multiple accept="application/pdf,image/*,.pkpass,.html,.txt,.doc,.docx,.ics">
+<input type="file" id="pickx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="xlsx.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script>
+const { esc, $, icon, sheet, confirm, toast } = UI;
+const D = W2D, AREA = 'reizen';
+const app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+D.recent('reizen');
+
+const EMOJI = ['✈️', '🏝️', '🏔️', '🌴', '⛷️', '🏕️', '🚗', '🚆', '🏙️', '🥋', '🛳️', '🌍'];
+const TEMPLATES = {
+  basis: ['Paspoort of ID-kaart', 'Telefoon + oplader', 'Powerbank', 'Bankpas / creditcard', 'Medicijnen', 'Toilettas', 'Ondergoed en sokken', 'Pyjama', 'Oordopjes', 'Zonnebril'],
+  zon: ['Zwemkleding', 'Zonnebrand', 'After sun', 'Snorkelset', 'Waterschoenen', 'Pet of hoed', 'Korte broeken', 'Slippers', 'Muggenspray', 'Strandlaken'],
+  kou: ['Thermo-ondergoed', 'Muts', 'Handschoenen', 'Sjaal', 'Wollen sokken', 'Winterjas', 'Waterdichte schoenen', 'Fleece', 'Lippenbalsem', 'Handwarmers'],
+  stad: ['Goede wandelschoenen', 'Dagrugzak', 'Regenjas of paraplu', 'Stekkeradapter', 'Plattegrond offline'],
+  vliegen: ['Instapkaart', 'Vloeistoffen in zakje', 'Nekkussen', 'Koptelefoon', 'Pen (voor formulieren)']
+};
+const TPL_NAMES = { basis: 'Basis', zon: 'Zon & strand', kou: 'Kou & sneeuw', stad: 'Stedentrip', vliegen: 'Vliegen' };
+const TODO = ['Reisverzekering checken', 'Online inchecken', 'Vervoer naar vliegveld regelen', 'Planten water / oppas', 'Geld wisselen of pinpas op wereld zetten'];
+
+let data = { trips: [] };
+let cur = null; // id van open reis
+let deel = null; // delen met je partner via Samen (samen/deel.js)
+
+// ---------------------------------------------------------------- opslag
+async function load() { data = await D.secret.get(AREA, { trips: [] }); if (!data.trips) data.trips = []; }
+async function save() {
+  try { await D.secret.set(AREA, data); if (deel) deel.push(); }
+  catch (e) { if (e instanceof D.Locked) { toast('Op slot: ontgrendel eerst.'); start(); return; } toast('Opslaan lukte niet: ' + e.message); }
+  // Samenvatting voor het overzicht (zonder documenten of codes)
+  D.set('dash-reizen', data.trips.map(t => ({
+    id: t.id, naam: t.naam, emoji: t.emoji, van: t.van, tot: t.tot,
+    pack: [t.pak.filter(x => x.ok).length, t.pak.length], todo: [t.todo.filter(x => x.ok).length, t.todo.length], docs: t.docs.length,
+    ...deadlines(t)
+  })));
+}
+const trip = id => data.trips.find(t => t.id === id);
+/** Open taken met een uiterste datum: aantal te laat en de eerstvolgende (voor het overzicht). */
+function deadlines(t) {
+  const open = t.todo.filter(x => !x.ok && x.dl).sort((a, b) => a.dl < b.dl ? -1 : 1);
+  const late = open.filter(x => D.date.days(x.dl) < 0).length;
+  const nx = open.find(x => D.date.days(x.dl) >= 0);
+  return { late, next: nx ? { t: nx.t, dl: nx.dl } : null };
+}
+const sorted = () => data.trips.slice().sort((a, b) => (a.van || '9') < (b.van || '9') ? -1 : 1);
+
+// ---------------------------------------------------------------- weergave
+function render() {
+  const t = cur && trip(cur);
+  $('#fab').hidden = !!t;
+  $('#title').textContent = t ? t.naam : 'Reizen';
+  t ? renderTrip(t) : renderList();
+}
+
+function whenText(t) {
+  if (!t.van) return 'Nog geen datum';
+  const a = D.date.nice(t.van, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  return t.tot && t.tot !== t.van ? a + ' – ' + D.date.nice(t.tot, { weekday: 'short', day: 'numeric', month: 'long' }) : a;
+}
+
+function renderList() {
+  const today = D.date.today();
+  const up = sorted().filter(t => !t.tot || t.tot >= today || !t.van);
+  const past = sorted().filter(t => t.tot && t.tot < today).reverse();
+  if (!data.trips.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen reizen</b>Maak een reis aan en zet er je tickets, boekingscodes en paklijst in. Op het overzicht tel je dan af.<br><button class="btn" data-act="new" type="button">${icon('plus')}Reis toevoegen</button>
+      <div class="btns xl"><button class="btn q" data-act="xlsx" type="button">${icon('upload')}Uit Excel laden</button><button class="btn q" data-act="xlsxtpl" type="button">${icon('file')}Invulbestand</button></div></div>`;
+    return;
+  }
+  const row = t => {
+    const d = D.date.days(t.van), dt = D.date.days(t.tot || t.van);
+    const status = d == null ? '' : d > 0 ? `<span class="pill acc">${D.date.rel(d)}</span>` : dt >= 0 ? '<span class="pill acc">nu</span>' : '';
+    const pk = t.pak.length ? ` · ${t.pak.filter(x => x.ok).length}/${t.pak.length} ingepakt` : '';
+    return `<button class="row" data-open="${t.id}" type="button"><span class="ico">${t.emoji || '✈️'}</span><span class="grow"><b>${esc(t.naam)}</b><span class="sub">${esc(whenText(t))}${pk}</span></span><span class="end">${status}</span></button>`;
+  };
+  app.innerHTML = (up.length ? `<div class="list">${up.map(row).join('')}</div>` : '<p class="muted">Geen komende reizen.</p>') +
+    (past.length ? `<h2>Geweest <small>${past.length}</small></h2><div class="list past">${past.map(row).join('')}</div>` : '') +
+    `<div class="btns xl"><button class="btn q" data-act="xlsx" type="button">${icon('upload')}Uit Excel laden</button><button class="btn q" data-act="xlsxtpl" type="button">${icon('file')}Invulbestand</button></div>
+    <p class="muted small">Vul reizen, gegevens, paklijst en te-regelen in Excel in en laad ze hier in één keer. Bestaat een reis al (zelfde naam), dan wordt hij bijgewerkt.</p>`;
+}
+
+function checklist(list, kind) {
+  return `<div class="card">${list.map((x, i) => `<div class="check${x.ok ? ' on' : ''}" data-tick="${kind}:${i}"><span class="box">${x.ok ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}</span><button class="x" data-del="${kind}:${i}" type="button" aria-label="Weghalen">${icon('x', 'width="16" height="16"')}</button></div>`).join('') || '<span class="muted small">Nog leeg.</span>'}
+    <div class="addline"><input class="in" data-add="${kind}" placeholder="${kind === 'pak' ? 'Iets toevoegen aan de paklijst' : 'Iets om te regelen'}" enterkeyhint="done"><button class="btn q" data-addbtn="${kind}" type="button" aria-label="Toevoegen">${icon('plus')}</button></div></div>`;
+}
+
+function dlText(x) {
+  if (!x.dl) return '';
+  const d = D.date.days(x.dl), when = D.date.nice(x.dl, { weekday: 'short', day: 'numeric', month: 'short' });
+  if (x.ok) return `<span class="dl">uiterlijk ${when}</span>`;
+  const rel = d < 0 ? `${-d} ${d === -1 ? 'dag' : 'dagen'} te laat` : d === 0 ? 'vandaag' : d === 1 ? 'morgen' : `nog ${d} dagen`;
+  return `<span class="dl${d < 0 ? ' late' : d <= 7 ? ' soon' : ''}">uiterlijk ${when} · ${rel}</span>`;
+}
+let showDone = false, tab = 'info';
+/** Te regelen: open taken op datum (zonder datum achteraan), afgevinkte ingeklapt onderaan. */
+function todoList(t) {
+  const idx = t.todo.map((x, i) => i);
+  const open = idx.filter(i => !t.todo[i].ok).sort((a, b) => (t.todo[a].dl || '9') < (t.todo[b].dl || '9') ? -1 : (t.todo[a].dl || '9') > (t.todo[b].dl || '9') ? 1 : a - b);
+  const done = idx.filter(i => t.todo[i].ok);
+  const row = i => { const x = t.todo[i]; return `<div class="check${x.ok ? ' on' : ''}"><span class="box" data-tick="todo:${i}" role="checkbox" aria-checked="${!!x.ok}">${x.ok ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t" data-todo="${i}"><b>${esc(x.t)}</b>${dlText(x)}${x.info && !x.ok ? `<span class="info">${esc(x.info)}</span>` : ''}</span></div>`; };
+  return `<div class="card todo">${open.map(row).join('') || (t.todo.length ? '<span class="muted small">Alles geregeld.</span>' : '<span class="muted small">Nog leeg.</span>')}
+    ${done.length ? `<div class="done-h" data-act="donetoggle">${showDone ? '▾' : '▸'} Geregeld (${done.length})</div>${showDone ? done.map(row).join('') : ''}` : ''}
+    <div class="addline"><input class="in" data-add="todo" placeholder="Iets om te regelen" enterkeyhint="done"><button class="btn q" data-addbtn="todo" type="button" aria-label="Toevoegen">${icon('plus')}</button></div></div>`;
+}
+async function todoForm(t, i) {
+  const x = t.todo[i];
+  const r = await sheet('Te regelen', `
+    <label class="f">Wat<input class="in" name="t" value="${esc(x.t)}"></label>
+    <label class="f">Uiterlijk<input class="in" type="date" name="dl" value="${esc(x.dl || '')}"></label>
+    <label class="f">Toelichting<textarea class="in" name="info" style="min-height:90px">${esc(x.info || '')}</textarea></label>
+    <label class="f" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="ok"${x.ok ? ' checked' : ''} style="width:22px;height:22px;accent-color:var(--acc)">Geregeld</label>`,
+  [{ label: 'Verwijderen', value: 'del', kind: 'danger' }, { label: 'Bewaren', value: 'ok', check: f => f.t.trim() ? '' : 'Vul in wat er geregeld moet worden.' }]).done;
+  if (r.value === 'ok') Object.assign(x, { t: r.form.t.trim(), dl: r.form.dl || '', info: r.form.info.trim(), ok: !!r.form.ok });
+  else if (r.value === 'del') t.todo.splice(i, 1);
+  else return;
+  await save(); render();
+}
+
+function renderTrip(t) {
+  document.documentElement.style.setProperty('--toph', $('.top').offsetHeight + 'px');
+  const pk = t.pak.filter(x => x.ok).length, open = t.todo.filter(x => !x.ok).length, late = deadlines(t).late;
+  const tabs = [
+    ['info', 'Overzicht', `<span class="n">${t.codes.length ? t.codes.length + ' gegevens' : '&nbsp;'}</span>`],
+    ['todo', 'Regelen', `<span class="n${late ? ' late' : ''}">${late ? late + ' te laat' : open ? open + ' open' : t.todo.length ? 'klaar' : '&nbsp;'}</span>`],
+    ['pak', 'Paklijst', `<span class="n">${t.pak.length ? pk + '/' + t.pak.length : '&nbsp;'}</span>`],
+    ['plan', 'Planning', `<span class="n">${(n => n ? n + ' dagen' : '&nbsp;')((t.notities || '').split('\n').filter(l => /^(ma|di|wo|do|vr|za|zo)\.?\s+\d{1,2}\s+[a-z]{3,}\.?\s*[·:–-]/i.test(l.trim())).length)}</span>`]
+  ];
+  const seg = `<nav class="seg" role="tablist">${tabs.map(([k, l, n]) => `<button type="button" role="tab" data-tab="${k}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}">${l}${n}</button>`).join('')}</nav>`;
+  let body = '';
+  if (tab === 'info') body = tripInfo(t);
+  else if (tab === 'todo') body = `<div class="sec"><h2>Te regelen <small>${t.todo.length ? (t.todo.length - open) + '/' + t.todo.length + ' geregeld' : ''}${late ? ` · <span class="late-n">${late} te laat</span>` : ''}</small></h2></div>${todoList(t)}`;
+  else if (tab === 'pak') body = `<div class="sec"><h2>Paklijst <small>${t.pak.length ? pk + '/' + t.pak.length + ' ingepakt' : ''}</small></h2><button class="btn q" data-act="tpl" type="button">Lijst erbij</button></div>
+    ${t.pak.length ? `<div class="bar"><i style="width:${Math.round(pk / t.pak.length * 100)}%"></i></div>` : ''}${checklist(t.pak, 'pak')}`;
+  else body = `<div class="sec"><h2>Planning</h2><button class="btn q" data-act="notes" type="button">${icon('edit')}Bewerken</button></div>
+    <div class="card">${t.notities ? planHtml(t) : '<span class="muted small">Dagplanning, adressen, telefoonnummers… Regels als "vr 5 feb · Husky-tocht" worden per dag getoond.</span>'}</div>`;
+  app.innerHTML = (tab === 'info' ? heroHtml(t) : '') + seg + body;
+}
+function heroHtml(t) {
+  const d = D.date.days(t.van), dt = D.date.days(t.tot || t.van);
+  let count = '';
+  if (d != null && d > 0) count = `<div class="count"><b>${d}</b><span>${d === 1 ? 'nachtje slapen' : 'nachtjes slapen'}</span></div>`;
+  else if (d != null && dt >= 0) count = `<div class="count"><b>Dag ${1 - d}</b><span>van ${D.date.days(t.tot) - d + 1}</span></div>`;
+  return `<div class="hero"><span class="em">${t.emoji || '✈️'}</span><b>${esc(t.naam)}</b><span class="when">${esc(whenText(t))}${t.bestemming ? ' · ' + esc(t.bestemming) : ''}</span>${count}</div>`;
+}
+function tripInfo(t) {
+  const next = t.todo.map((x, i) => i).filter(i => !t.todo[i].ok).sort((a, b) => (t.todo[a].dl || '9') < (t.todo[b].dl || '9') ? -1 : (t.todo[a].dl || '9') > (t.todo[b].dl || '9') ? 1 : a - b).slice(0, 3);
+  const nOpen = t.todo.filter(x => !x.ok).length;
+  return `${next.length ? `<div class="sec"><h2>Eerst te doen</h2></div>
+    <div class="card todo next">${next.map(i => { const x = t.todo[i]; return `<div class="check"><span class="box" data-tick="todo:${i}" role="checkbox" aria-checked="false"></span><span class="t" data-todo="${i}"><b>${esc(x.t)}</b>${dlText(x)}</span></div>`; }).join('')}
+    ${nOpen > next.length ? `<button class="more" data-tab="todo" type="button">Alle ${nOpen} open taken →</button>` : ''}</div>` : ''}
+
+    <div class="sec"><h2>Belangrijke gegevens</h2><button class="btn q" data-act="addcode" type="button">${icon('plus')}Toevoegen</button></div>
+    <div class="card">${t.codes.map((c, i) => `<div class="code"><div class="kv"><span class="k">${esc(c.label)}</span><span class="v">${esc(c.waarde)}</span></div><button data-copy="${i}" type="button" aria-label="Kopieer">${icon('copy')}</button><button data-codemenu="${i}" type="button" aria-label="Bewerken">${icon('more')}</button></div>`).join('') || '<span class="muted small">Vluchtnummer, boekingscode, adres van het hotel, huurauto…</span>'}</div>
+
+    <div class="sec"><h2>Documenten <small>${t.docs.length || ''}</small></h2><button class="btn" data-act="adddoc" type="button">${icon('upload')}Toevoegen</button></div>
+    ${t.docs.length ? '' : '<p class="muted small" style="margin:-6px 0 0">Tickets, instapkaarten, hotelboeking. Kies ze uit je Google Drive of telefoon; ze worden versleuteld bewaard en werken ook zonder internet.</p>'}
+    <div class="list">${t.docs.map((f, i) => `<button class="row doc" data-doc="${i}" type="button"><span class="ico">${icon('file')}</span><span class="grow"><b>${esc(f.titel || f.name)}</b><span class="sub">${esc(f.soort || 'Document')} · ${UI.fmtSize(f.size || 0)}</span></span><span class="end" data-docmenu="${i}" role="button" aria-label="Meer">⋯</span></button>`).join('')}</div>
+
+    <div class="btns" style="margin-top:22px"><button class="btn q" data-act="edit" type="button">${icon('edit')}Reis bewerken</button><button class="btn danger" data-act="delete" type="button">${icon('trash')}Verwijderen</button></div>`;
+}
+
+/* Planning: notities netjes tonen. "vr 5 feb · tekst" = een dag (vandaag gemarkeerd), HOOFDLETTERS = kopje. */
+const WD = { ma: 1, di: 2, wo: 3, do: 4, vr: 5, za: 6, zo: 0 };
+const MON = { jan: 0, feb: 1, mrt: 2, maa: 2, apr: 3, mei: 4, jun: 5, jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dec: 11 };
+function dayDate(t, dd, mon) {
+  const m = MON[mon.slice(0, 3).toLowerCase()];
+  if (m == null) return '';
+  const y0 = +(t.van || D.date.today()).slice(0, 4);
+  for (const y of [y0, y0 + 1]) {
+    const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    if (!t.van || (iso >= t.van && iso <= (t.tot || t.van))) return iso;
+  }
+  return '';
+}
+function planHtml(t) {
+  const out = [];
+  for (const raw of t.notities.split('\n')) {
+    const line = raw.trim();
+    if (!line) { out.push('<div class="gap"></div>'); continue; }
+    const m = /^(ma|di|wo|do|vr|za|zo)\.?\s+(\d{1,2})\s+([a-z]{3,})\.?\s*[·:–-]\s*(.+)$/i.exec(line);
+    if (m) {
+      const iso = dayDate(t, +m[2], m[3]), rel = iso ? D.date.days(iso) : null;
+      let rest = m[4], head = '';
+      const c = /^([^:·]{2,40}):\s+(.+)$/.exec(rest);
+      if (c) { head = c[1]; rest = c[2]; }
+      const parts = rest.split(/\s+·\s+/).map(x => x.trim()).filter(Boolean);
+      out.push(`<div class="day${rel === 0 ? ' today' : rel != null && rel < 0 ? ' past' : ''}"><div class="dt"><small>${rel === 0 ? 'nu' : esc(m[1])}</small><b>${+m[2]}</b><span>${esc(m[3].slice(0, 3))}</span></div>
+        <div class="tx">${head ? `<b>${esc(head)}</b>` : ''}${parts.length > 1 ? `<ul>${parts.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : `<div>${esc(parts[0] || '')}</div>`}</div></div>`);
+    } else if (/^[^a-z]{4,}$/.test(line) && /[A-Z]/.test(line)) out.push(`<h3>${esc(line)}</h3>`);
+    else out.push(`<p>${esc(line)}</p>`);
+  }
+  return `<div class="plan">${out.join('').replace(/^(<div class="gap"><\/div>)+|(<div class="gap"><\/div>)+$/g, '')}</div>`;
+}
+
+// ---------------------------------------------------------------- formulieren
+function tripForm(t) {
+  t = t || {};
+  const em = t.emoji || '✈️';
+  const tplBoxes = t.id ? '' : `<div><div class="muted small" style="font-weight:600;margin-bottom:6px">Paklijst om mee te beginnen</div><div class="tpl">${Object.keys(TEMPLATES).map(k => `<label><input type="checkbox" name="tpl_${k}" ${k === 'basis' ? 'checked' : ''}>${TPL_NAMES[k]}</label>`).join('')}</div></div>`;
+  const s = sheet(t.id ? 'Reis bewerken' : 'Nieuwe reis', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(t.naam || '')}" placeholder="Bijv. Bonaire" autocomplete="off"></label>
+    <div class="emojis">${EMOJI.map(e => `<button type="button" data-em="${e}" class="${e === em ? 'on' : ''}">${e}</button>`).join('')}</div>
+    <input type="hidden" name="emoji" value="${em}">
+    <label class="f">Bestemming (optioneel)<input class="in" name="bestemming" value="${esc(t.bestemming || '')}" placeholder="Bijv. Kralendijk"></label>
+    <div class="grid2"><label class="f">Vertrek<input class="in" type="date" name="van" value="${esc(t.van || '')}"></label><label class="f">Terug<input class="in" type="date" name="tot" value="${esc(t.tot || '')}"></label></div>
+    ${tplBoxes}`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: t.id ? 'Bewaren' : 'Aanmaken', value: 'ok', check: f => !f.naam.trim() ? 'Geef de reis een naam.' : (f.van && f.tot && f.tot < f.van ? 'Terug ligt vóór vertrek.' : '') }], { focus: !t.id });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-em]'); if (!b) return;
+    UI.$$('[data-em]', s.el).forEach(x => x.classList.toggle('on', x === b));
+    $('[name=emoji]', s.el).value = b.dataset.em;
+  });
+  return s.done;
+}
+
+async function newTrip() {
+  const r = await tripForm();
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  const pak = [];
+  Object.keys(TEMPLATES).forEach(k => { if (f['tpl_' + k]) TEMPLATES[k].forEach(x => pak.includes(x) || pak.push(x)); });
+  const t = { id: D.uid(), naam: f.naam.trim(), emoji: f.emoji, bestemming: f.bestemming.trim(), van: f.van, tot: f.tot || f.van, notities: '', docs: [], codes: [],
+    pak: pak.map(x => ({ t: x, ok: false })), todo: TODO.map(x => ({ t: x, ok: false })), made: Date.now() };
+  data.trips.push(t);
+  await save();
+  open(t.id);
+}
+
+function open(id) { cur = id; tab = 'info'; history.replaceState(null, '', id ? '#' + id : '#'); window.scrollTo(0, 0); render(); }
+window.UIback = () => { if (cur && tab !== 'info') { setTab('info'); return true; } if (cur) { open(null); return true; } return false; };
+function setTab(k) {
+  tab = k; render();
+  const seg = $('.seg'); if (seg && window.scrollY > seg.offsetTop) window.scrollTo(0, Math.max(0, seg.offsetTop - 8));
+}
+$('#back').addEventListener('click', e => { if (cur) { e.preventDefault(); open(null); } });
+
+// ---------------------------------------------------------------- acties
+let pickFor = null;
+$('#pick').addEventListener('change', async e => {
+  const t = trip(pickFor), list = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!t || !list.length) return;
+  toast(list.length > 1 ? `${list.length} bestanden bewaren…` : 'Bewaren…', 8000);
+  try {
+    for (const file of list) {
+      if (file.size > 25 * 1048576) { toast(file.name + ' is groter dan 25 MB, overgeslagen.'); continue; }
+      const f = await D.files.put(AREA, file);
+      f.titel = file.name.replace(/\.[^.]+$/, '');
+      f.soort = guessKind(file.name);
+      t.docs.push(f);
+    }
+    await save();
+    toast('Bewaard');
+  } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Bewaren lukte niet: ' + err.message); }
+  render();
+});
+function guessKind(n) {
+  n = n.toLowerCase();
+  if (/board|instap|ticket|e-?ticket|vlucht|flight|klm|tui|transavia|corendon|sas|norwegian/.test(n)) return 'Vlucht';
+  if (/hotel|booking|airbnb|resort|apartment|accommodat|verblijf/.test(n)) return 'Verblijf';
+  if (/huur|rental|car|auto|hertz|avis|sixt/.test(n)) return 'Huurauto';
+  if (/verzeker|insurance|polis/.test(n)) return 'Verzekering';
+  return 'Document';
+}
+
+app.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act],[data-open],[data-doc],[data-docmenu],[data-tick],[data-del],[data-addbtn],[data-copy],[data-codemenu],[data-todo],[data-tab]');
+  if (!el) return;
+  const t = cur && trip(cur);
+  const ds = el.dataset;
+  if (ds.open) return open(ds.open);
+  if (ds.tab) return setTab(ds.tab);
+  if (ds.act === 'new') return newTrip();
+  if (ds.act === 'xlsx') { $('#pickx').click(); return; }
+  if (ds.act === 'xlsxtpl') return saveTemplate();
+  if (!t) return;
+  if (ds.docmenu != null) { e.stopPropagation(); return docMenu(t, +ds.docmenu); }
+  if (ds.doc != null) {
+    const f = t.docs[+ds.doc];
+    try { await D.files.open(AREA, f); }
+    catch (err) {
+      if (err instanceof D.Locked) { toast('Op slot: ontgrendel eerst.'); return; }
+      // Gedeeld document dat hier nog niet binnen is: nu ophalen en opnieuw openen
+      if (deel && deel.active) {
+        toast('Document ophalen…', 8000);
+        try { if (await deel.fetchFile({ id: f.id, put: b64 => D.files.putRaw(AREA, f.id, b64) })) { await D.files.open(AREA, f); toast('Geopend'); return; } } catch (e2) {}
+        toast('Dit document is nog niet binnen. Staat het apparaat dat het toevoegde online?'); return;
+      }
+      toast('Openen lukte niet: ' + err.message);
+    }
+    return;
+  }
+  if (ds.tick) {
+    if (e.target.closest('[data-del]')) return;
+    const [k, i] = ds.tick.split(':'); t[k][+i].ok = !t[k][+i].ok; await save(); return render();
+  }
+  if (ds.del) { const [k, i] = ds.del.split(':'); t[k].splice(+i, 1); await save(); return render(); }
+  if (ds.addbtn) return addItem(t, ds.addbtn);
+  if (ds.todo != null) return todoForm(t, +ds.todo);
+  if (ds.copy != null) { copy(t.codes[+ds.copy].waarde); return; }
+  if (ds.codemenu != null) return codeForm(t, +ds.codemenu);
+  switch (ds.act) {
+    case 'edit': {
+      const r = await tripForm(t);
+      if (r.value !== 'ok') return;
+      Object.assign(t, { naam: r.form.naam.trim(), emoji: r.form.emoji, bestemming: r.form.bestemming.trim(), van: r.form.van, tot: r.form.tot || r.form.van });
+      await save(); return render();
+    }
+    case 'donetoggle': showDone = !showDone; return render();
+    case 'adddoc': pickFor = t.id; $('#pick').click(); return;
+    case 'addcode': return codeForm(t, -1);
+    case 'tpl': {
+      const r = await sheet('Lijst erbij', `<div class="tpl">${Object.keys(TEMPLATES).map(k => `<label><input type="checkbox" name="tpl_${k}">${TPL_NAMES[k]}</label>`).join('')}</div>`,
+        [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok' }]).done;
+      if (r.value !== 'ok') return;
+      Object.keys(TEMPLATES).forEach(k => { if (r.form['tpl_' + k]) TEMPLATES[k].forEach(x => t.pak.some(p => p.t === x) || t.pak.push({ t: x, ok: false })); });
+      await save(); return render();
+    }
+    case 'notes': {
+      const r = await sheet('Planning en notities', `<textarea class="in" name="n" style="min-height:220px">${esc(t.notities || '')}</textarea>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+      if (r.value !== 'ok') return;
+      t.notities = r.form.n; await save(); return render();
+    }
+    case 'delete': {
+      if (!(await confirm(`<b>${esc(t.naam)}</b> verwijderen, met alle ${t.docs.length} documenten?`, 'Verwijderen', true))) return;
+      for (const f of t.docs) { try { await D.files.del(AREA, f.id); } catch (err) {} }
+      data.trips = data.trips.filter(x => x !== t);
+      await save(); return open(null);
+    }
+  }
+});
+app.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.dataset.add) return;
+  const t = cur && trip(cur); if (t) addItem(t, e.target.dataset.add);
+});
+async function addItem(t, kind) {
+  const inp = $(`[data-add="${kind}"]`);
+  const v = inp.value.trim(); if (!v) return;
+  t[kind].push({ t: v, ok: false });
+  await save(); render();
+  const again = $(`[data-add="${kind}"]`); again && again.focus();
+}
+function copy(text) {
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Gekopieerd'), () => toast(text));
+}
+
+async function docMenu(t, i) {
+  const f = t.docs[i];
+  const kinds = ['Vlucht', 'Verblijf', 'Huurauto', 'Verzekering', 'Excursie', 'Document'];
+  const r = await sheet(f.titel || f.name, `
+    <label class="f">Naam<input class="in" name="titel" value="${esc(f.titel || f.name)}"></label>
+    <label class="f">Soort<select class="in" name="soort">${kinds.map(k => `<option ${k === (f.soort || 'Document') ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <span class="muted small">${esc(f.name)} · ${UI.fmtSize(f.size || 0)}</span>`,
+  [{ label: 'Verwijderen', value: 'del', kind: 'danger' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value === 'ok') { f.titel = r.form.titel.trim() || f.name; f.soort = r.form.soort; await save(); render(); }
+  if (r.value === 'del' && await confirm(`<b>${esc(f.titel || f.name)}</b> verwijderen?`, 'Verwijderen', true)) {
+    try { await D.files.del(AREA, f.id); } catch (err) {}
+    t.docs.splice(i, 1); await save(); render();
+  }
+}
+
+async function codeForm(t, i) {
+  const c = i >= 0 ? t.codes[i] : { label: '', waarde: '' };
+  const sug = ['Vluchtnummer heen', 'Vluchtnummer terug', 'Boekingscode', 'Hotel', 'Adres', 'Huurauto', 'Telefoon'];
+  const r = await sheet(i >= 0 ? 'Gegeven bewerken' : 'Gegeven toevoegen', `
+    <label class="f">Wat<input class="in" name="label" list="sug" value="${esc(c.label)}" placeholder="Bijv. Boekingscode"><datalist id="sug">${sug.map(x => `<option value="${x}">`).join('')}</datalist></label>
+    <label class="f">Waarde<input class="in" name="waarde" value="${esc(c.waarde)}" placeholder="Bijv. KL1234 of ABC12D" autocomplete="off"></label>`,
+  (i >= 0 ? [{ label: 'Verwijderen', value: 'del', kind: 'danger' }] : [{ label: 'Annuleren', value: null, kind: 'q' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.label.trim() || !f.waarde.trim() ? 'Vul beide in.' : '' }]), { focus: true }).done;
+  if (r.value === 'ok') { const n = { label: r.form.label.trim(), waarde: r.form.waarde.trim() }; i >= 0 ? (t.codes[i] = n) : t.codes.push(n); }
+  else if (r.value === 'del') t.codes.splice(i, 1);
+  else return;
+  await save(); render();
+}
+
+$('#fab').onclick = newTrip;
+
+// ---------------------------------------------------------------- Excel-import
+const nkey = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+const isEmoji = s => /\p{Extended_Pictographic}/u.test(s) && s.length <= 8 && !/[a-z]{2}/i.test(s);
+function guessEmoji(src) {
+  if (src.sjablonen.includes('zon')) return '🏝️';
+  if (src.sjablonen.includes('kou')) return '🏔️';
+  if (src.sjablonen.includes('stad')) return '🏙️';
+  return '✈️';
+}
+
+/** Eén reis uit Excel samenvoegen met wat er al is: invullen en aanvullen, nooit iets weggooien. */
+function mergeTrip(src, dry) {
+  const old = data.trips.find(x => nkey(x.naam) === nkey(src.naam));
+  const t = old ? (dry ? JSON.parse(JSON.stringify(old)) : old)
+    : { id: D.uid(), naam: src.naam, emoji: '', bestemming: '', van: '', tot: '', notities: '', docs: [], codes: [], pak: [], todo: [], made: Date.now() };
+  const n = { nieuw: !old, codes: 0, pak: 0, todo: 0 };
+  if (isEmoji(src.emoji)) t.emoji = src.emoji; else if (!old) t.emoji = guessEmoji(src);
+  if (src.bestemming) t.bestemming = src.bestemming;
+  if (src.van) t.van = src.van;
+  if (src.tot) t.tot = src.tot;
+  if (t.van && (!t.tot || t.tot < t.van)) t.tot = t.van;
+  if (src.notities) {
+    const cur = (t.notities || '').trim();
+    if (!cur) t.notities = src.notities;
+    else if (!cur.includes(src.notities.trim())) t.notities = cur + '\n\n' + src.notities;
+  }
+  src.codes.forEach(c => {
+    const same = t.codes.find(x => nkey(x.label) === nkey(c.label) && (nkey(c.label) !== 'gegeven' || x.waarde === c.waarde));
+    if (same) { if (same.waarde !== c.waarde) { same.waarde = c.waarde; n.codes++; } }
+    else { t.codes.push({ label: c.label, waarde: c.waarde }); n.codes++; }
+  });
+  const addList = (kind, items) => items.forEach(it => {
+    const same = t[kind].find(x => nkey(x.t) === nkey(it.t));
+    if (same) {
+      if (it.ok && !same.ok) same.ok = true;
+      if (it.dl && same.dl !== it.dl) same.dl = it.dl;
+      if (it.info && same.info !== it.info) same.info = it.info;
+    } else {
+      const x = { t: it.t, ok: !!it.ok };
+      if (it.dl) x.dl = it.dl;
+      if (it.info) x.info = it.info;
+      t[kind].push(x); n[kind]++;
+    }
+  });
+  const tpl = [];
+  src.sjablonen.forEach(k => (TEMPLATES[k] || []).forEach(x => tpl.push({ t: x, ok: false })));
+  addList('pak', tpl.concat(src.pak));
+  addList('todo', !old && !src.todo.length ? TODO.map(x => ({ t: x, ok: false })) : src.todo);
+  if (!old && !dry) data.trips.push(t);
+  n.trip = t;
+  return n;
+}
+
+$('#pickx').addEventListener('change', async e => {
+  const file = (e.target.files || [])[0];
+  e.target.value = '';
+  if (!file) return;
+  let res;
+  try { res = await XLSX.parse(await file.arrayBuffer()); }
+  catch (err) { toast('Inlezen lukte niet: ' + err.message, 6000); return; }
+  if (!res.trips.length) { toast('Geen reizen gevonden in ' + file.name + '.', 5000); return; }
+  const prev = res.trips.map(src => mergeTrip(src, true));
+  const what = p => [p.codes && `${p.codes} gegevens`, p.pak && `${p.pak} paklijst`, p.todo && `${p.todo} te regelen`].filter(Boolean).join(' · ') || 'niets nieuws';
+  const r = await sheet('Uit Excel laden', `<div class="imp">
+    <p class="muted small" style="margin-top:0">${esc(file.name)}</p>
+    <div class="list">${prev.map(p => `<div class="row"><span class="ico">${p.trip.emoji || '✈️'}</span><span class="grow"><b>${esc(p.trip.naam)}</b><span class="sub">${p.nieuw ? 'Nieuw' : 'Bijwerken'} · ${esc(whenText(p.trip))}<br>${what(p)}</span></span></div>`).join('')}</div>
+    ${res.warnings.length ? `<div class="warn"><b>Let op</b>${res.warnings.map(w => `<div>${esc(w)}</div>`).join('')}</div>` : ''}
+    <p class="muted small">Bestaande reizen worden aangevuld; er gaat niets weg. Tickets voeg je daarna per reis toe bij Documenten.</p></div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: res.trips.length > 1 ? `${res.trips.length} reizen laden` : 'Laden', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  const done = res.trips.map(src => mergeTrip(src, false));
+  await save();
+  toast(done.length > 1 ? `${done.length} reizen geladen` : `${done[0].trip.naam} geladen`);
+  if (done.length === 1) open(done[0].trip.id); else render();
+});
+
+async function saveTemplate() {
+  try {
+    const res = await fetch('invulbestand-reizen.xlsx');
+    if (!res.ok) throw new Error('invulbestand niet gevonden');
+    const st = await D.saveAs('Reizen invulbestand.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', await D.toB64(await res.blob()));
+    if (st === 'ok') toast('Invulbestand bewaard. Vul het in en kies daarna "Uit Excel laden".', 5000);
+  } catch (err) { toast('Bewaren lukte niet: ' + err.message); }
+}
+
+// ---------------------------------------------------------------- slot-knop
+function lockBtn() {
+  const b = $('#lockbtn');
+  if (!D.lock.available()) return;
+  const st = D.lock.status();
+  b.hidden = false;
+  const on = !!st.areas[AREA];
+  b.innerHTML = icon(on ? 'lock' : 'unlock');
+  b.style.color = on ? 'var(--acc)' : 'var(--muted)';
+  b.onclick = async () => {
+    if (st.can === 'none') return toast('Stel eerst een schermvergrendeling in op je telefoon.');
+    if (!(await confirm(on ? 'Slot van Reizen <b>uitzetten</b>?' : 'Reizen <b>op slot</b> zetten? Je opent ze dan met je vingerafdruk of pincode.', on ? 'Uitzetten' : 'Op slot'))) return;
+    const r = await D.lock.set(AREA, !on);
+    toast(r.ok ? (on ? 'Slot staat uit' : 'Reizen zit op slot') : 'Niet gelukt');
+    lockBtn();
+  };
+}
+
+// ---------------------------------------------------------------- start
+function start() {
+  if (UI.outdated(app)) return;
+  UI.gate(app, AREA, 'Reizen', async () => {
+    try { await load(); } catch (e) { if (e instanceof D.Locked) return start(); app.innerHTML = `<div class="notice">Lezen lukte niet: ${esc(e.message)}</div>`; return; }
+    lockBtn();
+    koppelDeel();
+    const h = location.hash.slice(1);
+    if (h === 'nieuw') { history.replaceState(null, '', '#'); render(); newTrip(); }
+    else open(h && trip(h) ? h : null);
+  });
+}
+// ---------------------------------------------------------------- delen met je partner (Samen)
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'reizen',
+    lees: async () => Object.fromEntries(data.trips.map(t => [t.id, t])),
+    // Nieuwe stand van de ander: objecten op hun plek bijwerken, zodat een open venster zijn reis niet kwijtraakt
+    schrijf: async map => {
+      const old = Object.fromEntries(data.trips.map(t => [t.id, t]));
+      data.trips = Object.entries(map).map(([id, o]) => {
+        const nu = JSON.parse(JSON.stringify(o)), t = old[id];
+        if (!t) return nu;
+        Object.keys(t).forEach(k => delete t[k]);
+        return Object.assign(t, nu);
+      });
+      await save();
+      if (cur && !trip(cur)) open(null); else render();
+    },
+    bestanden: t => (t.docs || []).map(f => ({ id: f.id, naam: f.name, mime: f.mime, get: () => D.files.get(AREA, f.id), put: b64 => D.files.putRaw(AREA, f.id, b64) }))
+  });
+  W2Deel.badge();
+}
+
+start();
+</script>
+</body>
+</html>

@@ -18,7 +18,13 @@
   // Standaard-database (Firebase Realtime Database van Wouter). Leeg = vragen bij het koppelen.
   const DEFAULT_URL = 'https://w2-samen-default-rtdb.europe-west1.firebasedatabase.app';
 
-  const KINDS = ['lijsten', 'items', 'leden'];
+  // lijsten/items/leden: Samen-lijsten. reizen/recepten/aftellen: gedeelde onderdelen (via deel.js).
+  // bestanden: beschrijving van een gedeeld bestand; de inhoud staat in stukjes onder /s/<ruimte>/<id>/<n>.
+  const KINDS = ['lijsten', 'items', 'leden', 'reizen', 'recepten', 'aftellen', 'bestanden'];
+  const BASIC = new Set(['lijsten', 'items', 'leden']);
+  // Niet als leesbare kopie op de telefoon bewaren: Reizen heeft zijn eigen versleutelde opslag achter het slot.
+  const PRIVATE = new Set(['reizen']);
+  const CHUNK = 1500000;   // tekens per stukje van een bestand
   const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // geen I, O, 0, 1
 
   // ---------------------------------------------------------------- koppelcode
@@ -77,10 +83,10 @@
 
   // ---------------------------------------------------------------- toestand
   const listeners = new Set();
-  const emptyData = () => ({ lijsten: {}, items: {}, leden: {} });
+  const emptyData = () => Object.fromEntries(KINDS.map(k => [k, {}]));
   let cfg = D.get('samen-cfg', null);
   let data = Object.assign(emptyData(), D.get('samen-data', null) || {});
-  let queue = D.get('samen-queue', []) || [];      // [{k, id, n}] (n = volgnummer)
+  let queue = D.get('samen-queue', []) || [];      // [{k, id, n, del}] (n = volgnummer, del = verwijderen)
   let seq = queue.reduce((m, q) => Math.max(m, q.n || 0), 0);
   let keys = null;                                 // {room, key}
   let raw = emptyData();                           // zoals het in Firebase staat: {kind: {id: {v, t}}}
@@ -88,9 +94,10 @@
   let synced = false;                              // eerste volledige stand binnen?
   let status = 'uit', statusMsg = '', lastSync = D.get('samen-last', 0) || 0;
   let es = null, esFails = 0, esGotData = false, pollT = null, retryT = null, flushing = false, backoff = 2000;
+  let rulesOld = false;   // database-regels kennen de nieuwe soorten nog niet
 
   const emit = what => { saveDash(); listeners.forEach(fn => { try { fn(what || 'data'); } catch (e) { console.error(e); } }); };
-  const saveData = () => D.set('samen-data', data);
+  const saveData = () => D.set('samen-data', Object.fromEntries(KINDS.filter(k => !PRIVATE.has(k)).map(k => [k, data[k]])));
   const saveQueue = () => D.set('samen-queue', queue);
   const setStatus = (s, msg) => { if (s === status && (msg || '') === statusMsg) return; status = s; statusMsg = msg || ''; emit('status'); };
   const pending = () => new Set(queue.map(q => q.k + '/' + q.id)).size;
@@ -230,35 +237,56 @@
   }
 
   // ---------------------------------------------------------------- versturen
+  async function send(body) {
+    const r = await fetch(base() + '.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return r.status;
+  }
   async function flush() {
     if (flushing || !keys || !queue.length || navigator.onLine === false) return;
     flushing = true;
     const batch = queue.slice();
-    const maxN = batch.reduce((m, q) => Math.max(m, q.n), 0);
     try {
-      const body = {};
+      // Samen-lijsten en de rest apart versturen: als de regels in Firebase de nieuwe soorten nog niet kennen,
+      // blijven de lijsten gewoon werken.
+      const groups = [{}, {}], sentN = [new Set(), new Set()];
       const seen = new Set();
-      for (const q of batch) {
-        const tag = q.k + '/' + q.id;
+      for (const q of batch.slice().reverse()) {   // laatste wijziging per item telt
+        const tag = q.k + '/' + q.id, g = BASIC.has(q.k) ? 0 : 1;
+        sentN[g].add(q.n);
         if (seen.has(tag)) continue;
         seen.add(tag);
-        const obj = data[q.k][q.id];
+        const obj = data[q.k] && data[q.k][q.id];
         if (obj) {
           const v = await seal(keys.key, obj);
-          body[tag] = { v, t: obj.t || Date.now() };
+          groups[g][tag] = { v, t: obj.t || Date.now() };
           seenV[tag] = v;
-        } else { body[tag] = null; }
+        } else if (q.del) groups[g][tag] = null;
+        // anders: inhoud niet meer bekend (app herstart); deel.js stuurt het later opnieuw
       }
-      const r = await fetch(base() + '.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (r.status === 401 || r.status === 403) { setStatus('fout', 'Opslaan geweigerd door de database. Kloppen de regels in Firebase?'); flushing = false; return; }
-      if (!r.ok) throw new Error('fout ' + r.status);
-      Object.entries(body).forEach(([tag, val]) => { const [k, id] = tag.split('/'); if (val) raw[k][id] = val; else delete raw[k][id]; });
-      queue = queue.filter(q => q.n > maxN);
+      const done = new Set();
+      let refused = '';
+      for (const g of [0, 1]) {
+        if (!sentN[g].size) continue;
+        if (g === 1 && rulesOld && Date.now() - rulesOld < 60000) continue;
+        if (Object.keys(groups[g]).length) {
+          const st = await send(groups[g]);
+          if (st === 401 || st === 403 || st === 400) {
+            if (g === 1) { rulesOld = Date.now(); refused = 'De database-regels in Firebase kennen recepten/reizen/aftellen nog niet. Plak de nieuwe regels in Firebase.'; continue; }
+            setStatus('fout', 'Opslaan geweigerd door de database. Kloppen de regels in Firebase?'); flushing = false; return;
+          }
+          if (st < 200 || st >= 300) throw new Error('fout ' + st);
+          if (g === 1) rulesOld = false;
+          Object.entries(groups[g]).forEach(([tag, val]) => { const [k, id] = tag.split('/'); if (val) raw[k][id] = val; else delete raw[k][id]; });
+        }
+        sentN[g].forEach(n => done.add(n));
+      }
+      queue = queue.filter(q => !done.has(q.n));
       saveQueue();
       flushing = false;
+      if (refused) { setStatus('fout', refused); clearTimeout(flush._t); flush._t = setTimeout(flush, 60000); }
       emit('sync');
-      if (queue.length) flush();
-      else if (status !== 'live') startStream();
+      if (queue.some(q => BASIC.has(q.k) || !rulesOld)) flush();
+      else if (!refused && status !== 'live') startStream();
     } catch (e) {
       flushing = false;
       setStatus(navigator.onLine === false ? 'offline' : 'verbinden');
@@ -276,13 +304,47 @@
     return obj;
   }
   function del(kind, id) {
-    if (!data[kind][id]) return;
+    if (!data[kind][id] && !PRIVATE.has(kind)) return;
     delete data[kind][id];
-    queue.push({ k: kind, id, n: ++seq });
+    queue.push({ k: kind, id, n: ++seq, del: true });
     saveData(); saveQueue(); emit('data');
     flush();
   }
   const update = (kind, id, patch) => data[kind][id] ? put(kind, id, Object.assign({}, data[kind][id], patch)) : null;
+
+  // ---------------------------------------------------------------- bestanden (documenten, foto's)
+  const sbase = id => cfg.url + '/s/' + keys.room + '/' + id;
+  /** Bestand delen: inhoud (base64 of andere tekst) in versleutelde stukjes, daarna de beschrijving. */
+  async function uploadFile(id, meta, text) {
+    if (!keys) throw new Error('niet gekoppeld');
+    const n = Math.max(1, Math.ceil(text.length / CHUNK));
+    for (let i = 0; i < n; i++) {
+      const v = await seal(keys.key, { d: text.slice(i * CHUNK, (i + 1) * CHUNK) });
+      const r = await fetch(sbase(id) + '/' + i + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v, t: Date.now() }) });
+      if (r.status === 401 || r.status === 403 || r.status === 400) { rulesOld = Date.now(); throw new Error('regels'); }
+      if (!r.ok) throw new Error('fout ' + r.status);
+    }
+    put('bestanden', id, Object.assign({}, meta, { delen: n, lengte: text.length }));
+  }
+  async function downloadFile(id) {
+    const meta = data.bestanden[id];
+    if (!meta || !keys) return null;
+    const r = await fetch(sbase(id) + '.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('fout ' + r.status);
+    const parts = (await r.json()) || {};
+    let out = '';
+    for (let i = 0; i < meta.delen; i++) {
+      const node = Array.isArray(parts) ? parts[i] : parts[i] || parts[String(i)];
+      if (!node) return null;   // nog niet helemaal geüpload
+      out += (await open(keys.key, node.v)).d;
+    }
+    return out.length === meta.lengte ? out : null;
+  }
+  async function deleteFile(id) {
+    if (!keys) return;
+    del('bestanden', id);
+    try { await fetch(sbase(id) + '.json', { method: 'DELETE' }); } catch (e) {}
+  }
 
   // ---------------------------------------------------------------- samenvatting voor startscherm
   function summary() {
@@ -429,7 +491,7 @@
     get data() { return data; },
     get status() { return { status, msg: statusMsg, pending: pending(), lastSync, synced }; },
     on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    start, stop, peek, preview, setup, leave, setMe, invite, put, del, update, summary,
+    start, stop, peek, preview, setup, uploadFile, downloadFile, deleteFile, KINDS, leave, setMe, invite, put, del, update, summary,
     newCode, prettyCode, parseInvite, urlOk, cleanUrl, flush,
     _derive: derive, _seal: seal, _open: open
   };

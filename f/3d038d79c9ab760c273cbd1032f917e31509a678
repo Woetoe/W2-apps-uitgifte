@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reizen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#2ec4b6;--acc-ink:#06231f}
+.hero{border-radius:22px;padding:18px;background:linear-gradient(135deg,#13534b,#0f2f2c 70%);border:1px solid #1d6b62;display:flex;flex-direction:column;gap:6px}
+.hero .em{font-size:40px;line-height:1}
+.hero b{font:800 28px/1.1 var(--f-display);letter-spacing:-.01em}
+.hero .when{color:#bfe9e3}
+.hero .count{display:flex;align-items:baseline;gap:8px;margin-top:8px}
+.hero .count b{font-size:44px;color:#fff}
+.hero .count span{color:#bfe9e3;font-weight:600}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.sec h2{margin:0}
+.sec .btn{min-height:38px;padding:6px 12px;font-size:14px}
+.doc .ico{background:#13534b;color:#bff3ec}
+.code{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.code:last-child{border-bottom:0}
+.code .k{color:var(--muted);font-size:13px;font-weight:600;min-width:96px}
+.code .v{flex:1;font-weight:700;font-size:17px;user-select:text;-webkit-user-select:text;word-break:break-word}
+.code button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-height:36px;padding:0 10px;font-size:13px;font-weight:700;cursor:pointer}
+.notes{white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+.tpl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tpl label{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:600;cursor:pointer}
+.tpl input{width:20px;height:20px;accent-color:var(--acc)}
+.emojis{display:flex;gap:6px;flex-wrap:wrap}
+.emojis button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;cursor:pointer}
+.emojis button.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--bg))}
+.addline{display:flex;gap:8px;margin-top:8px}
+.addline .in{min-height:44px}
+.addline .btn{min-height:44px;padding:0 14px}
+.past{opacity:.7}
+.xl{margin-top:16px}
+.imp .row{cursor:default}
+.imp .warn{margin-top:10px;font-size:13px;color:var(--muted);max-height:120px;overflow:auto}
+.imp .warn div{padding:2px 0}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#tools" aria-label="Terug"></a><h1 id="title">Reizen</h1><button class="ib" id="lockbtn" type="button" aria-label="Slot" hidden></button></div>
+<main class="page" id="app"></main>
+<button class="fab" id="fab" type="button" aria-label="Nieuwe reis" hidden></button>
+<input type="file" id="pick" multiple accept="application/pdf,image/*,.pkpass,.html,.txt,.doc,.docx,.ics">
+<input type="file" id="pickx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="xlsx.js"></script>
+<script>
+const { esc, $, icon, sheet, confirm, toast } = UI;
+const D = W2D, AREA = 'reizen';
+const app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+D.recent('reizen');
+
+const EMOJI = ['✈️', '🏝️', '🏔️', '🌴', '⛷️', '🏕️', '🚗', '🚆', '🏙️', '🥋', '🛳️', '🌍'];
+const TEMPLATES = {
+  basis: ['Paspoort of ID-kaart', 'Telefoon + oplader', 'Powerbank', 'Bankpas / creditcard', 'Medicijnen', 'Toilettas', 'Ondergoed en sokken', 'Pyjama', 'Oordopjes', 'Zonnebril'],
+  zon: ['Zwemkleding', 'Zonnebrand', 'After sun', 'Snorkelset', 'Waterschoenen', 'Pet of hoed', 'Korte broeken', 'Slippers', 'Muggenspray', 'Strandlaken'],
+  kou: ['Thermo-ondergoed', 'Muts', 'Handschoenen', 'Sjaal', 'Wollen sokken', 'Winterjas', 'Waterdichte schoenen', 'Fleece', 'Lippenbalsem', 'Handwarmers'],
+  stad: ['Goede wandelschoenen', 'Dagrugzak', 'Regenjas of paraplu', 'Stekkeradapter', 'Plattegrond offline'],
+  vliegen: ['Instapkaart', 'Vloeistoffen in zakje', 'Nekkussen', 'Koptelefoon', 'Pen (voor formulieren)']
+};
+const TPL_NAMES = { basis: 'Basis', zon: 'Zon & strand', kou: 'Kou & sneeuw', stad: 'Stedentrip', vliegen: 'Vliegen' };
+const TODO = ['Reisverzekering checken', 'Online inchecken', 'Vervoer naar vliegveld regelen', 'Planten water / oppas', 'Geld wisselen of pinpas op wereld zetten'];
+
+let data = { trips: [] };
+let cur = null; // id van open reis
+
+// ---------------------------------------------------------------- opslag
+async function load() { data = await D.secret.get(AREA, { trips: [] }); if (!data.trips) data.trips = []; }
+async function save() {
+  try { await D.secret.set(AREA, data); }
+  catch (e) { if (e instanceof D.Locked) { toast('Op slot: ontgrendel eerst.'); start(); return; } toast('Opslaan lukte niet: ' + e.message); }
+  // Samenvatting voor het overzicht (zonder documenten of codes)
+  D.set('dash-reizen', data.trips.map(t => ({
+    id: t.id, naam: t.naam, emoji: t.emoji, van: t.van, tot: t.tot,
+    pack: [t.pak.filter(x => x.ok).length, t.pak.length], todo: [t.todo.filter(x => x.ok).length, t.todo.length], docs: t.docs.length
+  })));
+}
+const trip = id => data.trips.find(t => t.id === id);
+const sorted = () => data.trips.slice().sort((a, b) => (a.van || '9') < (b.van || '9') ? -1 : 1);
+
+// ---------------------------------------------------------------- weergave
+function render() {
+  const t = cur && trip(cur);
+  $('#fab').hidden = !!t;
+  $('#title').textContent = t ? t.naam : 'Reizen';
+  t ? renderTrip(t) : renderList();
+}
+
+function whenText(t) {
+  if (!t.van) return 'Nog geen datum';
+  const a = D.date.nice(t.van, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  return t.tot && t.tot !== t.van ? a + ' – ' + D.date.nice(t.tot, { weekday: 'short', day: 'numeric', month: 'long' }) : a;
+}
+
+function renderList() {
+  const today = D.date.today();
+  const up = sorted().filter(t => !t.tot || t.tot >= today || !t.van);
+  const past = sorted().filter(t => t.tot && t.tot < today).reverse();
+  if (!data.trips.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen reizen</b>Maak een reis aan en zet er je tickets, boekingscodes en paklijst in. Op het overzicht tel je dan af.<br><button class="btn" data-act="new" type="button">${icon('plus')}Reis toevoegen</button>
+      <div class="btns xl"><button class="btn q" data-act="xlsx" type="button">${icon('upload')}Uit Excel laden</button><button class="btn q" data-act="xlsxtpl" type="button">${icon('file')}Invulbestand</button></div></div>`;
+    return;
+  }
+  const row = t => {
+    const d = D.date.days(t.van), dt = D.date.days(t.tot || t.van);
+    const status = d == null ? '' : d > 0 ? `<span class="pill acc">${D.date.rel(d)}</span>` : dt >= 0 ? '<span class="pill acc">nu</span>' : '';
+    const pk = t.pak.length ? ` · ${t.pak.filter(x => x.ok).length}/${t.pak.length} ingepakt` : '';
+    return `<button class="row" data-open="${t.id}" type="button"><span class="ico">${t.emoji || '✈️'}</span><span class="grow"><b>${esc(t.naam)}</b><span class="sub">${esc(whenText(t))}${pk}</span></span><span class="end">${status}</span></button>`;
+  };
+  app.innerHTML = (up.length ? `<div class="list">${up.map(row).join('')}</div>` : '<p class="muted">Geen komende reizen.</p>') +
+    (past.length ? `<h2>Geweest <small>${past.length}</small></h2><div class="list past">${past.map(row).join('')}</div>` : '') +
+    `<div class="btns xl"><button class="btn q" data-act="xlsx" type="button">${icon('upload')}Uit Excel laden</button><button class="btn q" data-act="xlsxtpl" type="button">${icon('file')}Invulbestand</button></div>
+    <p class="muted small">Vul reizen, gegevens, paklijst en te-regelen in Excel in en laad ze hier in één keer. Bestaat een reis al (zelfde naam), dan wordt hij bijgewerkt.</p>`;
+}
+
+function checklist(list, kind) {
+  return `<div class="card">${list.map((x, i) => `<div class="check${x.ok ? ' on' : ''}" data-tick="${kind}:${i}"><span class="box">${x.ok ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}</span><button class="x" data-del="${kind}:${i}" type="button" aria-label="Weghalen">${icon('x', 'width="16" height="16"')}</button></div>`).join('') || '<span class="muted small">Nog leeg.</span>'}
+    <div class="addline"><input class="in" data-add="${kind}" placeholder="${kind === 'pak' ? 'Iets toevoegen aan de paklijst' : 'Iets om te regelen'}" enterkeyhint="done"><button class="btn q" data-addbtn="${kind}" type="button" aria-label="Toevoegen">${icon('plus')}</button></div></div>`;
+}
+
+function renderTrip(t) {
+  const d = D.date.days(t.van), dt = D.date.days(t.tot || t.van);
+  let count = '';
+  if (d != null && d > 0) count = `<div class="count"><b>${d}</b><span>${d === 1 ? 'nachtje slapen' : 'nachtjes slapen'}</span></div>`;
+  else if (d != null && dt >= 0) count = `<div class="count"><b>Dag ${1 - d}</b><span>van ${D.date.days(t.tot) - d + 1}</span></div>`;
+  const pk = t.pak.filter(x => x.ok).length;
+  app.innerHTML = `
+    <div class="hero"><span class="em">${t.emoji || '✈️'}</span><b>${esc(t.naam)}</b><span class="when">${esc(whenText(t))}${t.bestemming ? ' · ' + esc(t.bestemming) : ''}</span>${count}</div>
+    <div class="btns"><button class="btn q" data-act="edit" type="button">${icon('edit')}Bewerken</button></div>
+
+    <div class="sec"><h2>Documenten <small>${t.docs.length || ''}</small></h2><button class="btn" data-act="adddoc" type="button">${icon('upload')}Toevoegen</button></div>
+    <p class="muted small" style="margin:-6px 0 0">Tickets, instapkaarten, hotelboeking. Kies ze uit je Google Drive of telefoon; ze worden versleuteld bewaard en werken ook zonder internet.</p>
+    <div class="list">${t.docs.map((f, i) => `<button class="row doc" data-doc="${i}" type="button"><span class="ico">${icon(/^image\//.test(f.mime) ? 'file' : 'file')}</span><span class="grow"><b>${esc(f.titel || f.name)}</b><span class="sub">${esc(f.soort || 'Document')} · ${UI.fmtSize(f.size || 0)}</span></span><span class="end" data-docmenu="${i}" role="button" aria-label="Meer">⋯</span></button>`).join('')}</div>
+
+    <div class="sec"><h2>Belangrijke gegevens</h2><button class="btn q" data-act="addcode" type="button">${icon('plus')}Toevoegen</button></div>
+    <div class="card">${t.codes.map((c, i) => `<div class="code"><span class="k">${esc(c.label)}</span><span class="v">${esc(c.waarde)}</span><button data-copy="${i}" type="button">Kopieer</button><button data-codemenu="${i}" type="button" aria-label="Meer">⋯</button></div>`).join('') || '<span class="muted small">Vluchtnummer, boekingscode, adres van het hotel, huurauto…</span>'}</div>
+
+    <div class="sec"><h2>Paklijst <small>${t.pak.length ? pk + '/' + t.pak.length : ''}</small></h2><button class="btn q" data-act="tpl" type="button">Lijst erbij</button></div>
+    ${t.pak.length ? `<div class="bar"><i style="width:${Math.round(pk / t.pak.length * 100)}%"></i></div>` : ''}
+    ${checklist(t.pak, 'pak')}
+
+    <h2>Te regelen <small>${t.todo.length ? t.todo.filter(x => x.ok).length + '/' + t.todo.length : ''}</small></h2>
+    ${checklist(t.todo, 'todo')}
+
+    <div class="sec"><h2>Notities</h2><button class="btn q" data-act="notes" type="button">${icon('edit')}Bewerken</button></div>
+    <div class="card notes">${t.notities ? esc(t.notities) : '<span class="muted small">Adressen, telefoonnummers, plannen…</span>'}</div>
+    <button class="btn danger wide" data-act="delete" type="button" style="margin-top:12px">${icon('trash')}Reis verwijderen</button>`;
+}
+
+// ---------------------------------------------------------------- formulieren
+function tripForm(t) {
+  t = t || {};
+  const em = t.emoji || '✈️';
+  const tplBoxes = t.id ? '' : `<div><div class="muted small" style="font-weight:600;margin-bottom:6px">Paklijst om mee te beginnen</div><div class="tpl">${Object.keys(TEMPLATES).map(k => `<label><input type="checkbox" name="tpl_${k}" ${k === 'basis' ? 'checked' : ''}>${TPL_NAMES[k]}</label>`).join('')}</div></div>`;
+  const s = sheet(t.id ? 'Reis bewerken' : 'Nieuwe reis', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(t.naam || '')}" placeholder="Bijv. Bonaire" autocomplete="off"></label>
+    <div class="emojis">${EMOJI.map(e => `<button type="button" data-em="${e}" class="${e === em ? 'on' : ''}">${e}</button>`).join('')}</div>
+    <input type="hidden" name="emoji" value="${em}">
+    <label class="f">Bestemming (optioneel)<input class="in" name="bestemming" value="${esc(t.bestemming || '')}" placeholder="Bijv. Kralendijk"></label>
+    <div class="grid2"><label class="f">Vertrek<input class="in" type="date" name="van" value="${esc(t.van || '')}"></label><label class="f">Terug<input class="in" type="date" name="tot" value="${esc(t.tot || '')}"></label></div>
+    ${tplBoxes}`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: t.id ? 'Bewaren' : 'Aanmaken', value: 'ok', check: f => !f.naam.trim() ? 'Geef de reis een naam.' : (f.van && f.tot && f.tot < f.van ? 'Terug ligt vóór vertrek.' : '') }], { focus: !t.id });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-em]'); if (!b) return;
+    UI.$$('[data-em]', s.el).forEach(x => x.classList.toggle('on', x === b));
+    $('[name=emoji]', s.el).value = b.dataset.em;
+  });
+  return s.done;
+}
+
+async function newTrip() {
+  const r = await tripForm();
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  const pak = [];
+  Object.keys(TEMPLATES).forEach(k => { if (f['tpl_' + k]) TEMPLATES[k].forEach(x => pak.includes(x) || pak.push(x)); });
+  const t = { id: D.uid(), naam: f.naam.trim(), emoji: f.emoji, bestemming: f.bestemming.trim(), van: f.van, tot: f.tot || f.van, notities: '', docs: [], codes: [],
+    pak: pak.map(x => ({ t: x, ok: false })), todo: TODO.map(x => ({ t: x, ok: false })), made: Date.now() };
+  data.trips.push(t);
+  await save();
+  open(t.id);
+}
+
+function open(id) { cur = id; history.replaceState(null, '', id ? '#' + id : '#'); window.scrollTo(0, 0); render(); }
+window.UIback = () => { if (cur) { open(null); return true; } return false; };
+$('#back').addEventListener('click', e => { if (cur) { e.preventDefault(); open(null); } });
+
+// ---------------------------------------------------------------- acties
+let pickFor = null;
+$('#pick').addEventListener('change', async e => {
+  const t = trip(pickFor), list = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!t || !list.length) return;
+  toast(list.length > 1 ? `${list.length} bestanden bewaren…` : 'Bewaren…', 8000);
+  try {
+    for (const file of list) {
+      if (file.size > 25 * 1048576) { toast(file.name + ' is groter dan 25 MB, overgeslagen.'); continue; }
+      const f = await D.files.put(AREA, file);
+      f.titel = file.name.replace(/\.[^.]+$/, '');
+      f.soort = guessKind(file.name);
+      t.docs.push(f);
+    }
+    await save();
+    toast('Bewaard');
+  } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Bewaren lukte niet: ' + err.message); }
+  render();
+});
+function guessKind(n) {
+  n = n.toLowerCase();
+  if (/board|instap|ticket|e-?ticket|vlucht|flight|klm|tui|transavia|corendon|sas|norwegian/.test(n)) return 'Vlucht';
+  if (/hotel|booking|airbnb|resort|apartment|accommodat|verblijf/.test(n)) return 'Verblijf';
+  if (/huur|rental|car|auto|hertz|avis|sixt/.test(n)) return 'Huurauto';
+  if (/verzeker|insurance|polis/.test(n)) return 'Verzekering';
+  return 'Document';
+}
+
+app.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act],[data-open],[data-doc],[data-docmenu],[data-tick],[data-del],[data-addbtn],[data-copy],[data-codemenu]');
+  if (!el) return;
+  const t = cur && trip(cur);
+  const ds = el.dataset;
+  if (ds.open) return open(ds.open);
+  if (ds.act === 'new') return newTrip();
+  if (ds.act === 'xlsx') { $('#pickx').click(); return; }
+  if (ds.act === 'xlsxtpl') return saveTemplate();
+  if (!t) return;
+  if (ds.docmenu != null) { e.stopPropagation(); return docMenu(t, +ds.docmenu); }
+  if (ds.doc != null) {
+    try { await D.files.open(AREA, t.docs[+ds.doc]); } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Openen lukte niet: ' + err.message); }
+    return;
+  }
+  if (ds.tick) {
+    if (e.target.closest('[data-del]')) return;
+    const [k, i] = ds.tick.split(':'); t[k][+i].ok = !t[k][+i].ok; await save(); return render();
+  }
+  if (ds.del) { const [k, i] = ds.del.split(':'); t[k].splice(+i, 1); await save(); return render(); }
+  if (ds.addbtn) return addItem(t, ds.addbtn);
+  if (ds.copy != null) { copy(t.codes[+ds.copy].waarde); return; }
+  if (ds.codemenu != null) return codeForm(t, +ds.codemenu);
+  switch (ds.act) {
+    case 'edit': {
+      const r = await tripForm(t);
+      if (r.value !== 'ok') return;
+      Object.assign(t, { naam: r.form.naam.trim(), emoji: r.form.emoji, bestemming: r.form.bestemming.trim(), van: r.form.van, tot: r.form.tot || r.form.van });
+      await save(); return render();
+    }
+    case 'adddoc': pickFor = t.id; $('#pick').click(); return;
+    case 'addcode': return codeForm(t, -1);
+    case 'tpl': {
+      const r = await sheet('Lijst erbij', `<div class="tpl">${Object.keys(TEMPLATES).map(k => `<label><input type="checkbox" name="tpl_${k}">${TPL_NAMES[k]}</label>`).join('')}</div>`,
+        [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok' }]).done;
+      if (r.value !== 'ok') return;
+      Object.keys(TEMPLATES).forEach(k => { if (r.form['tpl_' + k]) TEMPLATES[k].forEach(x => t.pak.some(p => p.t === x) || t.pak.push({ t: x, ok: false })); });
+      await save(); return render();
+    }
+    case 'notes': {
+      const r = await sheet('Notities', `<textarea class="in" name="n" style="min-height:220px">${esc(t.notities || '')}</textarea>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+      if (r.value !== 'ok') return;
+      t.notities = r.form.n; await save(); return render();
+    }
+    case 'delete': {
+      if (!(await confirm(`<b>${esc(t.naam)}</b> verwijderen, met alle ${t.docs.length} documenten?`, 'Verwijderen', true))) return;
+      for (const f of t.docs) { try { await D.files.del(AREA, f.id); } catch (err) {} }
+      data.trips = data.trips.filter(x => x !== t);
+      await save(); return open(null);
+    }
+  }
+});
+app.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.dataset.add) return;
+  const t = cur && trip(cur); if (t) addItem(t, e.target.dataset.add);
+});
+async function addItem(t, kind) {
+  const inp = $(`[data-add="${kind}"]`);
+  const v = inp.value.trim(); if (!v) return;
+  t[kind].push({ t: v, ok: false });
+  await save(); render();
+  const again = $(`[data-add="${kind}"]`); again && again.focus();
+}
+function copy(text) {
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Gekopieerd'), () => toast(text));
+}
+
+async function docMenu(t, i) {
+  const f = t.docs[i];
+  const kinds = ['Vlucht', 'Verblijf', 'Huurauto', 'Verzekering', 'Excursie', 'Document'];
+  const r = await sheet(f.titel || f.name, `
+    <label class="f">Naam<input class="in" name="titel" value="${esc(f.titel || f.name)}"></label>
+    <label class="f">Soort<select class="in" name="soort">${kinds.map(k => `<option ${k === (f.soort || 'Document') ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <span class="muted small">${esc(f.name)} · ${UI.fmtSize(f.size || 0)}</span>`,
+  [{ label: 'Verwijderen', value: 'del', kind: 'danger' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value === 'ok') { f.titel = r.form.titel.trim() || f.name; f.soort = r.form.soort; await save(); render(); }
+  if (r.value === 'del' && await confirm(`<b>${esc(f.titel || f.name)}</b> verwijderen?`, 'Verwijderen', true)) {
+    try { await D.files.del(AREA, f.id); } catch (err) {}
+    t.docs.splice(i, 1); await save(); render();
+  }
+}
+
+async function codeForm(t, i) {
+  const c = i >= 0 ? t.codes[i] : { label: '', waarde: '' };
+  const sug = ['Vluchtnummer heen', 'Vluchtnummer terug', 'Boekingscode', 'Hotel', 'Adres', 'Huurauto', 'Telefoon'];
+  const r = await sheet(i >= 0 ? 'Gegeven bewerken' : 'Gegeven toevoegen', `
+    <label class="f">Wat<input class="in" name="label" list="sug" value="${esc(c.label)}" placeholder="Bijv. Boekingscode"><datalist id="sug">${sug.map(x => `<option value="${x}">`).join('')}</datalist></label>
+    <label class="f">Waarde<input class="in" name="waarde" value="${esc(c.waarde)}" placeholder="Bijv. KL1234 of ABC12D" autocomplete="off"></label>`,
+  (i >= 0 ? [{ label: 'Verwijderen', value: 'del', kind: 'danger' }] : [{ label: 'Annuleren', value: null, kind: 'q' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.label.trim() || !f.waarde.trim() ? 'Vul beide in.' : '' }]), { focus: true }).done;
+  if (r.value === 'ok') { const n = { label: r.form.label.trim(), waarde: r.form.waarde.trim() }; i >= 0 ? (t.codes[i] = n) : t.codes.push(n); }
+  else if (r.value === 'del') t.codes.splice(i, 1);
+  else return;
+  await save(); render();
+}
+
+$('#fab').onclick = newTrip;
+
+// ---------------------------------------------------------------- Excel-import
+const nkey = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+const isEmoji = s => /\p{Extended_Pictographic}/u.test(s) && s.length <= 8 && !/[a-z]{2}/i.test(s);
+function guessEmoji(src) {
+  if (src.sjablonen.includes('zon')) return '🏝️';
+  if (src.sjablonen.includes('kou')) return '🏔️';
+  if (src.sjablonen.includes('stad')) return '🏙️';
+  return '✈️';
+}
+
+/** Eén reis uit Excel samenvoegen met wat er al is: invullen en aanvullen, nooit iets weggooien. */
+function mergeTrip(src, dry) {
+  const old = data.trips.find(x => nkey(x.naam) === nkey(src.naam));
+  const t = old ? (dry ? JSON.parse(JSON.stringify(old)) : old)
+    : { id: D.uid(), naam: src.naam, emoji: '', bestemming: '', van: '', tot: '', notities: '', docs: [], codes: [], pak: [], todo: [], made: Date.now() };
+  const n = { nieuw: !old, codes: 0, pak: 0, todo: 0 };
+  if (isEmoji(src.emoji)) t.emoji = src.emoji; else if (!old) t.emoji = guessEmoji(src);
+  if (src.bestemming) t.bestemming = src.bestemming;
+  if (src.van) t.van = src.van;
+  if (src.tot) t.tot = src.tot;
+  if (t.van && (!t.tot || t.tot < t.van)) t.tot = t.van;
+  if (src.notities) {
+    const cur = (t.notities || '').trim();
+    if (!cur) t.notities = src.notities;
+    else if (!cur.includes(src.notities.trim())) t.notities = cur + '\n\n' + src.notities;
+  }
+  src.codes.forEach(c => {
+    const same = t.codes.find(x => nkey(x.label) === nkey(c.label) && (nkey(c.label) !== 'gegeven' || x.waarde === c.waarde));
+    if (same) { if (same.waarde !== c.waarde) { same.waarde = c.waarde; n.codes++; } }
+    else { t.codes.push({ label: c.label, waarde: c.waarde }); n.codes++; }
+  });
+  const addList = (kind, items) => items.forEach(it => {
+    const same = t[kind].find(x => nkey(x.t) === nkey(it.t));
+    if (same) { if (it.ok && !same.ok) same.ok = true; }
+    else { t[kind].push({ t: it.t, ok: !!it.ok }); n[kind]++; }
+  });
+  const tpl = [];
+  src.sjablonen.forEach(k => (TEMPLATES[k] || []).forEach(x => tpl.push({ t: x, ok: false })));
+  addList('pak', tpl.concat(src.pak));
+  addList('todo', !old && !src.todo.length ? TODO.map(x => ({ t: x, ok: false })) : src.todo);
+  if (!old && !dry) data.trips.push(t);
+  n.trip = t;
+  return n;
+}
+
+$('#pickx').addEventListener('change', async e => {
+  const file = (e.target.files || [])[0];
+  e.target.value = '';
+  if (!file) return;
+  let res;
+  try { res = await XLSX.parse(await file.arrayBuffer()); }
+  catch (err) { toast('Inlezen lukte niet: ' + err.message, 6000); return; }
+  if (!res.trips.length) { toast('Geen reizen gevonden in ' + file.name + '.', 5000); return; }
+  const prev = res.trips.map(src => mergeTrip(src, true));
+  const what = p => [p.codes && `${p.codes} gegevens`, p.pak && `${p.pak} paklijst`, p.todo && `${p.todo} te regelen`].filter(Boolean).join(' · ') || 'niets nieuws';
+  const r = await sheet('Uit Excel laden', `<div class="imp">
+    <p class="muted small" style="margin-top:0">${esc(file.name)}</p>
+    <div class="list">${prev.map(p => `<div class="row"><span class="ico">${p.trip.emoji || '✈️'}</span><span class="grow"><b>${esc(p.trip.naam)}</b><span class="sub">${p.nieuw ? 'Nieuw' : 'Bijwerken'} · ${esc(whenText(p.trip))}<br>${what(p)}</span></span></div>`).join('')}</div>
+    ${res.warnings.length ? `<div class="warn"><b>Let op</b>${res.warnings.map(w => `<div>${esc(w)}</div>`).join('')}</div>` : ''}
+    <p class="muted small">Bestaande reizen worden aangevuld; er gaat niets weg. Tickets voeg je daarna per reis toe bij Documenten.</p></div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: res.trips.length > 1 ? `${res.trips.length} reizen laden` : 'Laden', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  const done = res.trips.map(src => mergeTrip(src, false));
+  await save();
+  toast(done.length > 1 ? `${done.length} reizen geladen` : `${done[0].trip.naam} geladen`);
+  if (done.length === 1) open(done[0].trip.id); else render();
+});
+
+async function saveTemplate() {
+  try {
+    const res = await fetch('invulbestand-reizen.xlsx');
+    if (!res.ok) throw new Error('invulbestand niet gevonden');
+    const st = await D.saveAs('Reizen invulbestand.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', await D.toB64(await res.blob()));
+    if (st === 'ok') toast('Invulbestand bewaard. Vul het in en kies daarna "Uit Excel laden".', 5000);
+  } catch (err) { toast('Bewaren lukte niet: ' + err.message); }
+}
+
+// ---------------------------------------------------------------- slot-knop
+function lockBtn() {
+  const b = $('#lockbtn');
+  if (!D.lock.available()) return;
+  const st = D.lock.status();
+  b.hidden = false;
+  const on = !!st.areas[AREA];
+  b.innerHTML = icon(on ? 'lock' : 'unlock');
+  b.style.color = on ? 'var(--acc)' : 'var(--muted)';
+  b.onclick = async () => {
+    if (st.can === 'none') return toast('Stel eerst een schermvergrendeling in op je telefoon.');
+    if (!(await confirm(on ? 'Slot van Reizen <b>uitzetten</b>?' : 'Reizen <b>op slot</b> zetten? Je opent ze dan met je vingerafdruk of pincode.', on ? 'Uitzetten' : 'Op slot'))) return;
+    const r = await D.lock.set(AREA, !on);
+    toast(r.ok ? (on ? 'Slot staat uit' : 'Reizen zit op slot') : 'Niet gelukt');
+    lockBtn();
+  };
+}
+
+// ---------------------------------------------------------------- start
+function start() {
+  if (UI.outdated(app)) return;
+  UI.gate(app, AREA, 'Reizen', async () => {
+    try { await load(); } catch (e) { if (e instanceof D.Locked) return start(); app.innerHTML = `<div class="notice">Lezen lukte niet: ${esc(e.message)}</div>`; return; }
+    lockBtn();
+    const h = location.hash.slice(1);
+    if (h === 'nieuw') { history.replaceState(null, '', '#'); render(); newTrip(); }
+    else open(h && trip(h) ? h : null);
+  });
+}
+start();
+</script>
+</body>
+</html>

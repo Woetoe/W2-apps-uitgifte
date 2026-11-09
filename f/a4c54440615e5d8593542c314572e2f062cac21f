@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Instellingen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+.toggle{border-bottom:1px solid var(--line);padding:12px 0}
+.toggle:last-child{border-bottom:0}
+.toggle b{display:block}
+input[type=file]{display:none}
+.prog{color:var(--muted);font-size:14px;min-height:20px}
+ul.why{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:15px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html" aria-label="Terug"></a><h1>Instellingen</h1></div>
+<main class="page" id="app">
+  <h2>Slot</h2>
+  <div class="card" id="locks"></div>
+
+  <h2>Back-up</h2>
+  <div class="card">
+    <p style="margin-top:0">Eén versleuteld bestand met al je gegevens: reizen, kluis, recepten, aftellers, hardlopen én de standen van je spellen. Bewaar het bijvoorbeeld in een map in je Google Drive.</p>
+    <p class="muted small" id="last"></p>
+    <div class="btns"><button class="btn" id="make" type="button"></button><button class="btn q" id="restore" type="button"></button></div>
+    <div class="prog" id="prog" aria-live="polite"></div>
+  </div>
+
+  <h2>Privacy</h2>
+  <div class="card">
+    <ul class="why">
+      <li>Alles staat alleen op deze telefoon. Er is geen account en geen server.</li>
+      <li>Iemand anders die de app installeert, begint met een lege app.</li>
+      <li>Reizen en de kluis worden versleuteld opgeslagen met een sleutel die de beveiligde chip van je telefoon nooit verlaat.</li>
+      <li>Met het slot aan opent een onderdeel pas na je vingerafdruk of pincode. Na 15 minuten, of als de app langer dan een minuut op de achtergrond staat, gaat het weer dicht.</li>
+      <li>De back-up is versleuteld met een wachtwoord dat jij kiest. Zonder dat wachtwoord is hij niet te openen, ook niet door Google.</li>
+    </ul>
+  </div>
+  <p class="muted small" id="ver" style="text-align:center"></p>
+</main>
+<input type="file" id="pick" accept=".w2backup,application/octet-stream,application/json">
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D;
+$('#back').innerHTML = icon('back');
+$('#make').innerHTML = icon('download') + 'Maken';
+$('#restore').innerHTML = icon('upload') + 'Terugzetten';
+try { const i = JSON.parse(W2Native.updateInfo()); $('#ver').textContent = 'W2 Apps 1.0.' + (i.build || '?'); } catch (e) { $('#ver').textContent = 'W2 Apps · browserversie'; }
+
+const AREAS = [['reizen', 'Reizen', 'Tickets, boekingscodes en paklijsten'], ['kluis', 'Kluis', 'Je belangrijke documenten']];
+function locks() {
+  const host = $('#locks');
+  if (D.outdated) { UI.outdated(host); return; }
+  if (!D.lock.available()) { host.innerHTML = '<span class="muted">Het slot werkt alleen in de app op je telefoon.</span>'; return; }
+  const st = D.lock.status();
+  host.innerHTML = (st.can === 'none' ? '<div class="notice" style="margin-bottom:8px">Je telefoon heeft geen schermvergrendeling. Stel eerst een pincode, patroon of vingerafdruk in via de instellingen van je telefoon; daarna kun je het slot aanzetten.</div>' : '') +
+    AREAS.map(([k, n, sub]) => `<div class="toggle"><div class="grow"><b>${n}</b><span class="muted small">${sub}</span></div><button type="button" class="sw ${st.areas[k] ? 'on' : ''}" data-area="${k}" aria-label="Slot ${n}" ${st.can !== 'ok' ? 'disabled' : ''}></button></div>`).join('') +
+    (Object.keys(st.areas).length ? `<button class="btn q wide" id="now" type="button" style="margin-top:10px">${icon('lock')}Nu op slot doen</button>` : '');
+  $$('[data-area]', host).forEach(b => b.onclick = async () => {
+    const on = !st.areas[b.dataset.area];
+    const r = await D.lock.set(b.dataset.area, on);
+    if (!r.ok && r.state !== 'cancel') toast('Niet gelukt');
+    locks();
+  });
+  const now = $('#now'); if (now) now.onclick = () => { D.lock.lockNow(); toast('Op slot'); };
+}
+locks();
+
+function last() {
+  const t = D.get('backup-last', 0);
+  $('#last').textContent = t ? 'Laatste back-up: ' + new Date(t).toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nog geen back-up gemaakt.';
+}
+last();
+
+const prog = t => { $('#prog').textContent = t || ''; };
+$('#make').onclick = async () => {
+  if (D.outdated) return toast('Werk eerst de app bij.');
+  const r = await sheet('Back-up maken', `
+    <p style="margin:0">Kies een wachtwoord. Dat heb je nodig om de back-up terug te zetten; het staat nergens anders.</p>
+    <label class="f">Wachtwoord<input class="in" name="p1" type="password" autocomplete="new-password"></label>
+    <label class="f">Nog een keer<input class="in" name="p2" type="password" autocomplete="new-password"></label>
+    <span class="muted small">Daarna kies je waar je hem bewaart: kies Drive in het menu om hem in je Google Drive te zetten.</span>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Maken', value: 'ok', check: f => f.p1.length < 6 ? 'Minstens 6 tekens.' : f.p1 !== f.p2 ? 'De wachtwoorden zijn niet gelijk.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  $('#make').disabled = true;
+  try {
+    const st = await D.backup.make(r.form.p1, prog);
+    toast(st === 'ok' ? 'Back-up bewaard' : st === 'cancel' ? 'Geannuleerd' : 'Bewaren lukte niet');
+  } catch (e) { toast('Back-up mislukt: ' + e.message); }
+  $('#make').disabled = false; prog(''); last();
+};
+$('#restore').onclick = () => { if (D.outdated) return toast('Werk eerst de app bij.'); $('#pick').click(); };
+$('#pick').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const r = await sheet('Back-up terugzetten', `
+    <p style="margin:0"><b>${esc(f.name)}</b><br><span class="muted small">Wat in de back-up staat, komt erbij of vervangt wat hier staat met dezelfde naam.</span></p>
+    <label class="f">Wachtwoord<input class="in" name="p" type="password" autocomplete="current-password"></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Terugzetten', value: 'ok', check: f2 => f2.p ? '' : 'Vul het wachtwoord in.' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  try {
+    const st = await D.backup.restore(f, r.form.p, prog);
+    toast(st === 'ok' ? 'Teruggezet' : 'Geannuleerd');
+  } catch (err) { toast(err.message); }
+  prog(''); locks();
+};
+</script>
+</body>
+</html>

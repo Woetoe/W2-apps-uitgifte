@@ -47,6 +47,8 @@
   class Locked extends Error { constructor(area) { super('LOCKED'); this.area = area; } }
   const check = (r, area) => {
     if (r === 'LOCKED') throw new Locked(area);
+    if (r === 'DENIED') throw new Error('Dit onderdeel mag niet bij de kluis.');
+    if (r === 'ERROR:KEYGONE') throw new Error('De sleutel van het slot bestaat niet meer (schermvergrendeling van de telefoon weggehaald of gewijzigd). Zet je back-up terug via Instellingen › Back-up.');
     if (typeof r === 'string' && r.startsWith('ERROR:')) throw new Error(r.slice(6));
     return r;
   };

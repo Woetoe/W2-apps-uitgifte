@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kluis</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#f2b53a;--acc-ink:#2b2414}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;min-height:38px;padding:0 14px;font-weight:700;cursor:pointer}
+.chips button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted)}
+.search .in{padding-left:40px}
+.item .ico{background:#4a3b16;color:#f8e3b0}
+.files{display:flex;flex-direction:column;gap:8px}
+.files .row{min-height:52px}
+.info{background:var(--bg);border-radius:12px;padding:12px;white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+.lockcard{display:flex;gap:12px;align-items:center}
+.lockcard svg{width:28px;height:28px;color:var(--acc);flex:none}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#tools" aria-label="Terug"></a><h1>Kluis</h1><button class="ib" id="lockbtn" type="button" aria-label="Slot" hidden></button></div>
+<main class="page" id="app"></main>
+<button class="fab" id="fab" type="button" aria-label="Document toevoegen" hidden></button>
+<input type="file" id="pick" multiple accept="application/pdf,image/*,.doc,.docx,.txt,.pkpass">
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, AREA = 'kluis';
+const app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+D.recent('kluis');
+
+const MAPPEN = ['Identiteit', 'Verzekering', 'Gezondheid', 'Wonen', 'Auto', 'Werk', 'Geld', 'Overig'];
+let data = { mappen: MAPPEN.slice(), items: [] };
+let filter = 'Alles', q = '';
+
+async function load() {
+  data = await D.secret.get(AREA, null) || { mappen: MAPPEN.slice(), items: [] };
+  data.mappen = data.mappen || MAPPEN.slice();
+  data.items = data.items || [];
+}
+async function save() {
+  try { await D.secret.set(AREA, data); }
+  catch (e) { toast(e instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Opslaan lukte niet: ' + e.message); return; }
+  // Voor het overzicht: alleen titels met een verloopdatum
+  D.set('dash-kluis', data.items.filter(i => i.verloopt).map(i => ({ titel: i.titel, verloopt: i.verloopt })));
+}
+
+function render() {
+  const lockInfo = D.lock.available() && !D.lock.isOn(AREA) && D.lock.status().can === 'ok'
+    ? `<div class="card lockcard">${icon('lock')}<div class="grow small"><b>Zet de kluis op slot</b><br><span class="muted">Dan opent hij alleen met je vingerafdruk of pincode.</span></div><button class="btn q" id="lockon" type="button">Aanzetten</button></div>` : '';
+  if (!data.items.length) {
+    app.innerHTML = lockInfo + `<div class="empty"><b>De kluis is nog leeg</b>Bewaar hier belangrijke documenten: verzekeringspas, polis, rijbewijs, garantiebewijzen. Je kiest ze uit je Google Drive of je telefoon.<br><button class="btn" data-act="add" type="button">${icon('upload')}Document toevoegen</button></div>`;
+    hook(); return;
+  }
+  const used = data.mappen.filter(m => data.items.some(i => i.map === m));
+  let list = data.items.slice();
+  if (filter !== 'Alles') list = list.filter(i => i.map === filter);
+  if (q) { const w = q.toLowerCase(); list = list.filter(i => (i.titel + ' ' + (i.notitie || '') + ' ' + i.map).toLowerCase().includes(w)); }
+  list.sort((a, b) => a.titel.localeCompare(b.titel, 'nl'));
+  app.innerHTML = lockInfo + `
+    <div class="search">${icon('search')}<input class="in" id="q" type="search" placeholder="Zoeken in de kluis" value="${esc(q)}"></div>
+    <div class="chips">${['Alles'].concat(used).map(m => `<button type="button" data-f="${esc(m)}" class="${m === filter ? 'on' : ''}">${esc(m)}</button>`).join('')}</div>
+    <div class="list">${list.map(i => {
+      const d = i.verloopt ? D.date.days(i.verloopt) : null;
+      const exp = d == null ? '' : d < 0 ? '<span class="pill warn">verlopen</span>' : d <= 60 ? `<span class="pill warn">nog ${d} d</span>` : '';
+      return `<button class="row item" data-item="${i.id}" type="button"><span class="ico">${icon(i.files.length ? 'file' : 'edit')}</span><span class="grow"><b>${esc(i.titel)}</b><span class="sub">${esc(i.map)}${i.files.length ? ' · ' + i.files.length + ' bestand' + (i.files.length > 1 ? 'en' : '') : ''}${i.verloopt ? ' · tot ' + D.date.nice(i.verloopt, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span></span><span class="end">${exp}</span></button>`;
+    }).join('') || '<p class="muted">Niets gevonden.</p>'}</div>`;
+  hook();
+}
+function hook() {
+  const qi = $('#q');
+  if (qi) qi.oninput = () => { q = qi.value; const pos = qi.selectionStart; render(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
+  const lo = $('#lockon'); if (lo) lo.onclick = () => toggleLock(true);
+}
+
+app.addEventListener('click', e => {
+  const f = e.target.closest('[data-f]'); if (f) { filter = f.dataset.f; return render(); }
+  const it = e.target.closest('[data-item]'); if (it) return openItem(data.items.find(i => i.id === it.dataset.item));
+  if (e.target.closest('[data-act=add]')) return pick(null);
+});
+
+// ---------------------------------------------------------------- toevoegen
+let pickTarget = null;
+function pick(item) { pickTarget = item; $('#pick').click(); }
+$('#fab').onclick = () => addMenu();
+async function addMenu() {
+  const r = await sheet('Toevoegen', '<span class="muted">Een bestand (pdf, foto) of alleen een gegeven, zoals een polisnummer.</span>',
+    [{ label: 'Alleen gegeven', value: 'info', kind: 'q' }, { label: icon('upload') + 'Bestand', value: 'file' }]).done;
+  if (r.value === 'file') pick(null);
+  if (r.value === 'info') { const it = await itemForm({ titel: '', map: filter !== 'Alles' ? filter : 'Overig', files: [] }, true); if (it) { data.items.push(it); await save(); render(); } }
+}
+$('#pick').addEventListener('change', async e => {
+  const list = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!list.length) return;
+  toast('Versleuteld bewaren…', 8000);
+  const saved = [];
+  try {
+    for (const file of list) {
+      if (file.size > 25 * 1048576) { toast(file.name + ' is groter dan 25 MB, overgeslagen.'); continue; }
+      saved.push(await D.files.put(AREA, file));
+    }
+  } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Bewaren lukte niet: ' + err.message); return; }
+  if (!saved.length) return;
+  if (pickTarget) { pickTarget.files.push(...saved); await save(); toast('Toegevoegd'); return openItem(pickTarget); }
+  const it = await itemForm({ titel: saved[0].name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '), map: filter !== 'Alles' ? filter : 'Overig', files: saved }, true);
+  if (!it) { for (const f of saved) { try { await D.files.del(AREA, f.id); } catch (x) {} } return; }
+  data.items.push(it); await save(); render(); toast('Bewaard in de kluis');
+});
+
+async function itemForm(it, isNew) {
+  const r = await sheet(isNew ? 'Nieuw in de kluis' : 'Bewerken', `
+    <label class="f">Titel<input class="in" name="titel" value="${esc(it.titel)}" placeholder="Bijv. Zorgpas"></label>
+    <label class="f">Map<select class="in" name="map">${data.mappen.map(m => `<option ${m === it.map ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></label>
+    <label class="f">Verloopt op (optioneel, dan zie je het op tijd op het overzicht)<input class="in" type="date" name="verloopt" value="${esc(it.verloopt || '')}"></label>
+    <label class="f">Notitie (optioneel)<textarea class="in" name="notitie" placeholder="Bijv. polisnummer, telefoonnummer bij schade">${esc(it.notitie || '')}</textarea></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.titel.trim() ? '' : 'Geef het een titel.' }]).done;
+  if (r.value !== 'ok') return null;
+  return Object.assign(it, { id: it.id || D.uid(), titel: r.form.titel.trim(), map: r.form.map, verloopt: r.form.verloopt, notitie: r.form.notitie.trim(), added: it.added || Date.now() });
+}
+
+async function openItem(it) {
+  if (!it) return;
+  const s = sheet(it.titel, `
+    <span class="muted small">${esc(it.map)}${it.verloopt ? ' · verloopt ' + D.date.nice(it.verloopt, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</span>
+    ${it.notitie ? `<div class="info">${esc(it.notitie)}</div>` : ''}
+    <div class="files">${it.files.map((f, i) => `<button class="row" data-open="${i}" type="button"><span class="ico">${icon('file')}</span><span class="grow"><b>${esc(f.name)}</b><span class="sub">${UI.fmtSize(f.size || 0)} · tik om te openen</span></span><span class="end" data-rm="${i}" role="button" aria-label="Weghalen">${icon('x', 'width="18" height="18"')}</span></button>`).join('')}</div>
+    <button class="btn q" data-addfile type="button">${icon('upload')}Bestand toevoegen</button>`,
+  [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: icon('edit') + 'Bewerken', value: 'edit', kind: 'q' }, { label: 'Sluiten', value: null }]);
+  s.el.addEventListener('click', async e => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm) {
+      e.stopPropagation();
+      const f = it.files[+rm.dataset.rm];
+      if (!(await confirm(`<b>${esc(f.name)}</b> weghalen?`, 'Weghalen', true))) return;
+      try { await D.files.del(AREA, f.id); } catch (x) {}
+      it.files.splice(+rm.dataset.rm, 1); await save(); s.close(null); render(); return openItem(it);
+    }
+    const o = e.target.closest('[data-open]');
+    if (o) { try { await D.files.open(AREA, it.files[+o.dataset.open]); } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Openen lukte niet: ' + err.message); } return; }
+    if (e.target.closest('[data-addfile]')) { s.close(null); pick(it); }
+  });
+  const r = await s.done;
+  if (r.value === 'edit') { if (await itemForm(it, false)) { await save(); render(); } }
+  if (r.value === 'del') {
+    if (!(await confirm(`<b>${esc(it.titel)}</b> met ${it.files.length} bestand(en) verwijderen?`, 'Verwijderen', true))) return;
+    for (const f of it.files) { try { await D.files.del(AREA, f.id); } catch (x) {} }
+    data.items = data.items.filter(x => x !== it); await save(); render();
+  }
+}
+
+// ---------------------------------------------------------------- slot
+async function toggleLock(on) {
+  const st = D.lock.status();
+  if (st.can === 'none') return toast('Stel eerst een schermvergrendeling in op je telefoon.');
+  const r = await D.lock.set(AREA, on);
+  toast(r.ok ? (on ? 'De kluis zit op slot' : 'Slot staat uit') : 'Niet gelukt');
+  lockBtn(); render();
+}
+function lockBtn() {
+  const b = $('#lockbtn');
+  if (!D.lock.available()) return;
+  const on = D.lock.isOn(AREA);
+  b.hidden = false;
+  b.innerHTML = icon(on ? 'lock' : 'unlock');
+  b.style.color = on ? 'var(--acc)' : 'var(--muted)';
+  b.onclick = async () => { if (await confirm(on ? 'Slot van de kluis <b>uitzetten</b>?' : 'Kluis <b>op slot</b> zetten?', on ? 'Uitzetten' : 'Op slot')) toggleLock(!on); };
+}
+
+function start() {
+  if (UI.outdated(app)) return;
+  UI.gate(app, AREA, 'De kluis', async () => {
+    try { await load(); } catch (e) { if (e instanceof D.Locked) return start(); app.innerHTML = `<div class="notice">Lezen lukte niet: ${esc(e.message)}</div>`; return; }
+    $('#fab').hidden = false;
+    lockBtn(); render();
+  });
+}
+start();
+</script>
+</body>
+</html>

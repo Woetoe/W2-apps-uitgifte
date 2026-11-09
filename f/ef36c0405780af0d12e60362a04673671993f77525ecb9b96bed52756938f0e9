@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Verbinding testen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+:root{--bg:#14161f;--panel:#1d202c;--line:#30344a;--text:#f2efe8;--muted:#a3a6b9;--ok:#4fd18b;--warn:#ffc83d;--bad:#ff7a66;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;--f-body:"Figtree",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+[hidden]{display:none!important}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) max(16px,env(safe-area-inset-left,0px))}
+.back{display:flex;align-items:center;gap:6px;color:var(--muted);font-weight:600;text-decoration:none;padding:10px 0;align-self:flex-start}
+h1{font:800 32px/1.05 var(--f-display);margin:0;letter-spacing:-.02em}
+h2{font:800 20px var(--f-display);margin:0}
+p{margin:0}
+.muted{color:var(--muted);font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.summary{display:flex;gap:12px;align-items:center;border-radius:16px;padding:14px;font-weight:700}
+.summary.ok{background:#173a2a;border:1px solid var(--ok)}
+.summary.bad{background:#3d1f1b;border:1px solid var(--bad)}
+.summary .dot{width:14px;height:14px}
+.row{display:flex;gap:12px;align-items:center;min-height:48px}
+.row+.row{border-top:1px solid var(--line);padding-top:10px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:15px}
+.row .tx small{display:block;color:var(--muted);font-size:13px;line-height:1.3}
+.btn{border:0;border-radius:12px;padding:10px 14px;min-height:44px;font-weight:700;background:#ffc83d;color:#211a02;flex:none}
+.btn.q{background:var(--bg);color:var(--text);border:1px solid var(--line)}
+.btn:disabled{opacity:.45}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.found{display:flex;flex-direction:column;gap:8px}
+.result{font:800 22px var(--f-display);text-align:center}
+.result.ok{color:var(--ok)} .result.bad{color:var(--bad)}
+.log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);background:#0e1017;border-radius:10px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;-webkit-user-select:text;user-select:text}
+details summary{cursor:pointer;font-weight:700;padding:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">‹ Spellen</a>
+  <h1>Verbinding testen</h1>
+  <p class="muted">Controleert alles wat nodig is om met andere telefoons te spelen, en test daarna echt met een tweede telefoon.</p>
+  <div id="noapp" class="card" hidden><b>Alleen in de app</b><p class="muted">Open dit scherm in W2 Apps op je telefoon.</p></div>
+  <div id="sum"></div>
+  <div class="card" id="checks"></div>
+
+  <div class="card">
+    <h2>Test met een tweede telefoon</h2>
+    <p class="muted">Open dit scherm op beide telefoons. Tik op de ene op <b>Wachten</b> en op de andere op <b>Zoeken</b>.</p>
+    <div class="two"><button class="btn" data-a="host">Wachten</button><button class="btn" data-a="join">Zoeken</button></div>
+    <p id="pstatus" class="muted"></p>
+    <div class="found" id="found"></div>
+    <div id="presult"></div>
+    <button class="btn q" data-a="stop" id="stopbtn" hidden>Stoppen</button>
+  </div>
+
+  <details class="card">
+    <summary>Logboek</summary>
+    <p class="muted">Lukt het niet? Kopieer dit en stuur het door, dan is precies te zien wat er gebeurt.</p>
+    <div class="log" id="log"></div>
+    <button class="btn q" data-a="copy">Kopiëren</button>
+  </details>
+</div>
+<script src="../w2.js"></script>
+<script>
+(function () {
+  const NET = window.W2 && W2.net, U = window.W2 && W2.update;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const NEED_NATIVE = 5;
+  if (!NET || !NET.available()) { $('noapp').hidden = false; document.querySelectorAll('[data-a]').forEach(b => b.disabled = true); return; }
+
+  const PERM = {
+    BLUETOOTH_SCAN: 'Apparaten in de buurt (zoeken)', BLUETOOTH_ADVERTISE: 'Apparaten in de buurt (zichtbaar zijn)', BLUETOOTH_CONNECT: 'Apparaten in de buurt (verbinden)',
+    NEARBY_WIFI_DEVICES: 'Wifi-apparaten in de buurt', ACCESS_COARSE_LOCATION: 'Locatie (ongeveer)', ACCESS_FINE_LOCATION: 'Locatie (precies)'
+  };
+
+  /* ---------------- controle ---------------- */
+  function row(state, title, sub, btn) {
+    return `<div class="row"><span class="dot ${state}"></span><span class="tx"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>${btn || ''}</div>`;
+  }
+  let lastLog = '';
+  function check() {
+    const d = NET.diag();
+    let html = '', bad = 0;
+    if (!d) {
+      const info = U && U.info ? U.info() : {};
+      html = row('bad', 'Oude versie van de app', `Je hebt ${info.apk ? '1.0.' + info.apk : 'een oude versie'}. Installeer de nieuwste app; daarin zitten verbeteringen voor verbinden.`, '<button class="btn" data-a="dl">Downloaden</button>');
+      $('checks').innerHTML = html;
+      $('sum').innerHTML = '<div class="summary bad"><span class="dot bad"></span>Eerst de app bijwerken</div>';
+      return;
+    }
+    if (d.native < NEED_NATIVE) { bad++; html += row('bad', 'Oude versie van de app', 'Installeer de nieuwste app.', '<button class="btn" data-a="dl">Downloaden</button>'); }
+    else html += row('ok', 'App ' + esc(d.app), esc(d.device) + ' · Android ' + esc(d.android));
+    if (d.gms === 0) html += row('ok', 'Google Play-services', 'Versie ' + esc(d.gmsVersion || '?'));
+    else { bad++; html += row('bad', 'Google Play-services', d.gms === 1 ? 'Niet aanwezig op deze telefoon: spelen met meer telefoons werkt dan niet.' : 'Moet worden bijgewerkt of aangezet (code ' + d.gms + ').', '<button class="btn q" data-a="fix" data-k="app">Openen</button>'); }
+    const missing = Object.entries(d.perms).filter(([, v]) => v.nodig && !v.ok).map(([k]) => PERM[k] || k);
+    if (!missing.length) html += row('ok', 'Toestemming', 'Apparaten in de buurt en locatie mogen.');
+    else { bad++; html += row('bad', 'Toestemming ontbreekt', esc(missing.join(', ')), '<button class="btn" data-a="perms">Toestaan</button>'); }
+    if (d.bluetooth === 'aan') html += row('ok', 'Bluetooth staat aan');
+    else if (d.bluetooth === 'geen') { bad++; html += row('bad', 'Geen Bluetooth', 'Deze telefoon heeft geen Bluetooth.'); }
+    else { bad++; html += row('bad', 'Bluetooth staat uit', 'Nodig om telefoons te vinden, ook in vliegtuigmodus.', '<button class="btn" data-a="fix" data-k="bluetooth">Aanzetten</button>'); }
+    if (d.location) html += row('ok', 'Locatie staat aan', 'Android gebruikt dit om telefoons in de buurt te vinden; er wordt niets bijgehouden.');
+    else { bad++; html += row('bad', 'Locatie staat uit', 'Zonder locatie vindt je telefoon geen andere telefoons.', '<button class="btn" data-a="fix" data-k="location">Aanzetten</button>'); }
+    if (d.wifi) html += row('ok', 'Wifi staat aan', 'Geen netwerk nodig: aan is genoeg voor een snellere verbinding.');
+    else html += row('warn', 'Wifi staat uit', 'Verbinden lukt ook zonder, maar met wifi aan gaat het sneller en stabieler.', '<button class="btn q" data-a="fix" data-k="wifi">Openen</button>');
+    $('checks').innerHTML = html;
+    $('sum').innerHTML = bad ? `<div class="summary bad"><span class="dot bad"></span>${bad} ding${bad > 1 ? 'en' : ''} nog regelen</div>` : '<div class="summary ok"><span class="dot ok"></span>Alles klaar om te verbinden</div>';
+    const lg = (d.log || []).slice().reverse().join('\n');
+    if (lg !== lastLog) { lastLog = lg; $('log').textContent = 'App ' + d.app + ' (apk ' + d.apk + ', native ' + d.native + ') · ' + d.device + ' · Android ' + d.android + ' (sdk ' + d.sdk + ') · gms ' + d.gms + ' ' + d.gmsVersion + '\nmodus ' + d.mode + ' adv ' + d.advertising + ' zoek ' + d.discovering + ' verb ' + d.connected + '\n\n' + lg; }
+  }
+
+  /* ---------------- echte test tussen twee telefoons ---------------- */
+  const T = { role: null, peer: null, sent: {}, got: 0, rtts: [], n: 12, timer: 0 };
+  function status(t) { $('pstatus').textContent = t; }
+  function result(ok, t) { $('presult').innerHTML = `<p class="result ${ok ? 'ok' : 'bad'}">${t}</p>`; }
+  function reset() { clearTimeout(T.timer); T.peer = null; T.sent = {}; T.got = 0; T.rtts = []; $('found').innerHTML = ''; }
+  function myName() { try { return localStorage.getItem('w2-name') || 'Telefoon'; } catch (e) { return 'Telefoon'; } }
+  function start(role) {
+    reset(); $('presult').innerHTML = ''; T.role = role; $('stopbtn').hidden = false;
+    NET.note('test ' + role);
+    if (role === 'host') { status('Zichtbaar maken…'); NET.host(myName()); }
+    else { status('Zoeken…'); NET.join(myName()); }
+    T.timer = setTimeout(() => { if (!T.peer) status(role === 'host' ? 'Nog niemand gevonden. Tik op de andere telefoon op Zoeken.' : 'Nog niks gevonden. Staat de andere telefoon op Wachten, en liggen ze dicht bij elkaar?'); }, 20000);
+  }
+  function ping() {
+    if (!T.peer) return;
+    let k = 0;
+    const one = () => {
+      if (!T.peer || k >= T.n) return;
+      const id = ++k; T.sent[id] = performance.now();
+      NET.send({ test: 'ping', id });
+      setTimeout(one, 150);
+    };
+    one();
+    setTimeout(() => {
+      if (!T.peer) return;
+      const ok = T.got;
+      if (ok === T.n) {
+        const avg = Math.round(T.rtts.reduce((a, b) => a + b, 0) / T.rtts.length);
+        result(true, `Gelukt: ${ok} van ${T.n} berichten heen en terug, gemiddeld ${avg} ms`);
+      } else result(ok > 0, `${ok} van ${T.n} berichten kwamen terug${ok ? '. De verbinding hapert: leg de telefoons dichter bij elkaar.' : '.'}`);
+      NET.note('ping ' + ok + '/' + T.n);
+      check();
+    }, T.n * 150 + 4000);
+  }
+  NET.on(ev => {
+    switch (ev.type) {
+      case 'hosting': status('Zichtbaar. Tik op de andere telefoon op Zoeken.'); break;
+      case 'searching': status('Zoeken naar telefoons in de buurt…'); break;
+      case 'found': {
+        if (T.role !== 'join') break;
+        status('Gevonden! Tik om te verbinden.');
+        if (!document.querySelector(`[data-id="${CSS.escape(ev.id)}"]`))
+          $('found').insertAdjacentHTML('beforeend', `<button class="btn" data-a="connect" data-id="${esc(ev.id)}">Verbinden met ${esc(ev.name || 'telefoon')}</button>`);
+        break;
+      }
+      case 'lost': { const b = document.querySelector(`[data-id="${CSS.escape(ev.id)}"]`); if (b) b.remove(); break; }
+      case 'connecting': status('Verbinden met ' + (ev.name || 'de andere telefoon') + '…'); break;
+      case 'connected':
+        T.peer = ev.id; $('found').innerHTML = '';
+        status('Verbonden met ' + (ev.name || 'de andere telefoon') + '. Berichten testen…');
+        if (T.role === 'join') ping();
+        break;
+      case 'disconnected': if (T.peer === ev.id) { T.peer = null; status('Verbinding verbroken.'); } break;
+      case 'message': {
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.test === 'ping') { NET.send({ test: 'pong', id: m.id }); if (T.role === 'host') { T.got++; status(`Verbonden. ${T.got} testberichten ontvangen en teruggestuurd.`); if (T.got === T.n) result(true, 'Gelukt: de verbinding werkt'); } }
+        else if (m.test === 'pong' && T.sent[m.id]) { T.rtts.push(performance.now() - T.sent[m.id]); delete T.sent[m.id]; T.got++; }
+        break;
+      }
+      case 'error': status(NET.explain(ev)); result(false, 'Niet gelukt'); check(); break;
+      case 'perms': case 'ready': check(); break;
+    }
+  });
+
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'fix') NET.fix(b.dataset.k);
+    else if (a === 'perms') NET.askPerms();
+    else if (a === 'dl') U && U.openReleases();
+    else if (a === 'host' || a === 'join') start(a);
+    else if (a === 'connect') { status('Verbinden…'); NET.connect(b.dataset.id); b.disabled = true; }
+    else if (a === 'stop') { NET.stop(); reset(); T.role = null; status('Gestopt.'); $('stopbtn').hidden = true; }
+    else if (a === 'copy') {
+      const t = $('log').textContent, ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); b.textContent = 'Gekopieerd'; } catch (err) {}
+      ta.remove();
+    }
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('pagehide', () => { if (T.role) NET.stop(); });
+  check();
+  setInterval(check, 2500);
+})();
+</script>
+</body>
+</html>

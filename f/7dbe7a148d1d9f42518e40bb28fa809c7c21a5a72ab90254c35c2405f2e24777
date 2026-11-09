@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hardlopen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#a7e35a;--acc-ink:#1d2c12}
+.plan{display:flex;flex-direction:column;gap:10px}
+.next{background:linear-gradient(135deg,#2f4a17,#1d2c12 75%);border:1px solid #47701f;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.next small{color:#cfe9ad;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:12px}
+.next b{font:800 26px/1.1 var(--f-display)}
+.next span{color:#dff2c6}
+.next .btn{margin-top:10px}
+.weeks{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:8px}
+.weeks i{height:8px;border-radius:4px;background:#3b5a20}
+.weeks i.d{background:var(--acc)}
+.weeks i.h{background:linear-gradient(90deg,var(--acc) 50%,#3b5a20 50%)}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font:800 22px/1.1 var(--f-display)}
+.stat span{font-size:12px;color:var(--muted)}
+.wk{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;font-weight:700;margin:10px 4px 2px}
+.log .ico{background:#2f4a17}
+/* Lopen: schermvullend */
+#run{position:fixed;inset:0;z-index:40;background:#0b1006;display:none;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 14px) 18px calc(env(safe-area-inset-bottom,0px) + 18px);gap:14px;color:#fff}
+#run.on{display:flex}
+#run.p-run{background:#1d3a0b}
+#run.p-walk{background:#0e2238}
+#run.p-warm,#run.p-cool{background:#2a1c33}
+#run .phase{font:800 44px/1 var(--f-display);text-align:center;margin-top:6vh;letter-spacing:-.01em}
+#run .sub{text-align:center;color:rgba(255,255,255,.75);font-weight:600}
+#run .clock{font:800 min(30vw,150px)/1 var(--f-display);text-align:center;font-variant-numeric:tabular-nums;letter-spacing:-.03em;margin:2vh 0}
+#run .segs{display:flex;gap:3px;height:12px}
+#run .segs i{flex:var(--w);border-radius:3px;background:rgba(255,255,255,.18);position:relative;overflow:hidden}
+#run .segs i.r{background:rgba(167,227,90,.35)}
+#run .segs i b{position:absolute;inset:0;background:#fff;width:0}
+#run .tot{display:flex;justify-content:space-between;color:rgba(255,255,255,.8);font-weight:600;font-variant-numeric:tabular-nums}
+#run .ctrl{margin-top:auto;display:flex;gap:12px}
+#run .ctrl button{flex:1;min-height:64px;border-radius:20px;border:0;font:800 18px var(--f-body);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+#run .ctrl .pp{background:#fff;color:#111;flex:2}
+#run .ctrl .sk,#run .ctrl .st{background:rgba(255,255,255,.14);color:#fff}
+#run .ctrl svg{width:26px;height:26px}
+#run .hint{text-align:center;font-size:13px;color:rgba(255,255,255,.6)}
+.feel{display:flex;gap:6px}
+.feel button{flex:1;min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:26px;cursor:pointer}
+.feel button.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--bg))}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#sport" aria-label="Terug"></a><h1>Hardlopen</h1></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="train" class="on">Trainen</button><button type="button" data-v="log">Logboek</button></div>
+  <div id="app" class="plan"></div>
+</main>
+<div id="run" role="dialog" aria-label="Training">
+  <div class="tot"><span id="r-el">0:00</span><span id="r-name"></span><span id="r-left">0:00</span></div>
+  <div class="segs" id="r-segs"></div>
+  <div class="phase" id="r-phase">Klaar?</div>
+  <div class="sub" id="r-sub"></div>
+  <div class="clock" id="r-clock">0:00</div>
+  <div class="sub" id="r-next"></div>
+  <div class="ctrl"><button class="st" id="r-stop" type="button"></button><button class="pp" id="r-pp" type="button"></button><button class="sk" id="r-skip" type="button"></button></div>
+  <div class="hint">Laat het scherm aan: met het scherm uit hoor je de piepjes niet.</div>
+</div>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+$('#back').innerHTML = icon('back');
+D.recent('hardlopen');
+
+// ---------------------------------------------------------------- schema's
+// Eigen opbouwschema: elke week drie keer dezelfde training; steeds langer hardlopen, korter wandelen.
+const START5 = [
+  { run: 60, walk: 90, n: 8 }, { run: 90, walk: 90, n: 7 }, { run: 120, walk: 90, n: 6 }, { run: 180, walk: 90, n: 5 },
+  { run: 240, walk: 90, n: 4 }, { run: 300, walk: 90, n: 4 }, { run: 420, walk: 60, n: 3 }, { run: 720, walk: 60, n: 2 }, { run: 1800, walk: 0, n: 1 }
+];
+const VERDER = [ // 5 naar 10 km: langer achter elkaar
+  { run: 1500, walk: 0, n: 1 }, { run: 900, walk: 60, n: 2 }, { run: 1800, walk: 0, n: 1 }, { run: 1200, walk: 60, n: 2 },
+  { run: 2100, walk: 0, n: 1 }, { run: 1500, walk: 60, n: 2 }, { run: 2400, walk: 0, n: 1 }, { run: 2700, walk: 0, n: 1 }, { run: 3300, walk: 0, n: 1 }
+];
+const SCHEMAS = { start5: { naam: 'Van 0 naar 5 km', weken: START5, warm: 300, cool: 300 }, verder: { naam: 'Van 5 naar 10 km', weken: VERDER, warm: 300, cool: 300 } };
+
+let data = D.get('hardlopen', null) || {};
+data = Object.assign({ doel: 3, log: [], schema: 'start5', voortgang: { start5: 0, verder: 0 }, vrij: { warm: 5, n: 6, run: 120, walk: 60, cool: 5 } }, data);
+const save = () => D.set('hardlopen', data);
+let view = location.hash === '#log' ? 'log' : 'train';
+
+const mmss = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+const dur = s => s >= 60 ? (s % 60 ? (s / 60).toString().replace('.', ',') : s / 60) + ' min' : s + ' sec';
+
+function build(w, warm, cool) {
+  const p = [];
+  if (warm) p.push({ k: 'warm', s: warm });
+  for (let i = 0; i < w.n; i++) { p.push({ k: 'run', s: w.run, i: i + 1, n: w.n }); if (w.walk && i < w.n - 1) p.push({ k: 'walk', s: w.walk }); }
+  if (cool) p.push({ k: 'cool', s: cool });
+  return p;
+}
+function describe(w) { return w.n > 1 ? `${w.n}× ${dur(w.run)} hardlopen${w.walk ? ', ' + dur(w.walk) + ' wandelen' : ''}` : `${dur(w.run)} achter elkaar hardlopen`; }
+
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', v === 'log' ? '#log' : '#'); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+function render() { view === 'log' ? renderLog() : renderTrain(); }
+
+function renderTrain() {
+  const sc = SCHEMAS[data.schema], done = data.voortgang[data.schema] || 0, total = sc.weken.length * 3;
+  const wk = Math.min(Math.floor(done / 3), sc.weken.length - 1), w = sc.weken[wk];
+  const finished = done >= total;
+  const v = data.vrij;
+  app.innerHTML = `
+    <div class="next"><small>${esc(sc.naam)} · ${finished ? 'klaar!' : `week ${wk + 1} · training ${done % 3 + 1} van 3`}</small>
+      <b>${finished ? 'Schema afgerond 🎉' : describe(w)}</b>
+      <span>${finished ? 'Kies een volgend schema of loop vrij.' : `Met ${sc.warm / 60} min wandelen vooraf en ${sc.cool / 60} min uitlopen · ${Math.round((sc.warm + sc.cool + w.n * w.run + (w.n - 1) * w.walk) / 60)} min totaal`}</span>
+      <div class="weeks">${sc.weken.map((_, i) => `<i class="${done >= (i + 1) * 3 ? 'd' : done > i * 3 ? 'h' : ''}"></i>`).join('')}</div>
+      ${finished ? '' : `<button class="btn wide" data-act="go" type="button">${icon('play')}Start training</button>`}
+    </div>
+    <div class="btns"><button class="btn q" data-act="schema" type="button">Ander schema</button>${done ? '<button class="btn q" data-act="back1" type="button">Training terug</button>' : ''}</div>
+    <h2>Vrije intervaltraining</h2>
+    <div class="card"><div class="grid2">
+      <label class="f">Rondes<input class="in" type="number" inputmode="numeric" min="1" max="40" data-v="n" value="${v.n}"></label>
+      <label class="f">Warming-up (min)<input class="in" type="number" inputmode="numeric" min="0" max="30" data-v="warm" value="${v.warm}"></label>
+      <label class="f">Hardlopen (sec)<input class="in" type="number" inputmode="numeric" min="10" max="3600" step="10" data-v="run" value="${v.run}"></label>
+      <label class="f">Wandelen (sec)<input class="in" type="number" inputmode="numeric" min="0" max="600" step="10" data-v="walk" value="${v.walk}"></label>
+      <label class="f">Uitlopen (min)<input class="in" type="number" inputmode="numeric" min="0" max="30" data-v="cool" value="${v.cool}"></label>
+    </div><button class="btn wide q" data-act="free" type="button" style="margin-top:12px">${icon('play')}Start vrije training</button></div>
+    <button class="btn q wide" data-act="watch" type="button">${icon('timer')}Gewoon lopen met stopwatch</button>`;
+}
+
+function weekStart(ds) { const d = D.date.parse(ds), dow = (d.getDay() + 6) % 7; return new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow); }
+function renderLog() {
+  const log = data.log.slice().sort((a, b) => a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (b.t || 0) - (a.t || 0));
+  const thisWeek = weekStart(D.date.today());
+  const week = log.filter(r => weekStart(r.datum) >= thisWeek);
+  const km = week.reduce((s, r) => s + (+r.km || 0), 0);
+  const allKm = log.reduce((s, r) => s + (+r.km || 0), 0);
+  let html = `<div class="stat"><div><b>${week.length}/${data.doel}</b><span>runs deze week</span></div><div><b>${km.toFixed(1).replace('.', ',')}</b><span>km deze week</span></div><div><b>${allKm.toFixed(0)}</b><span>km totaal</span></div></div>
+    <div class="btns"><button class="btn" data-act="add" type="button">${icon('plus')}Run toevoegen</button><button class="btn q" data-act="goal" type="button">Weekdoel: ${data.doel}×</button></div>`;
+  if (!log.length) html += `<div class="empty"><b>Nog geen runs</b>Na elke training vraagt de app of je hem wilt bewaren. Je kunt ook zelf een run toevoegen.</div>`;
+  let lastWk = '';
+  log.forEach(r => {
+    const ws = weekStart(r.datum), key = ws.toISOString();
+    if (key !== lastWk) {
+      lastWk = key;
+      const inW = log.filter(x => weekStart(x.datum).getTime() === ws.getTime());
+      html += `<div class="wk"><span>Week van ${ws.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</span><span>${inW.length}× · ${inW.reduce((s, x) => s + (+x.km || 0), 0).toFixed(1).replace('.', ',')} km</span></div>`;
+    }
+    const pace = r.km && r.min ? mmss(r.min * 60 / r.km) + ' /km' : '';
+    html += `<button class="row log" data-run="${r.id}" type="button"><span class="ico">${['', '😫', '😕', '🙂', '😄', '🤩'][r.gevoel || 0] || '🏃'}</span><span class="grow"><b>${r.km ? String(r.km).replace('.', ',') + ' km' : esc(r.training || 'Run')}${r.min ? ' · ' + mmss(r.min * 60) : ''}</b><span class="sub">${esc(D.date.nice(r.datum, { weekday: 'short', day: 'numeric', month: 'short' }))}${pace ? ' · ' + pace : ''}${r.km && r.training ? ' · ' + esc(r.training) : ''}${r.notitie ? ' · ' + esc(r.notitie) : ''}</span></span></button>`;
+  });
+  app.innerHTML = html;
+}
+
+app.addEventListener('change', e => {
+  const k = e.target.dataset.v; if (!k) return;
+  const n = Math.max(0, Math.round(+e.target.value || 0));
+  data.vrij[k] = n; save();
+});
+app.addEventListener('click', async e => {
+  const t = e.target.closest('[data-act],[data-run]'); if (!t) return;
+  if (t.dataset.run) return runForm(data.log.find(r => r.id === t.dataset.run));
+  const sc = SCHEMAS[data.schema];
+  switch (t.dataset.act) {
+    case 'go': {
+      const done = data.voortgang[data.schema] || 0, wk = Math.floor(done / 3);
+      return startRun(build(sc.weken[wk], sc.warm, sc.cool), `${sc.naam} · week ${wk + 1}.${done % 3 + 1}`, () => { data.voortgang[data.schema] = done + 1; save(); });
+    }
+    case 'free': {
+      const v = data.vrij;
+      if (!v.n || !v.run) return toast('Vul rondes en hardlooptijd in.');
+      return startRun(build({ run: v.run, walk: v.walk, n: v.n }, v.warm * 60, v.cool * 60), 'Vrije intervaltraining');
+    }
+    case 'watch': return startRun([{ k: 'run', s: 0 }], 'Stopwatch');
+    case 'schema': {
+      const r = sheet('Schema kiezen', `<div class="list">${Object.entries(SCHEMAS).map(([k, s]) => `<button class="row" data-s="${k}" type="button"><span class="ico">${k === data.schema ? '✅' : '🏃'}</span><span class="grow"><b>${s.naam}</b><span class="sub">${s.weken.length} weken, 3× per week · ${Math.min(data.voortgang[k] || 0, s.weken.length * 3)}/${s.weken.length * 3} gedaan</span></span></button>`).join('')}</div>`, [{ label: 'Opnieuw beginnen met dit schema', value: 'reset', kind: 'q' }]);
+      r.el.addEventListener('click', e2 => { const b = e2.target.closest('[data-s]'); if (b) { data.schema = b.dataset.s; save(); r.close(null); render(); } });
+      const res = await r.done;
+      if (res.value === 'reset' && await confirm(`<b>${SCHEMAS[data.schema].naam}</b> opnieuw beginnen bij week 1?`, 'Opnieuw')) { data.voortgang[data.schema] = 0; save(); render(); }
+      return;
+    }
+    case 'back1': data.voortgang[data.schema] = Math.max(0, (data.voortgang[data.schema] || 0) - 1); save(); return render();
+    case 'add': return runForm(null);
+    case 'goal': {
+      const r = await sheet('Weekdoel', `<label class="f">Hoe vaak per week wil je lopen?<input class="in" name="d" type="number" inputmode="numeric" min="1" max="14" value="${data.doel}"></label>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+      if (r.value === 'ok' && +r.form.d >= 1) { data.doel = Math.min(14, Math.round(+r.form.d)); save(); render(); }
+    }
+  }
+});
+
+async function runForm(r, preset) {
+  const isNew = !r;
+  r = r || Object.assign({ datum: D.date.today(), km: '', min: '', gevoel: 0, notitie: '', training: '' }, preset || {});
+  const s = sheet(isNew ? (preset ? 'Goed gedaan! Bewaren?' : 'Run toevoegen') : 'Run', `
+    <div class="grid2"><label class="f">Datum<input class="in" type="date" name="datum" value="${esc(r.datum)}"></label><label class="f">Afstand (km)<input class="in" name="km" type="text" inputmode="decimal" value="${r.km ? String(r.km).replace('.', ',') : ''}" placeholder="bv. 5,2"></label></div>
+    <label class="f">Tijd (minuten)<input class="in" name="min" type="text" inputmode="decimal" value="${r.min ? String(Math.round(r.min * 10) / 10).replace('.', ',') : ''}"></label>
+    <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Hoe ging het?</div><div class="feel">${['😫', '😕', '🙂', '😄', '🤩'].map((f, i) => `<button type="button" data-g="${i + 1}" class="${r.gevoel === i + 1 ? 'on' : ''}">${f}</button>`).join('')}</div></div>
+    <input type="hidden" name="gevoel" value="${r.gevoel || 0}">
+    <label class="f">Notitie<input class="in" name="notitie" value="${esc(r.notitie || '')}" placeholder="Route, weer, hoe voelde het"></label>`,
+  (isNew ? [{ label: preset ? 'Niet bewaren' : 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok' }]));
+  s.el.addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; $$('[data-g]', s.el).forEach(x => x.classList.toggle('on', x === b)); $('[name=gevoel]', s.el).value = b.dataset.g; });
+  const res = await s.done;
+  if (res.value === 'del') { if (await confirm('Deze run verwijderen?', 'Verwijderen', true)) { data.log = data.log.filter(x => x !== r); save(); render(); } return; }
+  if (res.value !== 'ok') return;
+  const f = res.form, num = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0; };
+  Object.assign(r, { datum: f.datum || D.date.today(), km: num(f.km), min: num(f.min), gevoel: +f.gevoel || 0, notitie: f.notitie.trim() });
+  if (isNew) { r.id = D.uid(); r.t = Date.now(); data.log.push(r); }
+  save(); if (view !== 'log' && isNew) setView('log'); else render();
+}
+
+// ---------------------------------------------------------------- lopen
+let ac = null;
+function beep(freq, ms, vol) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol || .5, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + ms / 1000);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + ms / 1000 + .05);
+  } catch (e) {}
+}
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+const NAMES = { warm: 'Wandelen', run: 'Hardlopen', walk: 'Wandelen', cool: 'Uitlopen' };
+const SUBS = { warm: 'Rustig warm worden', walk: 'Op adem komen', cool: 'Rustig uitwandelen' };
+
+let R = null;
+function startRun(phases, name, onDone) {
+  const watch = phases.length === 1 && phases[0].s === 0;
+  const total = phases.reduce((s, p) => s + p.s, 0);
+  R = { phases, name, onDone, watch, total, i: 0, elapsed: 0, last: performance.now(), paused: false, beeped: -1 };
+  $('#r-name').textContent = name;
+  $('#r-segs').innerHTML = watch ? '' : phases.map(p => `<i class="${p.k === 'run' ? 'r' : ''}" style="--w:${p.s}"><b></b></i>`).join('');
+  $('#run').classList.add('on');
+  $('#r-stop').innerHTML = icon('x') + 'Stop';
+  $('#r-skip').innerHTML = watch ? icon('check') + 'Klaar' : 'Volgende';
+  beep(880, 180); buzz(200);
+  setPP(); phaseChanged(); tick();
+  R.timer = setInterval(tick, 200);
+}
+function setPP() { $('#r-pp').innerHTML = R.paused ? icon('play') + 'Verder' : icon('pause') + 'Pauze'; }
+function phaseStart(i) { return R.phases.slice(0, i).reduce((s, p) => s + p.s, 0); }
+function phaseChanged() {
+  const p = R.phases[R.i];
+  $('#run').className = 'on p-' + p.k;
+  $('#r-phase').textContent = R.watch ? 'Lopen' : NAMES[p.k];
+  $('#r-sub').textContent = p.k === 'run' && p.n > 1 ? `Ronde ${p.i} van ${p.n}` : (SUBS[p.k] || '');
+  const nx = R.phases[R.i + 1];
+  $('#r-next').textContent = nx ? 'Hierna: ' + NAMES[nx.k].toLowerCase() + ' ' + dur(nx.s) : R.watch ? '' : 'Laatste stuk!';
+}
+function tick() {
+  if (!R) return;
+  const now = performance.now();
+  if (!R.paused) R.elapsed += (now - R.last) / 1000;
+  R.last = now;
+  if (R.watch) { $('#r-clock').textContent = mmss(R.elapsed); $('#r-el').textContent = mmss(R.elapsed); $('#r-left').textContent = ''; return; }
+  // Naar de juiste fase (ook als de telefoon even sliep)
+  let changed = false;
+  while (R.i < R.phases.length && R.elapsed >= phaseStart(R.i + 1)) { R.i++; changed = true; }
+  if (R.i >= R.phases.length) return finish(true);
+  if (changed) {
+    phaseChanged();
+    const k = R.phases[R.i].k;
+    if (k === 'run') { beep(988, 220); setTimeout(() => beep(1319, 320), 240); buzz([300, 120, 300]); }
+    else { beep(660, 420); buzz([600]); }
+  }
+  const p = R.phases[R.i], left = phaseStart(R.i + 1) - R.elapsed;
+  const sec = Math.ceil(left);
+  if (sec <= 3 && sec >= 1 && R.beeped !== R.i * 10 + sec && !R.paused) { R.beeped = R.i * 10 + sec; beep(520, 120, .35); }
+  $('#r-clock').textContent = mmss(left);
+  $('#r-el').textContent = mmss(R.elapsed);
+  $('#r-left').textContent = '-' + mmss(R.total - R.elapsed);
+  $$('#r-segs b').forEach((b, i) => { const s = phaseStart(i); b.style.width = Math.max(0, Math.min(1, (R.elapsed - s) / R.phases[i].s)) * 100 + '%'; });
+}
+async function finish(completed) {
+  if (!R) return;
+  clearInterval(R.timer);
+  const r = R; R = null;
+  $('#run').classList.remove('on');
+  if (completed) { beep(784, 160); setTimeout(() => beep(988, 160), 180); setTimeout(() => beep(1319, 400), 360); buzz([200, 100, 200, 100, 500]); if (r.onDone) r.onDone(); }
+  render();
+  if (r.elapsed < 60) return;
+  runForm(null, { min: Math.round(r.elapsed / 6) / 10, training: r.name });
+}
+$('#r-pp').onclick = () => { if (!R) return; R.paused = !R.paused; R.last = performance.now(); setPP(); };
+$('#r-skip').onclick = () => { if (!R) return; if (R.watch) return finish(true); R.elapsed = phaseStart(R.i + 1); tick(); };
+$('#r-stop').onclick = async () => {
+  if (!R) return;
+  const was = R.paused; R.paused = true; setPP();
+  if (await confirm('Training stoppen?', 'Stoppen', true)) finish(false);
+  else if (R) { R.paused = was; R.last = performance.now(); setPP(); }
+};
+window.UIback = () => { if (R) { $('#r-stop').click(); return true; } return false; };
+
+setView(view);
+</script>
+</body>
+</html>

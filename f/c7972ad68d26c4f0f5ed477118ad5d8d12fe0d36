@@ -1,0 +1,197 @@
+/* Startscherm: tabbladen onderin en het overzicht (dashboard).
+   Het overzicht leest alleen samenvattingen die de tools zelf bijhouden (w2d-dash-*), zodat het ook
+   werkt als Reizen of de Kluis op slot zit. */
+(function () {
+  const D = window.W2D;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  let peekAt = 0;
+  const NAMES = { backgammon: 'Backgammon', schaken: 'Schaken', halma: 'Chinees dammen', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy',
+    legtuit: "Leg 't Uit", vingerspel: 'Vingerspel', samen: 'Samen', reizen: 'Reizen', kluis: 'Kluis', aftellen: 'Aftellen', recepten: 'Recepten', hardlopen: 'Hardlopen' };
+  const COLORS = { backgammon: '#e3b04b', schaken: '#7f93a8', halma: '#3b82f6', woordbord: '#2fbf71', kronkel: '#ff4d4d', tegelrummy: '#22b5a4',
+    legtuit: '#ffc83d', vingerspel: '#5ee07a', samen: '#ff7eb6', reizen: '#2ec4b6', kluis: '#f2b53a', aftellen: '#ff6b6b', recepten: '#ff8a3d', hardlopen: '#a7e35a' };
+  const TABS = ['overzicht', 'samen', 'spellen', 'tools', 'koken', 'sport'];
+
+  // ---------------------------------------------------------------- tabbladen
+  function show(tab, push) {
+    if (!TABS.includes(tab)) tab = 'overzicht';
+    TABS.forEach(t => {
+      document.getElementById('p-' + t).classList.toggle('on', t === tab);
+      const b = document.querySelector(`nav.tabs [data-tab="${t}"]`);
+      b.classList.toggle('on', t === tab);
+      b.setAttribute('aria-current', t === tab ? 'page' : 'false');
+    });
+    try { localStorage.setItem('w2-tab', tab); } catch (e) {}
+    if (push !== false) history.replaceState(null, '', '#' + tab);
+    window.scrollTo(0, 0);
+    if (tab === 'overzicht') { renderDash(); peekSamen(renderDash); }
+    if (tab === 'samen') { renderSamen(); peekSamen(renderSamen, true); }
+  }
+  document.querySelector('nav.tabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]');
+    if (b) show(b.dataset.tab);
+  });
+  // Koude start: overzicht. Terug uit een spel of tool: het tabblad waar je was.
+  let first = true;
+  try { first = !sessionStorage.getItem('w2-started'); sessionStorage.setItem('w2-started', '1'); } catch (e) {}
+  let start = (location.hash || '').slice(1);
+  if (!start) { try { start = first ? 'overzicht' : (localStorage.getItem('w2-tab') || 'overzicht'); } catch (e) { start = 'overzicht'; } }
+  show(start, true);
+  // Android-terugknop: eerst terug naar het overzicht, pas daarna de app uit.
+  window.__w2back = () => {
+    const cur = TABS.find(t => document.getElementById('p-' + t).classList.contains('on'));
+    if (cur && cur !== 'overzicht') { show('overzicht'); return true; }
+    return false;
+  };
+  // Gebruikte onderdelen onthouden voor "Snel naar"
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a.tile');
+    if (a && D) D.recent(a.getAttribute('href').split('/')[0]);
+  });
+
+  // ---------------------------------------------------------------- overzicht
+
+  function renderDash() {
+    const host = document.getElementById('dash');
+    if (!host || !D) return;
+    const t = D.date.today();
+    document.getElementById('today').textContent = D.date.parse(t).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const items = [];
+    // Reizen
+    (D.get('dash-reizen', []) || []).forEach(r => {
+      const dv = D.date.days(r.van), dt = D.date.days(r.tot || r.van);
+      if (dt == null || dt < 0) return;
+      const pack = r.pack || [0, 0];
+      const chips = [];
+      if (pack[1]) chips.push(`${pack[0]}/${pack[1]} ingepakt`);
+      if (r.docs) chips.push(`${r.docs} document${r.docs === 1 ? '' : 'en'}`);
+      if (r.todo && r.todo[1]) chips.push(`${r.todo[0]}/${r.todo[1]} geregeld`);
+      if (r.late) chips.push(`${r.late} te regelen te laat`);
+      else if (r.next) {
+        const nd = D.date.days(r.next.dl), tx = r.next.t.length > 34 ? r.next.t.slice(0, 32) + '…' : r.next.t;
+        chips.push(`${nd === 0 ? 'Vandaag' : nd === 1 ? 'Morgen' : 'Uiterlijk ' + D.date.nice(r.next.dl, { day: 'numeric', month: 'short' })}: ${tx}`);
+      }
+      const now = dv <= 0;
+      const len = D.date.days(r.tot) - D.date.days(r.van) + 1;
+      items.push({
+        days: now ? 0 : dv, href: 'reizen/index.html#' + r.id, c: '#2ec4b6', ci: '#06231f',
+        big: now ? `<b>${1 - dv}</b><small>van ${len}</small>` : `<b>${dv}</b><small>${dv === 1 ? 'dag' : 'dagen'}</small>`,
+        title: `${r.emoji || '✈️'} ${r.naam}`,
+        sub: now ? 'Nu op reis · tot ' + D.date.nice(r.tot) : D.date.nice(r.van, { weekday: 'long', day: 'numeric', month: 'long' }) + (r.tot && r.tot !== r.van ? ' – ' + D.date.nice(r.tot, { day: 'numeric', month: 'short' }) : ''),
+        meter: pack[1] ? pack[0] / pack[1] : null, chips
+      });
+    });
+    // Aftellen: evenementen en verjaardagen
+    const af = D.get('aftellen', { events: [], jarigen: [] }) || {};
+    (af.events || []).forEach(ev => {
+      const d = D.date.days(ev.datum);
+      if (d == null || d < 0) return;
+      const done = (ev.lijst || []).filter(x => x.ok).length, tot = (ev.lijst || []).length;
+      items.push({
+        days: d, href: 'aftellen/index.html#' + ev.id, c: ev.kleur || '#ff6b6b', ci: '#fff',
+        big: d === 0 ? '<b>!</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+        title: `${ev.emoji || '📅'} ${ev.naam}`,
+        sub: D.date.nice(ev.datum, { weekday: 'long', day: 'numeric', month: 'long' }) + (ev.waar ? ' · ' + ev.waar : ''),
+        meter: tot ? done / tot : null, chips: tot ? [`${done}/${tot} klaar`] : []
+      });
+    });
+    (af.jarigen || []).forEach(j => {
+      const nb = D.date.nextBirthday(j.datum);
+      if (!nb) return;
+      const d = D.date.days(nb.date);
+      if (d > 30) return;
+      items.push({
+        days: d, href: 'aftellen/index.html#jarigen', c: '#ffb3c7', ci: '#3d0f1c',
+        big: d === 0 ? '<b>🎉</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+        title: `🎂 ${j.naam}${nb.age ? ' wordt ' + nb.age : ' is jarig'}`,
+        sub: d === 0 ? 'Vandaag jarig!' : D.date.nice(nb.date, { weekday: 'long', day: 'numeric', month: 'long' }), chips: []
+      });
+    });
+    // Kluis: documenten die bijna verlopen
+    (D.get('dash-kluis', []) || []).forEach(k => {
+      const d = D.date.days(k.verloopt);
+      if (d == null || d > 60) return;
+      items.push({
+        days: Math.max(d, 0), href: 'kluis/index.html', c: '#f2b53a', ci: '#2b2414',
+        big: d < 0 ? '<b>!</b><small>verlopen</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+        title: `🔐 ${k.titel}`, sub: d < 0 ? 'Verlopen op ' + D.date.nice(k.verloopt) : 'Verloopt ' + D.date.nice(k.verloopt, { day: 'numeric', month: 'long', year: 'numeric' }), chips: []
+      });
+    });
+    // Samen: to-do's met een datum (voor mij, samen of niemand in het bijzonder)
+    const sm = window.Samen && Samen.cfg ? D.get('dash-samen', null) : null;
+    ((sm && sm.todo) || []).forEach(td => {
+      const d = D.date.days(td.datum);
+      if (d == null || d > 7) return;
+      const l = (sm.lijsten || []).find(x => x.id === td.lijst) || {};
+      items.push({
+        days: Math.max(d, 0), href: 'samen/index.html#l=' + td.lijst, c: l.kleur || '#4d8dff', ci: '#0c1530',
+        big: d < 0 ? '<b>!</b><small>te laat</small>' : d === 0 ? '<b>✓</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+        title: `${l.emoji || '✅'} ${td.tekst}`, sub: (l.naam || 'To-do') + (td.wie === 'samen' ? ' · samen' : ''), chips: []
+      });
+    });
+    items.sort((a, b) => a.days - b.days);
+
+    if (!items.length) {
+      host.innerHTML = `<div class="dempty"><b>Nog niets om naar uit te kijken</b>Zet een reis, toernooi of verjaardag erin, dan tel je hier af.
+        <div class="quick" style="justify-content:center;margin-top:12px"><a href="reizen/index.html#nieuw"><i style="--c:#2ec4b6"></i>Reis toevoegen</a><a href="aftellen/index.html#nieuw"><i style="--c:#ff6b6b"></i>Evenement</a></div></div>`;
+    } else {
+      host.innerHTML = items.slice(0, 8).map(it => `
+        <a class="dcard" href="${it.href}" style="--c:${it.c};--ci:${it.ci}">
+          <div class="big">${it.big}</div>
+          <div class="tx"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span>
+            ${it.meter != null ? `<div class="meter"><i style="width:${Math.round(it.meter * 100)}%"></i></div>` : ''}
+            ${it.chips.length ? `<div class="chips">${it.chips.map(c => `<em>${esc(c)}</em>`).join('')}</div>` : ''}
+          </div></a>`).join('');
+    }
+
+    // Hardlopen deze week
+    const hl = D.get('hardlopen', null);
+    const rc = document.getElementById('runcard');
+    if (hl && (hl.log || []).length) {
+      const now = D.date.parse(t), dow = (now.getDay() + 6) % 7;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+      const week = hl.log.filter(r => D.date.parse(r.datum) >= monday);
+      const km = week.reduce((s, r) => s + (+r.km || 0), 0);
+      const goal = hl.doel || 3;
+      const last = hl.log.slice().sort((a, b) => (b.datum > a.datum ? 1 : -1))[0];
+      rc.innerHTML = `<a class="dcard" href="hardlopen/index.html" style="--c:#a7e35a;--ci:#1d2c12;display:block">
+        <div class="tx"><b>🏃 Hardlopen deze week</b><span>Laatste run: ${esc(D.date.rel(D.date.days(last.datum)))}${last.km ? ', ' + String(last.km).replace('.', ',') + ' km' : ''}</span>
+        <div class="run"><div><b>${week.length}/${goal}</b><span>runs</span></div><div><b>${km.toFixed(1).replace('.', ',')}</b><span>km</span></div><div><b>${hl.log.length}</b><span>totaal</span></div></div>
+        <div class="meter"><i style="width:${Math.min(100, Math.round(week.length / goal * 100))}%"></i></div></div></a>`;
+    } else rc.innerHTML = '';
+
+    // Snel naar
+    const rec = (D.get('recent', []) || []).filter(k => NAMES[k]).slice(0, 6);
+    document.getElementById('quickwrap').hidden = !rec.length;
+    document.getElementById('quick').innerHTML = rec.map(k => `<a href="${k}/index.html"><i style="--c:${COLORS[k]}"></i>${NAMES[k]}</a>`).join('');
+  }
+  // ---------------------------------------------------------------- samen
+  function renderSamen() {
+    const host = document.getElementById('samenwrap');
+    if (!host) return;
+    const S = window.Samen;
+    if (!S || !S.cfg) {
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Lijstjes delen</b><span>Boodschappen en to-do's die jullie allebei zien en aanvullen, live op beide telefoons.</span><em>Beginnen of koppelen</em></a>`;
+      return;
+    }
+    const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };
+    host.innerHTML = `${(sm.leden || []).length ? `<p class="who2">Met ${esc(sm.leden.join(' & '))}</p>` : ''}<div class="sl">${(sm.lijsten || []).map(l => {
+      const sub = l.soort === 'boodschappen' ? (l.open ? `${l.open} te halen` : 'Alles in huis') : (l.open ? `${l.open} open` : 'Alles af') + (l.laat ? ` · ${l.laat} te laat` : '');
+      return `<a class="dcard" href="samen/index.html#l=${esc(l.id)}" style="--c:${esc(l.kleur || '#ff7eb6')}"><div class="big em">${esc(l.emoji || '📝')}</div>
+        <div class="tx"><b>${esc(l.naam)}${l.nieuw ? `<span class="new">${l.nieuw} nieuw</span>` : ''}</b><span>${esc(sub)}</span></div>
+        <div class="cnt">${l.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
+    }).join('')}</div><a class="alle" href="samen/index.html">Alle lijsten en uitnodigen ›</a>`;
+  }
+  // Eenmalig bijwerken met wat de ander intussen heeft gedaan (geen live verbinding op het startscherm)
+  function peekSamen(after, force) {
+    const S = window.Samen;
+    if (!S || !S.cfg || (!force && Date.now() - peekAt < 60000)) return;
+    peekAt = Date.now();
+    S.peek().then(ok => { if (ok) after(); });
+  }
+
+  addEventListener('pageshow', () => {
+    if (document.getElementById('p-overzicht').classList.contains('on')) { renderDash(); peekSamen(renderDash); }
+    if (document.getElementById('p-samen').classList.contains('on')) { renderSamen(); peekSamen(renderSamen, true); }
+  });
+})();

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ontwikkeling</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ffc83d;--acc-ink:#2b1f00}
+.check{align-items:flex-start}
+.check .box{margin-top:1px}
+.check .t b{display:block;font-weight:700}
+.check .t small{display:block;color:var(--muted);font-size:13px;margin-top:3px;line-height:1.4}
+.check.on .t small{text-decoration:none}
+.check .go{flex:none;color:var(--acc);font-weight:700;font-size:14px;text-decoration:none;padding:4px 2px}
+.voortgang{display:flex;align-items:center;gap:12px}
+.voortgang .bar{flex:1;height:10px;border-radius:5px;background:var(--panel2);overflow:hidden}
+.voortgang .bar i{display:block;height:100%;background:var(--acc)}
+.voortgang b{font:800 20px/1 var(--f-display)}
+details.klaar summary{cursor:pointer;color:var(--muted);font-weight:700;padding:6px 2px}
+.idee{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;cursor:pointer;width:100%;text-align:left;color:inherit}
+.idee .grow{flex:1;min-width:0}
+.idee b{display:block;font-weight:700;white-space:pre-wrap}
+.idee small{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.idee .st{flex:none;font-size:12px;font-weight:800;border-radius:999px;padding:3px 9px;background:var(--panel2);color:var(--muted)}
+.idee .st.goed{background:var(--acc);color:var(--acc-ink)}
+.idee .st.gedaan{background:var(--ok);color:#06210f}
+.ov{white-space:pre-wrap;line-height:1.5;font-size:15px}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html" aria-label="Terug"></a><h1>Ontwikkeling</h1></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="taken" class="on">Te doen</button><button type="button" data-v="ideeen">Ideeën</button><button type="button" data-v="app">Wat zit erin</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="taken.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+
+const KEY = 'ontwikkeling';
+let st = Object.assign({ klaar: {}, eigen: [], ideeen: [] }, D.get(KEY, null) || {});
+const save = () => D.set(KEY, st);
+let view = (location.hash.slice(1) || 'taken');
+const STATUS = { nieuw: 'Nieuw', goed: 'Goed idee', gedaan: 'Gedaan', niet: 'Niet doen' };
+
+function alleTaken() {
+  return W2Taken.taken.map(t => ({ ...t, klaar: !!st.klaar[t.id] }))
+    .concat(st.eigen.map(t => ({ id: t.id, groep: 'Eigen taken', titel: t.titel, uitleg: t.uitleg || '', klaar: !!t.klaar, eigen: true })));
+}
+
+function rij(t) {
+  return `<div class="check${t.klaar ? ' on' : ''}" data-t="${esc(t.id)}" role="checkbox" aria-checked="${t.klaar}">
+    <span class="box">${t.klaar ? icon('check', 'width="16" height="16"') : ''}</span>
+    <span class="t"><b>${esc(t.titel)}</b>${t.uitleg ? `<small>${esc(t.uitleg)}</small>` : ''}</span>
+    ${t.link && !t.klaar ? `<a class="go" href="${esc(t.link)}">Open</a>` : ''}
+    ${t.eigen ? `<button class="x" data-del="${esc(t.id)}" type="button" aria-label="Verwijderen">${icon('x', 'width="18" height="18"')}</button>` : ''}</div>`;
+}
+
+function renderTaken() {
+  const all = alleTaken(), open = all.filter(t => !t.klaar), klaar = all.filter(t => t.klaar);
+  const groepen = [...new Set(open.map(t => t.groep))];
+  const pct = all.length ? Math.round(klaar.length / all.length * 100) : 100;
+  app.innerHTML = `
+    <div class="card voortgang"><b>${klaar.length}/${all.length}</b><div class="bar"><i style="width:${pct}%"></i></div><span class="muted small">${open.length ? open.length + ' open' : 'alles gedaan 🎉'}</span></div>
+    ${groepen.map(g => `<h2>${esc(g)}</h2><div class="card">${open.filter(t => t.groep === g).map(rij).join('')}</div>`).join('')}
+    ${!open.length ? '<div class="empty"><b>Niets meer te doen</b>Na een nieuwe versie komen hier de dingen die je zelf moet regelen.</div>' : ''}
+    ${klaar.length ? `<details class="klaar"><summary>Afgevinkt (${klaar.length})</summary><div class="card">${klaar.map(rij).join('')}</div></details>` : ''}`;
+  dash();
+}
+
+function renderIdeeen() {
+  const list = st.ideeen.slice().sort((a, b) => (a.status === 'gedaan' || a.status === 'niet') - (b.status === 'gedaan' || b.status === 'niet') || (b.t || 0) - (a.t || 0));
+  app.innerHTML = `
+    <p class="muted" style="margin:0">Ideeën van jezelf of van vrienden. Met "Alles kopiëren" plak je ze zo in een chat met Claude.</p>
+    ${list.length ? `<div class="list">${list.map(i => `<button class="idee" data-i="${esc(i.id)}" type="button"><span class="grow"><b>${esc(i.tekst)}</b><small>${esc([i.van ? 'van ' + i.van : '', i.datum ? D.date.nice(i.datum, { day: 'numeric', month: 'short' }) : ''].filter(Boolean).join(' · '))}</small></span><span class="st ${esc(i.status || 'nieuw')}">${STATUS[i.status || 'nieuw']}</span></button>`).join('')}</div>
+      <div class="btns"><button class="btn q" data-act="kopieer" type="button">${icon('copy')}Alles kopiëren</button></div>` :
+      `<div class="empty"><b>Nog geen ideeën</b>Stuur je vrienden de beschrijving uit "Wat zit erin" en zet hun ideeën hier.<br><button class="btn" data-act="idee" type="button">${icon('plus')}Idee toevoegen</button></div>`}`;
+}
+
+function renderApp() {
+  const html = esc(W2Taken.overzicht).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
+  app.innerHTML = `<div class="btns"><button class="btn" data-act="deel" type="button">${icon('copy')}Kopiëren voor WhatsApp</button></div>
+    <div class="card ov">${html}</div>`;
+}
+
+function render() {
+  $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
+  $('#fab').hidden = view === 'app';
+  ({ taken: renderTaken, ideeen: renderIdeeen, app: renderApp }[view] || renderTaken)();
+}
+
+// aantal open taken voor het startscherm
+function dash() {
+  const open = alleTaken().filter(t => !t.klaar).length;
+  D.set('dash-ontwikkeling', { open });
+}
+
+async function kopieer(text, wat) {
+  try { await navigator.clipboard.writeText(text); toast(wat); }
+  catch (e) { sheet('Kopieer zelf', `<textarea class="in" style="min-height:50vh" readonly>${esc(text)}</textarea>`, [{ label: 'Sluiten', value: null }]); }
+}
+
+async function nieuweTaak() {
+  const r = await sheet('Eigen taak', `<label class="f">Wat moet er gebeuren?<input class="in" name="titel" placeholder="Bv. wachtwoord back-up in de kluis zetten"></label><label class="f">Toelichting (optioneel)<textarea class="in" name="uitleg"></textarea></label>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok', check: f => !f.titel.trim() ? 'Vul iets in.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  st.eigen.push({ id: 'e-' + D.uid(), titel: r.form.titel.trim(), uitleg: r.form.uitleg.trim() });
+  save(); render();
+}
+
+async function idee(i) {
+  const isNew = !i;
+  i = i || { tekst: '', van: '', status: 'nieuw', datum: D.date.today() };
+  const r = await sheet(isNew ? 'Nieuw idee' : 'Idee', `<label class="f">Idee<textarea class="in" name="tekst" placeholder="Bv. een app om samen films te kiezen">${esc(i.tekst)}</textarea></label>
+    <label class="f">Van wie (optioneel)<input class="in" name="van" value="${esc(i.van || '')}" placeholder="Bv. Sanne"></label>
+    <label class="f">Status<select class="in" name="status">${Object.entries(STATUS).map(([k, l]) => `<option value="${k}" ${k === (i.status || 'nieuw') ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.tekst.trim() ? 'Vul het idee in.' : '' }]), { focus: isNew }).done;
+  if (r.value === 'del') { if (await confirm('Dit idee verwijderen?', 'Verwijderen', true)) { st.ideeen = st.ideeen.filter(x => x !== i); save(); render(); } return; }
+  if (r.value !== 'ok') return;
+  i.tekst = r.form.tekst.trim(); i.van = r.form.van.trim(); i.status = r.form.status;
+  if (isNew) { i.id = D.uid(); i.t = Date.now(); st.ideeen.push(i); }
+  save(); render();
+}
+
+app.addEventListener('click', e => {
+  if (e.target.closest('a.go')) return;
+  const del = e.target.closest('[data-del]');
+  if (del) { e.stopPropagation(); confirm('Deze taak verwijderen?', 'Verwijderen', true).then(ok => { if (ok) { st.eigen = st.eigen.filter(t => t.id !== del.dataset.del); save(); render(); } }); return; }
+  const t = e.target.closest('[data-t]');
+  if (t) {
+    const id = t.dataset.t, eigen = st.eigen.find(x => x.id === id);
+    if (eigen) eigen.klaar = !eigen.klaar;
+    else if (st.klaar[id]) delete st.klaar[id]; else st.klaar[id] = D.date.today();
+    try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+    save(); render(); return;
+  }
+  const i = e.target.closest('[data-i]');
+  if (i) return idee(st.ideeen.find(x => x.id === i.dataset.i));
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  if (a.dataset.act === 'idee') idee();
+  if (a.dataset.act === 'deel') kopieer(W2Taken.overzicht, 'Gekopieerd. Plak het in WhatsApp.');
+  if (a.dataset.act === 'kopieer') kopieer('Ideeën voor W2 Apps:\n' + st.ideeen.filter(x => x.status !== 'niet' && x.status !== 'gedaan').map(x => '- ' + x.tekst + (x.van ? ' (van ' + x.van + ')' : '')).join('\n'), 'Gekopieerd. Plak het in je chat met Claude.');
+});
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { view = b.dataset.v; history.replaceState(null, '', '#' + view); render(); } };
+$('#fab').onclick = () => view === 'ideeen' ? idee() : nieuweTaak();
+render();
+dash();
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Judo</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#5b9bff;--acc-ink:#06122a}
+.hero{display:flex;gap:14px;align-items:center}
+.hero .num{min-width:74px;text-align:center}
+.hero .num b{display:block;font:800 34px/1 var(--f-display);color:var(--acc)}
+.hero .num span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.hero .t{flex:1;min-width:0}
+.hero .t b{display:block;font:800 19px/1.2 var(--f-display)}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin-top:10px}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:6px;vertical-align:-1px}
+.part{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.part>.hd{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.part>.hd .grow{flex:1;min-width:0}
+.part>.hd b{display:block;font:800 17px/1.2 var(--f-display)}
+.part>.hd .stack{margin-top:8px;height:6px}
+.part>.hd .cnt{font-weight:800;color:var(--muted);font-size:14px}
+.part .body{display:none;padding:0 16px 10px}
+.part.open .body{display:block}
+.part .uit{color:var(--muted);font-size:14px;margin:0 0 6px}
+.it{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.it .grow{flex:1;min-width:0}
+.it .grow b{display:block;font-weight:700}
+.it .grow span{display:block;color:var(--muted);font-size:13px}
+.it .grow em{display:block;font-style:normal;color:var(--text);opacity:.8;font-size:13px;white-space:pre-wrap}
+.st{border:0;border-radius:999px;padding:6px 12px;min-width:86px;font-weight:800;font-size:13px;cursor:pointer;background:var(--panel2);color:var(--muted)}
+.st.s1{background:#3a2f0e;color:#ffc83d}
+.st.s2{background:#173420;color:#5ee07a}
+.it .note{border:0;background:transparent;color:var(--muted);width:36px;height:36px;border-radius:10px;cursor:pointer;flex:none}
+.it .note svg{width:18px;height:18px}
+.focus .it:first-of-type{border-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.pick{max-height:38vh;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:2px}
+.pick h4{margin:4px 0 0;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.faces{display:flex;gap:6px}
+.faces button{flex:1;min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;cursor:pointer}
+.faces button.on{outline:2px solid var(--acc);outline-offset:1px}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+.wk div{text-align:center;font-size:12px;color:var(--muted);font-weight:700}
+.wk i{display:block;height:34px;border-radius:9px;background:var(--panel2);margin-top:4px;font-style:normal;line-height:34px;font-size:15px}
+.wk i.on{background:var(--acc);color:var(--acc-ink)}
+.wk i.plan{outline:2px dashed var(--acc);outline-offset:-2px;background:transparent}
+.wk i.today{box-shadow:0 0 0 2px var(--text) inset}
+.mo{font:800 15px var(--f-display);color:var(--muted);margin:10px 0 -4px}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#persoonlijk" aria-label="Terug"></a><h1>Judo</h1><button class="ib" id="menu" type="button" aria-label="Meer"></button></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="examen">Examen</button><button type="button" data-v="training">Training</button><button type="button" data-v="log">Logboek</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Training bijschrijven"></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="eisen.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+const { PROGRAMMAS, STATUS } = JudoEisen;
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+$('#menu').innerHTML = icon('more');
+D.recent('judo');
+
+const DAGEN = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag'];
+const KORT = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+const SOORT = { training: '🥋 Training', randori: '🤼 Randori', kata: '📐 Kata', wedstrijd: '🏆 Wedstrijd', kracht: '💪 Kracht/conditie' };
+const FACES = ['😫', '😕', '😐', '🙂', '🤩'];
+
+let data = Object.assign({ programma: 'dan2', examen: { datum: '', punten: 0 }, status: {}, notities: {}, geoefend: {}, extra: {}, weg: {}, rooster: [], doel: 2, log: [], open: {} }, D.get('judo', null) || {});
+const save = () => { D.set('judo', data); dash(); };
+let view = ['#training', '#log'].includes(location.hash) ? location.hash.slice(1) : 'examen';
+let alleenOpen = false;
+
+// ---------------------------------------------------------------- programma
+const prog = () => PROGRAMMAS[data.programma] || PROGRAMMAS.dan2;
+const keyOf = (deel, n) => deel + ':' + n;
+function delen() {
+  return prog().delen.map(d => ({ ...d, items: d.items.concat(data.extra[d.id] || []).filter(it => !data.weg[keyOf(d.id, it.n)]) }));
+}
+const st = k => data.status[k] || 0;
+const techDelen = () => delen().filter(d => d.id !== 'regel');
+function telling(list) {
+  const c = [0, 0, 0];
+  list.forEach(d => d.items.forEach(it => c[st(keyOf(d.id, it.n))]++));
+  return c;
+}
+const stack = c => { const tot = c[0] + c[1] + c[2] || 1; return `<div class="stack"><i style="width:${c[2] / tot * 100}%;background:#5ee07a"></i><i style="width:${c[1] / tot * 100}%;background:#ffc83d"></i></div>`; };
+
+/** Wat je het langst niet geoefend hebt en nog niet beheerst. */
+function focus(n) {
+  const out = [];
+  techDelen().forEach(d => d.items.forEach(it => {
+    const k = keyOf(d.id, it.n);
+    if (st(k) < 2) out.push({ d, it, k, last: data.geoefend[k] || '' });
+  }));
+  out.sort((a, b) => (a.last || '0') < (b.last || '0') ? -1 : (a.last || '0') > (b.last || '0') ? 1 : st(b.k) - st(a.k));
+  return out.slice(0, n);
+}
+
+// ---------------------------------------------------------------- weergave
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', '#' + v); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+function render() { ({ examen: renderExamen, training: renderTraining, log: renderLog })[view](); }
+
+const itemRow = (d, it, opts) => {
+  const k = keyOf(d.id, it.n), s = st(k), last = data.geoefend[k], note = data.notities[k];
+  return `<div class="it" data-k="${esc(k)}"><div class="grow"><b>${esc(it.n)}</b>${it.sub || (opts && opts.deel) ? `<span>${esc([opts && opts.deel ? d.naam : '', it.sub].filter(Boolean).join(' · '))}</span>` : ''}${note ? `<em>${esc(note)}</em>` : ''}${last ? `<span>Geoefend ${esc(D.date.rel(D.date.days(last)))}</span>` : ''}</div>
+    <button class="note" data-note="${esc(k)}" type="button" aria-label="Notitie">${icon('edit')}</button>
+    <button class="st s${s}" data-st="${esc(k)}" type="button">${STATUS[s].naam}</button></div>`;
+};
+
+function renderExamen() {
+  const all = delen(), tech = techDelen(), c = telling(tech), tot = c[0] + c[1] + c[2];
+  const d = data.examen.datum ? D.date.days(data.examen.datum) : null;
+  const pts = +data.examen.punten || 0;
+  app.innerHTML = `
+    <div class="card"><div class="hero"><div class="num">${d == null ? '<b>?</b><span>datum</span>' : d < 0 ? '<b>✓</b><span>geweest</span>' : `<b>${d}</b><span>${d === 1 ? 'dag' : 'dagen'}</span>`}</div>
+      <div class="t"><b>${esc(prog().naam)}</b><span class="muted small">${data.examen.datum ? 'Examen ' + esc(D.date.nice(data.examen.datum, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) : 'Nog geen examendatum'} · <a href="#" data-act="exam">aanpassen</a></span></div></div>
+      ${stack(c)}<div class="legend"><span style="--c:#5ee07a">${c[2]} zit erin</span><span style="--c:#ffc83d">${c[1]} oefenen</span><span style="--c:var(--line)">${c[0]} nog niet</span><span>${tot ? Math.round(c[2] / tot * 100) : 0}% klaar</span></div>
+      <div class="muted small" style="margin-top:10px">Wedstrijdpunten: <b style="color:var(--text)">${pts}</b>/100${pts >= 100 ? ' · keuze-kata vervalt' : ''}</div>
+    </div>
+    ${renderFocus()}
+    <div class="seg" id="filt"><button type="button" data-f="0" class="${alleenOpen ? '' : 'on'}">Alles</button><button type="button" data-f="1" class="${alleenOpen ? 'on' : ''}">Nog te doen</button></div>
+    ${all.map(dl => {
+      const cc = telling([dl]), n = cc[0] + cc[1] + cc[2];
+      const items = alleenOpen ? dl.items.filter(it => st(keyOf(dl.id, it.n)) < 2) : dl.items;
+      if (alleenOpen && !items.length) return '';
+      return `<div class="part${data.open[dl.id] ? ' open' : ''}" data-part="${dl.id}"><div class="hd" data-toggle="${dl.id}"><div class="grow"><b>${esc(dl.naam)}</b>${stack(cc)}</div><span class="cnt">${cc[2]}/${n}</span></div>
+        <div class="body"><p class="uit">${esc(dl.uitleg || '')}</p>${items.map(it => itemRow(dl, it)).join('')}
+        <div class="btns" style="margin-top:8px"><button class="btn q" data-addto="${dl.id}" type="button">${icon('plus')}Zelf toevoegen</button></div></div></div>`;
+    }).join('')}
+    <p class="muted small">Bron: ${esc(prog().bron)}. Controleer vóór je examen de actuele versie op jbn.nl. Tik op de knop rechts om de stand te wisselen.</p>`;
+}
+
+function renderFocus() {
+  const f = focus(4);
+  if (!f.length) return `<div class="card acc"><b>Alles zit erin 🎉</b><div class="muted small">Blijf het onderhouden, en oefen de kata met je uke.</div></div>`;
+  return `<div class="card focus"><b style="font:800 17px var(--f-display)">Volgende training: werk aan</b><div class="muted small" style="margin-bottom:4px">Wat het langst niet geoefend is en nog niet zit.</div>
+    ${f.map(x => itemRow(x.d, x.it, { deel: true })).join('')}
+    <div class="btns" style="margin-top:8px"><button class="btn" data-act="logfocus" type="button">${icon('check')}Vandaag geoefend</button></div></div>`;
+}
+
+function weekInfo() {
+  const t = D.date.parse(D.date.today()), dow = (t.getDay() + 6) % 7;
+  const days = [...Array(7)].map((_, i) => { const x = new Date(t.getFullYear(), t.getMonth(), t.getDate() - dow + i); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); });
+  const done = new Set(data.log.filter(l => days.includes(l.datum)).map(l => l.datum));
+  const plan = new Set(data.rooster.map(r => r.dag - 1));
+  return { days, done, plan, dow, n: data.log.filter(l => days.includes(l.datum) && l.soort !== 'kracht').length };
+}
+
+function volgende() {
+  if (!data.rooster.length) return null;
+  const now = new Date(), dow = (now.getDay() + 6) % 7, hm = now.toTimeString().slice(0, 5);
+  let best = null;
+  data.rooster.forEach(r => {
+    let diff = (r.dag - 1 - dow + 7) % 7;
+    if (diff === 0 && (r.tot || r.tijd || '23:59') < hm) diff = 7;
+    if (!best || diff < best.diff || (diff === best.diff && r.tijd < best.r.tijd)) best = { r, diff };
+  });
+  return best;
+}
+
+function renderTraining() {
+  const w = weekInfo(), nx = volgende();
+  const af = (D.get('aftellen', null) || {}).events || [];
+  const toer = af.filter(e => e.emoji === '🥋' || /judo|toernooi/i.test(e.naam)).filter(e => D.date.days(e.datum) >= 0).sort((a, b) => a.datum < b.datum ? -1 : 1);
+  app.innerHTML = `
+    <div class="card"><b style="font:800 17px var(--f-display)">Deze week</b> <span class="muted small">${w.n}/${data.doel} trainingen · <a href="#" data-act="doel">doel</a></span>
+      <div class="bar" style="margin-top:8px"><i style="width:${Math.min(100, w.n / (data.doel || 1) * 100)}%"></i></div>
+      <div class="wk">${KORT.map((k, i) => `<div>${k}<i class="${w.done.has(w.days[i]) ? 'on' : w.plan.has(i) && i >= w.dow ? 'plan' : ''}${i === w.dow ? ' today' : ''}">${w.done.has(w.days[i]) ? '✓' : ''}</i></div>`).join('')}</div>
+      ${nx ? `<div class="muted small" style="margin-top:10px">Volgende: <b style="color:var(--text)">${nx.diff === 0 ? 'vandaag' : nx.diff === 1 ? 'morgen' : DAGEN[nx.r.dag - 1]} ${esc(nx.r.tijd || '')}</b>${nx.r.waar ? ' · ' + esc(nx.r.waar) : ''}${nx.r.wat ? ' · ' + esc(nx.r.wat) : ''}</div>` : ''}
+    </div>
+    <h2>Vaste trainingen</h2>
+    <div class="list">${data.rooster.slice().sort((a, b) => a.dag - b.dag || (a.tijd < b.tijd ? -1 : 1)).map(r => `<button class="row" data-r="${r.id}" type="button"><span class="ico">🥋</span><span class="grow"><b>${DAGEN[r.dag - 1]} ${esc(r.tijd || '')}${r.tot ? '–' + esc(r.tot) : ''}</b><span class="sub">${esc([r.waar, r.wat].filter(Boolean).join(' · ') || 'Training')}</span></span></button>`).join('') ||
+      `<div class="empty"><b>Nog geen vaste trainingen</b>Zet je vaste avonden erin, dan zie je wanneer de volgende is.<br><button class="btn" data-act="rooster" type="button">${icon('plus')}Vaste training</button></div>`}
+      ${data.rooster.length ? `<button class="btn q" data-act="rooster" type="button">${icon('plus')}Vaste training</button>` : ''}</div>
+    ${renderFocus()}
+    <h2>Toernooien</h2>
+    <div class="list">${toer.map(e => { const d = D.date.days(e.datum); return `<a class="row" href="../aftellen/index.html#${e.id}"><span class="ico">${e.emoji || '🥋'}</span><span class="grow"><b>${esc(e.naam)}</b><span class="sub">${esc(D.date.nice(e.datum, { weekday: 'short', day: 'numeric', month: 'long' }))}${e.waar ? ' · ' + esc(e.waar) : ''}</span></span><span class="end">${d === 0 ? 'vandaag' : 'over ' + d + ' d'}</span></a>`; }).join('')}
+      <a class="btn q" href="../aftellen/index.html#nieuw">${icon('plus')}Toernooi in Aftellen</a></div>`;
+}
+
+function renderLog() {
+  if (!data.log.length) {
+    app.innerHTML = `<div class="empty"><b>Nog niets bijgeschreven</b>Schrijf na elke training kort op wat je deed en waar je aan werkte. Dan weet de app wat je het langst niet geoefend hebt.<br><button class="btn" data-act="new" type="button">${icon('plus')}Training bijschrijven</button></div>`;
+    return;
+  }
+  const list = data.log.slice().sort((a, b) => a.datum < b.datum ? 1 : -1);
+  const all = {}; delen().forEach(d => d.items.forEach(it => { all[keyOf(d.id, it.n)] = it.n; }));
+  let lastMo = '', html = '';
+  const totMin = data.log.reduce((s, l) => s + (+l.duur || 0), 0);
+  html += `<div class="card"><div class="grid2"><div><b style="font:800 26px var(--f-display)">${data.log.length}</b><div class="muted small">keer getraind</div></div><div><b style="font:800 26px var(--f-display)">${Math.round(totMin / 60)}</b><div class="muted small">uur op de mat</div></div></div></div>`;
+  list.forEach(l => {
+    const mo = D.date.parse(l.datum).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+    if (mo !== lastMo) { html += `<div class="mo">${esc(mo)}</div>`; lastMo = mo; }
+    const wat = (l.items || []).map(k => all[k] || k.split(':').slice(1).join(':')).join(', ');
+    html += `<button class="row" data-l="${l.id}" type="button"><span class="ico">${(SOORT[l.soort] || '🥋').split(' ')[0]}</span><span class="grow"><b>${esc(D.date.nice(l.datum, { weekday: 'short', day: 'numeric', month: 'short' }))} · ${esc((SOORT[l.soort] || 'Training').split(' ').slice(1).join(' '))}${l.duur ? ' · ' + l.duur + ' min' : ''}</b><span class="sub">${esc(wat || l.notitie || '')}</span></span><span class="end">${l.gevoel ? FACES[l.gevoel - 1] : ''}</span></button>`;
+  });
+  app.innerHTML = `<div class="list">${html}</div>`;
+}
+
+// ---------------------------------------------------------------- bewerken
+async function logForm(l, pre) {
+  const isNew = !l;
+  l = l || { datum: D.date.today(), soort: 'training', duur: 90, gevoel: 0, items: pre || [], notitie: '' };
+  const sel = new Set(l.items || []);
+  let soort = l.soort, gevoel = l.gevoel || 0;
+  const tech = techDelen();
+  const s = sheet(isNew ? 'Training bijschrijven' : 'Training', `
+    <div class="grid2"><label class="f">Datum<input class="in" type="date" name="datum" value="${esc(l.datum)}"></label><label class="f">Minuten<input class="in" type="number" inputmode="numeric" name="duur" value="${esc(l.duur || '')}"></label></div>
+    <div class="chips" id="soort">${Object.entries(SOORT).map(([k, v]) => `<button type="button" class="chip${k === soort ? ' on' : ''}" data-s="${k}">${v}</button>`).join('')}</div>
+    <div><div class="muted small" style="margin-bottom:6px;font-weight:600">Hoe ging het?</div><div class="faces" id="faces">${FACES.map((f, i) => `<button type="button" data-g="${i + 1}" class="${gevoel === i + 1 ? 'on' : ''}">${f}</button>`).join('')}</div></div>
+    <div><div class="muted small" style="margin-bottom:6px;font-weight:600">Waar heb je aan gewerkt? <span id="nsel">${sel.size ? '(' + sel.size + ')' : ''}</span></div>
+      <input class="in" id="zoek" placeholder="Zoeken, bv. uchi-mata" style="margin-bottom:8px">
+      <div class="pick" id="pick">${tech.map(d => `<div data-grp><h4>${esc(d.naam)}</h4><div class="chips">${d.items.map(it => { const k = keyOf(d.id, it.n); return `<button type="button" class="chip${sel.has(k) ? ' on' : ''}" data-k="${esc(k)}" data-z="${esc((it.n + ' ' + (it.sub || '') + ' ' + d.naam).toLowerCase())}">${esc(it.n)}</button>`; }).join('')}</div></div>`).join('')}</div></div>
+    <label class="f">Notitie<textarea class="in" name="notitie" placeholder="Bv. o-uchi-gari naar links gaat nog stroef; sensei: heupen lager.">${esc(l.notitie || '')}</textarea></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.datum ? 'Kies een datum.' : '' }]));
+  s.el.addEventListener('click', e => {
+    const c = e.target.closest('[data-k]'), so = e.target.closest('[data-s]'), g = e.target.closest('[data-g]');
+    if (c) { const k = c.dataset.k; sel.has(k) ? sel.delete(k) : sel.add(k); c.classList.toggle('on', sel.has(k)); $('#nsel', s.el).textContent = sel.size ? '(' + sel.size + ')' : ''; }
+    if (so) { soort = so.dataset.s; $$('[data-s]', s.el).forEach(x => x.classList.toggle('on', x === so)); }
+    if (g) { gevoel = +g.dataset.g; $$('[data-g]', s.el).forEach(x => x.classList.toggle('on', x === g)); }
+  });
+  $('#zoek', s.el).addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    $$('[data-z]', s.el).forEach(c => { c.hidden = !!q && !c.dataset.z.includes(q); });
+    $$('[data-grp]', s.el).forEach(g => { g.hidden = !$$('[data-z]', g).some(c => !c.hidden); });
+  });
+  const r = await s.done;
+  if (r.value === 'del') {
+    if (!(await confirm('Deze training verwijderen?', 'Verwijderen', true))) return;
+    data.log = data.log.filter(x => x !== l); herbereken(); save(); return render();
+  }
+  if (r.value !== 'ok') return;
+  Object.assign(l, { datum: r.form.datum, duur: +r.form.duur || 0, soort, gevoel, items: [...sel], notitie: r.form.notitie.trim() });
+  if (isNew) { l.id = D.uid(); data.log.push(l); }
+  // eerste keer geoefend: van "nog niet" naar "oefenen"
+  l.items.forEach(k => { if (!st(k)) data.status[k] = 1; });
+  herbereken(); save(); render();
+  if (isNew) toast(`Bijgeschreven${l.items.length ? ', ' + l.items.length + ' onderdelen geoefend' : ''}.`);
+}
+function herbereken() {
+  data.geoefend = {};
+  data.log.forEach(l => (l.items || []).forEach(k => { if (!data.geoefend[k] || data.geoefend[k] < l.datum) data.geoefend[k] = l.datum; }));
+}
+
+async function noteForm(k) {
+  const naam = k.split(':').slice(1).join(':');
+  const isExtra = Object.entries(data.extra).some(([d, l]) => d === k.split(':')[0] && l.some(it => it.n === naam));
+  const r = await sheet(naam, `<label class="f">Notitie<textarea class="in" name="t" placeholder="Bv. welke variatie je laat zien, tips van je trainer, wie je uke is.">${esc(data.notities[k] || '')}</textarea></label>
+    <div class="seg">${STATUS.map(x => `<button type="button" data-ss="${x.id}" class="${st(k) === x.id ? 'on' : ''}">${x.naam}</button>`).join('')}</div><input type="hidden" name="s" value="${st(k)}">`,
+  [{ label: isExtra ? 'Verwijderen' : 'Verbergen', value: 'weg', kind: 'danger' }, { label: 'Bewaren', value: 'ok' }]);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-ss]'); if (!b) return; $$('[data-ss]', r.el).forEach(x => x.classList.toggle('on', x === b)); $('[name=s]', r.el).value = b.dataset.ss; });
+  const res = await r.done;
+  if (res.value === 'weg') {
+    if (isExtra) { const d = k.split(':')[0]; data.extra[d] = data.extra[d].filter(it => it.n !== naam); }
+    else { data.weg[k] = true; toast('Verborgen. Terughalen kan via ⋮ › Verborgen onderdelen.'); }
+    save(); return render();
+  }
+  if (res.value !== 'ok') return;
+  const t = res.form.t.trim();
+  if (t) data.notities[k] = t; else delete data.notities[k];
+  data.status[k] = +res.form.s;
+  save(); render();
+}
+
+async function examForm() {
+  const r = await sheet('Examen', `<label class="f">Examendatum<input class="in" type="date" name="datum" value="${esc(data.examen.datum || '')}"></label>
+    <label class="f">Wedstrijdpunten<input class="in" type="number" inputmode="numeric" name="punten" value="${esc(data.examen.punten || 0)}"></label>
+    <div class="muted small">Met 100 wedstrijdpunten vervalt bij de 2e dan het keuzeonderdeel van de kata.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  data.examen = { datum: r.form.datum, punten: Math.max(0, +r.form.punten || 0) };
+  save(); render();
+}
+
+async function roosterForm(x) {
+  const isNew = !x;
+  x = x || { dag: 2, tijd: '20:00', tot: '21:30', waar: '', wat: '' };
+  const r = await sheet(isNew ? 'Vaste training' : 'Vaste training', `
+    <label class="f">Dag<select class="in" name="dag">${DAGEN.map((d, i) => `<option value="${i + 1}" ${x.dag === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
+    <div class="grid2"><label class="f">Van<input class="in" type="time" name="tijd" value="${esc(x.tijd)}"></label><label class="f">Tot<input class="in" type="time" name="tot" value="${esc(x.tot || '')}"></label></div>
+    <label class="f">Waar<input class="in" name="waar" value="${esc(x.waar || '')}" placeholder="Bv. eigen club"></label>
+    <label class="f">Wat (optioneel)<input class="in" name="wat" value="${esc(x.wat || '')}" placeholder="Bv. selectietraining, kata-uur"></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok' }])).done;
+  if (r.value === 'del') { data.rooster = data.rooster.filter(y => y !== x); save(); return render(); }
+  if (r.value !== 'ok') return;
+  Object.assign(x, { dag: +r.form.dag, tijd: r.form.tijd, tot: r.form.tot, waar: r.form.waar.trim(), wat: r.form.wat.trim() });
+  if (isNew) { x.id = D.uid(); data.rooster.push(x); }
+  save(); render();
+}
+
+async function addTo(deel) {
+  const d = delen().find(x => x.id === deel);
+  const r = await sheet('Toevoegen aan ' + d.naam, `<label class="f">Naam<input class="in" name="n" placeholder="Bv. eigen combinatie, tokui-waza"></label><label class="f">Toelichting (optioneel)<input class="in" name="sub"></label>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok', check: f => !f.n.trim() ? 'Vul een naam in.' : d.items.some(it => it.n === f.n.trim()) ? 'Bestaat al.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  (data.extra[deel] = data.extra[deel] || []).push({ n: r.form.n.trim(), sub: r.form.sub.trim() || undefined });
+  data.open[deel] = true;
+  save(); render();
+}
+
+async function menu() {
+  const weg = Object.keys(data.weg);
+  const r = await sheet('Judo', `<div class="list">
+    <button class="row" data-m="exam" type="button"><span class="ico">📅</span><span class="grow"><b>Examendatum en punten</b></span></button>
+    <button class="row" data-m="weg" type="button" ${weg.length ? '' : 'disabled style="opacity:.5"'}><span class="ico">👁️</span><span class="grow"><b>Verborgen onderdelen</b><span class="sub">${weg.length} verborgen</span></span></button>
+    <button class="row" data-m="reset" type="button"><span class="ico">↺</span><span class="grow"><b>Stand opnieuw beginnen</b><span class="sub">Alles terug op "nog niet"; logboek blijft</span></span></button></div>`, []);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b && !b.disabled) r.close(b.dataset.m); });
+  const v = (await r.done).value;
+  if (v === 'exam') return examForm();
+  if (v === 'weg') { data.weg = {}; save(); render(); toast(weg.length + ' onderdelen weer zichtbaar.'); }
+  if (v === 'reset' && await confirm('Alle onderdelen terug op <b>nog niet</b>?', 'Opnieuw beginnen', true)) { data.status = {}; save(); render(); }
+}
+
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-st],[data-note],[data-toggle],[data-act],[data-addto],[data-r],[data-l],[data-f]');
+  if (!t) return;
+  const ds = t.dataset;
+  if (ds.st) { data.status[ds.st] = (st(ds.st) + 1) % 3; save(); const s = st(ds.st); t.className = 'st s' + s; t.textContent = STATUS[s].naam; clearTimeout(render.t); render.t = setTimeout(render, 900); return; }
+  if (ds.note) return noteForm(ds.note);
+  if (ds.toggle) { data.open[ds.toggle] = !data.open[ds.toggle]; save(); t.parentElement.classList.toggle('open'); return; }
+  if (ds.addto) return addTo(ds.addto);
+  if (ds.r) return roosterForm(data.rooster.find(x => x.id === ds.r));
+  if (ds.l) return logForm(data.log.find(x => x.id === ds.l));
+  if (ds.f) { alleenOpen = ds.f === '1'; return render(); }
+  e.preventDefault();
+  if (ds.act === 'exam') return examForm();
+  if (ds.act === 'rooster') return roosterForm();
+  if (ds.act === 'new') return logForm();
+  if (ds.act === 'logfocus') return logForm(null, focus(4).map(x => x.k));
+  if (ds.act === 'doel') {
+    return sheet('Weekdoel', `<label class="f">Trainingen per week<input class="in" type="number" inputmode="numeric" name="n" value="${data.doel}"></label>`, [{ label: 'Bewaren', value: 'ok' }]).done
+      .then(r => { if (r.value === 'ok') { data.doel = Math.max(1, Math.min(14, +r.form.n || 2)); save(); render(); } });
+  }
+});
+$('#fab').onclick = () => logForm();
+$('#menu').onclick = menu;
+
+// Samenvatting voor het overzicht (en de widget)
+function dash() {
+  const c = telling(techDelen()), tot = c[0] + c[1] + c[2], w = weekInfo(), nx = volgende();
+  D.set('dash-judo', { naam: prog().naam, examen: data.examen.datum || '', pct: tot ? c[2] / tot : 0, klaar: c[2], tot, week: w.n, doel: data.doel,
+    volgende: nx ? (nx.diff === 0 ? 'vandaag' : nx.diff === 1 ? 'morgen' : DAGEN[nx.r.dag - 1]) + ' ' + (nx.r.tijd || '') + (nx.r.waar ? ' · ' + nx.r.waar : '') : '' });
+}
+dash();
+setView(view);
+</script>
+</body>
+</html>

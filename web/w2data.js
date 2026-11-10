@@ -194,7 +194,7 @@
 
   // ---------------------------------------------------------------- back-up (versleuteld met een wachtwoord)
   const AREAS = ['kluis', 'reizen'];
-  const IDBS = ['w2-recepten', 'w2-recepten-foto'];
+  const IDBS = ['w2-recepten', 'w2-recepten-foto', 'w2-verzameling', 'w2-verzameling-foto'];
   const enc = new TextEncoder(), dec = new TextDecoder();
   const b64u = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
   const u8b = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
@@ -245,6 +245,26 @@
       if (st === 'ok') set('backup-last', Date.now());
       return st;
     },
+    /** Automatische back-up (vanaf native 9): de gewone gegevens verzamelen; de app voegt Kluis en Reizen toe,
+        versleutelt met het opgeslagen wachtwoord en schrijft naar het gekozen bestand. Alleen als het tijd is. */
+    async auto(force) {
+      if (!native || !N.autoBackupStatus) return 'n/a';
+      let st = {};
+      try { st = JSON.parse(N.autoBackupStatus()); } catch (e) { return 'n/a'; }
+      if (!force && !st.due) return 'not-due';
+      if (!st.hasFile || !st.hasPass) return 'setup';
+      const data = { v: 1, made: new Date().toISOString(), local: {}, secret: {}, files: {}, idb: {} };
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && !SKIP_LOCAL.test(k)) data.local[k] = localStorage.getItem(k);
+      }
+      for (const name of IDBS) {
+        try { const db = idb(name), keys = await db.keys(), vals = await db.all(); data.idb[name] = keys.map((k, i) => [k, vals[i]]); } catch (e) {}
+      }
+      N.autoBackupRun(JSON.stringify(data), !!force);
+      return 'started';
+    },
+    autoStatus() { try { return native && N.autoBackupStatus ? JSON.parse(N.autoBackupStatus()) : null; } catch (e) { return null; } },
     /** Back-upbestand terugzetten. Gooit een fout bij verkeerd wachtwoord. */
     async restore(file, password, progress) {
       progress = progress || (() => {});
@@ -266,7 +286,7 @@
       }
       for (const name of IDBS) {
         const rows = (data.idb || {})[name];
-        if (rows && rows.length) { progress('Recepten…'); await idb(name).putMany(rows); }
+        if (rows && rows.length) { progress(name.includes('verzameling') ? 'Verzameling…' : 'Recepten…'); await idb(name).putMany(rows); }
       }
       return 'ok';
     }

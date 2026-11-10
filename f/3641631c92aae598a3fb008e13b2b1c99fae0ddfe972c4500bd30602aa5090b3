@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Verzameling</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#c58cff;--acc-ink:#1d0b30}
+.cols{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cols::-webkit-scrollbar{display:none}
+.cols button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.cols button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.tot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.tot b{display:block;font:800 22px/1.1 var(--f-display)}
+.tot span{font-size:12px;color:var(--muted);font-weight:700}
+.up{color:var(--ok)}.down{color:var(--danger)}
+.tools{display:flex;gap:8px}
+.tools .in{flex:1}
+.tools select.in{flex:none;width:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;color:inherit}
+.cardi .ph{aspect-ratio:3/4;background:var(--panel2);display:grid;place-items:center;font-size:40px;position:relative}
+.cardi.lp .ph{aspect-ratio:1/1}
+.cardi .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cardi .ph .w{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:800}
+.cardi .ph .n{position:absolute;top:8px;right:8px;background:var(--acc);color:var(--acc-ink);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:800}
+.cardi .tx{padding:10px 12px}
+.cardi b{display:block;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cardi span{display:block;color:var(--muted);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cardi .v{color:var(--text);font-weight:700;margin-top:4px}
+.big{width:100%;max-height:52vh;object-fit:contain;border-radius:14px;background:var(--bg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.fphoto{display:flex;gap:12px;align-items:center}
+.fphoto .pv{width:84px;height:84px;border-radius:12px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none;font-size:28px}
+.fphoto .pv img{width:100%;height:100%;object-fit:cover}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#persoonlijk" aria-label="Terug"></a><h1>Verzameling</h1><button class="ib" id="menu" type="button" aria-label="Meer"></button></div>
+<main class="page">
+  <div class="cols" id="cols"></div>
+  <div class="seg" id="seg"><button type="button" data-v="bezit" class="on">In bezit</button><button type="button" data-v="wens">Verlanglijst</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<input type="file" id="file" accept="image/*" hidden>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+const db = D.idb('w2-verzameling'), fotos = D.idb('w2-verzameling-foto');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+$('#menu').innerHTML = icon('more');
+D.recent('verzameling');
+
+// Soorten verzameling: velden die erbij horen. Eigen soorten krijgen de velden van "Anders".
+const SOORTEN = {
+  kaarten: { naam: 'Ruilkaarten', emoji: '🃏', vorm: 'kaart', velden: [['set', 'Set / serie', 'Bv. Base Set, Scarlet & Violet 151'], ['nummer', 'Nummer', 'Bv. 58/102'], ['zeld', 'Zeldzaamheid / variant', 'Bv. Holo, Shining, Promo'], ['taal', 'Taal', 'Bv. Engels, Japans']] },
+  platen: { naam: 'Platen', emoji: '💿', vorm: 'lp', velden: [['artiest', 'Artiest', ''], ['jaar', 'Jaar', ''], ['label', 'Label / persing', 'Bv. eerste persing, NL'], ['formaat', 'Formaat', 'Bv. LP, 7", 2LP']] },
+  anders: { naam: 'Anders', emoji: '📦', vorm: 'kaart', velden: [['merk', 'Merk / maker', ''], ['jaar', 'Jaar', ''], ['soort', 'Soort', '']] }
+};
+const STATEN = ['Mint', 'Near Mint', 'Excellent', 'Good', 'Light played', 'Played', 'Poor'];
+const START = [{ id: 'pokemon', naam: 'Pokémon-kaarten', soort: 'kaarten' }, { id: 'vinyl', naam: 'Platen', soort: 'platen' }];
+
+let cfg = Object.assign({ cols: START, col: 'pokemon', sort: 'nieuw' }, D.get('verzameling', null) || {});
+let items = [], view = 'bezit', zoek = '';
+const saveCfg = () => D.set('verzameling', cfg);
+const col = () => cfg.cols.find(c => c.id === cfg.col) || cfg.cols[0];
+const soortOf = c => SOORTEN[c.soort] || SOORTEN.anders;
+const eur = c => c == null || c === '' ? '' : '€ ' + (Math.round(+c * 100) / 100).toFixed(2).replace('.', ',');
+const num = v => { const n = parseFloat(String(v || '').replace(/[€\s]/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
+
+async function load() { items = (await db.all()) || []; render(); }
+
+function renderCols() {
+  $('#cols').innerHTML = cfg.cols.map(c => `<button type="button" data-c="${c.id}" class="${c.id === cfg.col ? 'on' : ''}">${soortOf(c).emoji} ${esc(c.naam)} <span style="opacity:.7">${items.filter(i => i.col === c.id && !i.wens).length}</span></button>`).join('') +
+    `<button type="button" data-c="+">${icon('plus', 'width="16" height="16" style="vertical-align:-3px"')} Nieuwe</button>`;
+}
+
+function render() {
+  renderCols();
+  const c = col(), so = soortOf(c);
+  const mine = items.filter(i => i.col === c.id);
+  const own = mine.filter(i => !i.wens), wish = mine.filter(i => i.wens);
+  const paid = own.reduce((s, i) => s + (num(i.prijs) || 0) * (i.aantal || 1), 0);
+  const val = own.reduce((s, i) => s + (num(i.waarde) != null ? num(i.waarde) : num(i.prijs) || 0) * (i.aantal || 1), 0);
+  let list = view === 'wens' ? wish : own;
+  if (zoek) { const q = zoek.toLowerCase(); list = list.filter(i => JSON.stringify([i.naam, i.notitie, i.staat, ...Object.values(i.v || {})]).toLowerCase().includes(q)); }
+  const by = { nieuw: (a, b) => (b.t || 0) - (a.t || 0), naam: (a, b) => a.naam.localeCompare(b.naam, 'nl'), waarde: (a, b) => (num(b.waarde) || num(b.prijs) || 0) - (num(a.waarde) || num(a.prijs) || 0), set: (a, b) => JSON.stringify(a.v || {}).localeCompare(JSON.stringify(b.v || {}), 'nl') || a.naam.localeCompare(b.naam, 'nl') };
+  list.sort(by[cfg.sort] || by.nieuw);
+  const diff = val - paid;
+  app.innerHTML = `
+    ${view === 'bezit' && own.length ? `<div class="card tot"><div><b>${own.reduce((s, i) => s + (i.aantal || 1), 0)}</b><span>stuks</span></div><div><b>${eur(paid) || '–'}</b><span>betaald</span></div><div><b>${eur(val) || '–'}</b><span>waarde${paid && val ? ` <em class="${diff >= 0 ? 'up' : 'down'}" style="font-style:normal">${diff >= 0 ? '+' : '−'}${Math.round(Math.abs(diff))}</em>` : ''}</span></div></div>` : ''}
+    ${mine.length ? `<div class="tools"><input class="in" id="q" type="search" placeholder="Zoeken in ${esc(c.naam)}" value="${esc(zoek)}"><select class="in" id="sort"><option value="nieuw">Nieuwste</option><option value="naam">Naam</option><option value="set">${esc(so.velden[0][1])}</option><option value="waarde">Waarde</option></select></div>` : ''}
+    ${list.length ? `<div class="grid">${list.map(i => card(i, so)).join('')}</div>` :
+      mine.length && zoek ? `<p class="muted">Niets gevonden voor "${esc(zoek)}".</p>` :
+      `<div class="empty"><b>${view === 'wens' ? 'Verlanglijst is leeg' : 'Nog niets in ' + esc(c.naam)}</b>${view === 'wens' ? 'Zet erop wat je zoekt. Op een beurs of in de winkel zie je dan meteen of je het al hebt.' : 'Voeg toe wat je hebt, met een foto, de staat en wat je ervoor betaalde.'}<br><button class="btn" data-act="new" type="button">${icon('plus')}Toevoegen</button></div>`}`;
+  const s = $('#sort'); if (s) s.value = cfg.sort;
+  hydrate();
+}
+
+const card = (i, so) => {
+  const sub = so.velden.map(([k]) => (i.v || {})[k]).filter(Boolean).slice(0, 2).join(' · ');
+  const w = num(i.waarde) != null ? i.waarde : i.prijs;
+  return `<button class="cardi ${so.vorm}" data-i="${i.id}" type="button"><div class="ph">${i.foto ? `<img data-ph="${i.id}" alt="">` : so.emoji}${i.staat ? `<span class="w">${esc(i.staat)}</span>` : ''}${(i.aantal || 1) > 1 ? `<span class="n">${i.aantal}×</span>` : ''}</div>
+    <div class="tx"><b>${esc(i.naam)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${w ? `<span class="v">${eur(num(w))}</span>` : ''}</div></button>`;
+};
+async function hydrate() {
+  for (const img of $$('img[data-ph]')) { const v = await fotos.get(img.dataset.ph); if (v) img.src = v; }
+}
+
+// ---------------------------------------------------------------- bekijken en bewerken
+async function show(i) {
+  const so = soortOf(cfg.cols.find(c => c.id === i.col) || col());
+  const foto = i.foto ? await fotos.get(i.id) : '';
+  const rows = [...so.velden.map(([k, l]) => [l, (i.v || {})[k]]), ['Staat', i.staat], ['Aantal', (i.aantal || 1) > 1 ? i.aantal : ''], ['Betaald', eur(num(i.prijs))], ['Gekocht', i.datum ? D.date.nice(i.datum, { day: 'numeric', month: 'long', year: 'numeric' }) : ''], ['Waarde', num(i.waarde) != null ? eur(num(i.waarde)) + (i.waardeDatum ? ' (' + D.date.nice(i.waardeDatum, { day: 'numeric', month: 'short', year: 'numeric' }) + ')' : '') : '']].filter(r => r[1]);
+  const r = await sheet(i.naam, `${foto ? `<img class="big" src="${foto}" alt="">` : ''}
+    ${rows.length ? `<dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    ${i.notitie ? `<div style="white-space:pre-wrap">${esc(i.notitie)}</div>` : ''}
+    ${i.wens ? `<button class="btn wide" data-x="got" type="button">${icon('check')}Gekocht! Naar mijn verzameling</button>` : `<button class="btn q wide" data-x="val" type="button">${icon('edit')}Waarde bijwerken</button>`}`,
+  [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: 'Bewerken', value: 'edit', kind: 'q' }, { label: 'Sluiten', value: null }]);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) r.close(b.dataset.x); });
+  const v = (await r.done).value;
+  if (v === 'edit') return form(i);
+  if (v === 'del') { if (await confirm(`<b>${esc(i.naam)}</b> verwijderen?`, 'Verwijderen', true)) { await db.del(i.id); await fotos.del(i.id); load(); } return; }
+  if (v === 'got') { i.wens = false; i.datum = D.date.today(); i.t = Date.now(); await db.put(i.id, i); load(); toast('Naar je verzameling gezet. Vul gerust de prijs in.'); return form(i); }
+  if (v === 'val') {
+    const res = await sheet('Waarde', `<label class="f">Wat is het nu waard?<input class="in" name="w" inputmode="decimal" value="${esc(i.waarde || '')}" placeholder="Bv. 45"></label><div class="muted small">Zoek de prijs op (bv. Cardmarket of Discogs) en vul hem hier in.</div>`,
+      [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }], { focus: true }).done;
+    if (res.value !== 'ok') return;
+    i.waarde = res.form.w.trim(); i.waardeDatum = D.date.today();
+    await db.put(i.id, i); load();
+  }
+}
+
+let pendingFoto = null;
+async function form(i) {
+  const isNew = !i;
+  const c = i ? (cfg.cols.find(x => x.id === i.col) || col()) : col();
+  const so = soortOf(c);
+  i = i || { naam: '', col: c.id, v: {}, staat: '', aantal: 1, prijs: '', datum: view === 'wens' ? '' : D.date.today(), waarde: '', notitie: '', wens: view === 'wens' };
+  pendingFoto = undefined;
+  const cur = i.foto ? await fotos.get(i.id) : '';
+  const s = sheet(isNew ? (i.wens ? 'Op de verlanglijst' : 'Toevoegen') : 'Bewerken', `
+    <div class="fphoto"><div class="pv" id="pv">${cur ? `<img src="${cur}" alt="">` : so.emoji}</div><div class="btns" style="flex:1"><button class="btn q" data-x="foto" type="button">${icon('upload')}Foto</button>${cur ? `<button class="btn danger" data-x="nofoto" type="button">${icon('trash')}</button>` : ''}</div></div>
+    <label class="f">Naam<input class="in" name="naam" value="${esc(i.naam)}" placeholder="${c.soort === 'platen' ? 'Bv. Abbey Road' : c.soort === 'kaarten' ? 'Bv. Pikachu with Grey Felt Hat' : ''}"></label>
+    <div class="grid2">${so.velden.map(([k, l, ph]) => `<label class="f">${esc(l)}<input class="in" name="v_${k}" value="${esc((i.v || {})[k] || '')}" placeholder="${esc(ph)}"></label>`).join('')}</div>
+    <div class="grid2"><label class="f">Staat<select class="in" name="staat"><option value="">–</option>${STATEN.map(x => `<option ${x === i.staat ? 'selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">Aantal<input class="in" name="aantal" type="number" inputmode="numeric" min="1" value="${i.aantal || 1}"></label></div>
+    ${i.wens ? `<label class="f">Wil ik hooguit voor betalen<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}" placeholder="Bv. 30"></label>` :
+      `<div class="grid2"><label class="f">Betaald (€)<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}"></label><label class="f">Gekocht op<input class="in" type="date" name="datum" value="${esc(i.datum || '')}"></label></div>
+       <label class="f">Waarde nu (€, optioneel)<input class="in" name="waarde" inputmode="decimal" value="${esc(i.waarde || '')}" placeholder="Laat leeg = wat je betaalde"></label>`}
+    <label class="f">Notitie<textarea class="in" name="notitie" placeholder="Bv. waar gekocht, gesigneerd, in sleeve/toploader">${esc(i.notitie || '')}</textarea></label>
+    ${!isNew ? '' : `<div class="toggle"><div class="grow"><b>Op de verlanglijst</b><div class="muted small">Heb ik nog niet, zoek ik</div></div><button type="button" class="sw${i.wens ? ' on' : ''}" data-x="wens" aria-label="Verlanglijst"></button></div>`}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : '' }], { focus: isNew });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-x]'); if (!b) return;
+    if (b.dataset.x === 'foto') pickFoto().then(v => { if (v) { pendingFoto = v; $('#pv', s.el).innerHTML = `<img src="${v}" alt="">`; } });
+    if (b.dataset.x === 'nofoto') { pendingFoto = ''; $('#pv', s.el).textContent = so.emoji; b.remove(); }
+    if (b.dataset.x === 'wens') { i.wens = !i.wens; b.classList.toggle('on', i.wens); }
+  });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  i.naam = f.naam.trim();
+  i.v = {}; so.velden.forEach(([k]) => { const x = (f['v_' + k] || '').trim(); if (x) i.v[k] = x; });
+  i.staat = f.staat; i.aantal = Math.max(1, +f.aantal || 1); i.prijs = (f.prijs || '').trim(); i.notitie = f.notitie.trim();
+  if (!i.wens) { i.datum = f.datum || ''; i.waarde = (f.waarde || '').trim(); if (i.waarde && !i.waardeDatum) i.waardeDatum = D.date.today(); }
+  if (isNew) { i.id = D.uid(); i.t = Date.now(); }
+  if (pendingFoto !== undefined) { if (pendingFoto) { await fotos.put(i.id, pendingFoto); i.foto = true; } else { await fotos.del(i.id); i.foto = false; } }
+  await db.put(i.id, i);
+  if (isNew && i.wens !== (view === 'wens')) setView(i.wens ? 'wens' : 'bezit');
+  load();
+}
+
+function pickFoto() {
+  return new Promise(res => {
+    const inp = $('#file');
+    inp.value = '';
+    inp.onchange = async () => {
+      const f = inp.files[0];
+      if (!f) return res(null);
+      try {
+        const bmp = await createImageBitmap(f);
+        const sc = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', .8));
+      } catch (e) { toast('Deze foto kon niet gelezen worden.'); res(null); }
+    };
+    inp.click();
+  });
+}
+
+async function colForm(c) {
+  const isNew = !c;
+  c = c || { naam: '', soort: 'anders' };
+  const r = await sheet(isNew ? 'Nieuwe verzameling' : c.naam, `<label class="f">Naam<input class="in" name="naam" value="${esc(c.naam)}" placeholder="Bv. Lego, munten, strips"></label>
+    <label class="f">Soort<select class="in" name="soort">${Object.entries(SOORTEN).map(([k, s]) => `<option value="${k}" ${k === c.soort ? 'selected' : ''}>${s.emoji} ${s.naam}</option>`).join('')}</select></label>`,
+  (isNew || cfg.cols.length < 2 ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : '' }]), { focus: isNew }).done;
+  if (r.value === 'del') {
+    const n = items.filter(i => i.col === c.id).length;
+    if (!(await confirm(`<b>${esc(c.naam)}</b>${n ? ` en de ${n} dingen erin` : ''} verwijderen?`, 'Verwijderen', true))) return;
+    for (const i of items.filter(i => i.col === c.id)) { await db.del(i.id); await fotos.del(i.id); }
+    cfg.cols = cfg.cols.filter(x => x !== c); cfg.col = cfg.cols[0].id; saveCfg(); return load();
+  }
+  if (r.value !== 'ok') return;
+  c.naam = r.form.naam.trim(); c.soort = r.form.soort;
+  if (isNew) { c.id = D.uid(); cfg.cols.push(c); cfg.col = c.id; }
+  saveCfg(); render();
+}
+
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+$('#cols').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; if (b.dataset.c === '+') return colForm(); cfg.col = b.dataset.c; zoek = ''; saveCfg(); render(); };
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-i],[data-act]'); if (!t) return;
+  if (t.dataset.i) return show(items.find(i => i.id === t.dataset.i));
+  if (t.dataset.act === 'new') return form();
+});
+app.addEventListener('input', e => { if (e.target.id === 'q') { zoek = e.target.value; clearTimeout(render.t); render.t = setTimeout(() => { render(); const q = $('#q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
+app.addEventListener('change', e => { if (e.target.id === 'sort') { cfg.sort = e.target.value; saveCfg(); render(); } });
+$('#fab').onclick = () => form();
+$('#menu').onclick = () => colForm(col());
+saveCfg();
+load();
+</script>
+</body>
+</html>

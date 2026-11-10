@@ -114,6 +114,9 @@ const SOORTEN = { boodschappen: 'Boodschappen', todo: 'To-do', lijst: 'Gewone li
 // ---------------------------------------------------------------- boodschappen (gedeeld met Recepten: boodschappen.js)
 const { CATS, CAT, guessCat, parseQty, cap, remember } = Boodschappen;
 
+// Regels voor de eigen Firebase-database (zelfde als tools/firebase/regels.json). Nieuwe onderdelen passen er vanzelf in.
+const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
+
 // ---------------------------------------------------------------- hulpjes
 const me = () => S.cfg && S.cfg.me;
 const anderen = () => { const n = leden().filter(x => x.id !== me().id).map(x => x.naam); return n.length === 1 ? n[0] : 'iemand anders'; };
@@ -589,10 +592,16 @@ function settingsSheet() {
     <div class="colors" id="mycol">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === me().kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>
     ${S.canWatch() ? `<div class="toggle"><div class="grow"><b>Meldingen</b><span class="muted small">Als ${esc(anderen())} iets op een lijst zet. De app kijkt ongeveer elk kwartier; ligt je telefoon lang stil, dan soms later.</span></div><button type="button" class="sw ${S.watching ? 'on' : ''}" id="s-notif" aria-label="Meldingen"></button></div>`
       : W2.inApp ? `<div class="muted small">Meldingen als de ander iets toevoegt: werkt vanaf de nieuwe app-versie (Instellingen › Updates).</div>` : ''}
-    <div class="muted small">Database: ${esc(S.cfg.url.replace('https://', ''))}</div>
+    <div class="muted small">Database: ${esc(S.cfg.url.replace('https://', ''))} · <a href="#" id="s-rules">database-regels kopiëren</a></div>
     <button class="btn danger wide" type="button" id="s-leave">Ontkoppelen op deze telefoon</button>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
   let kleur = me().kleur;
+  const ru = sh.el.querySelector('#s-rules');
+  if (ru) ru.addEventListener('click', async e => {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(REGELS); toast('Gekopieerd. Plak ze in Firebase › Realtime Database › Regels en kies Publiceren.', 6000); }
+    catch (err) { toast('Kopiëren lukte niet.'); }
+  });
   const nt = sh.el.querySelector('#s-notif');
   if (nt) nt.addEventListener('click', async () => {
     const want = !nt.classList.contains('on');

@@ -88,5 +88,52 @@ function remember(tekst, cat) {
   const lists = () => !window.Samen || !Samen.cfg ? [] : Object.entries(Samen.data.lijsten).map(([id, l]) => Object.assign({ id }, l))
     .filter(l => l.soort === 'boodschappen').sort((a, b) => (a.pos || 0) - (b.pos || 0) || (a.gemaakt || 0) - (b.gemaakt || 0));
 
-  window.Boodschappen = { CATS, CAT, guessCat, parseQty, cap, remember, fromRecipe, isStaple, addLines, lists };
+  // ---------------------------------------------------------------- hoeveelheden omrekenen (porties) en optellen
+  const FR = { '½': .5, '¼': .25, '¾': .75, '⅓': 1 / 3, '⅔': 2 / 3 };
+  const QTY = /^(\d+(?:[.,]\d+)?(?:\s*[½¼¾⅓⅔])?|[½¼¾⅓⅔]|\d+\s*\/\s*\d+)(\s*(?:-|–|tot)\s*(\d+(?:[.,]\d+)?|[½¼¾]))?/;
+  function num(s) {
+    s = String(s).trim();
+    if (FR[s] != null) return FR[s];
+    const f = /^(\d+)\s*\/\s*(\d+)$/.exec(s); if (f) return +f[1] / +f[2];
+    const m = /^(\d+(?:[.,]\d+)?)\s*([½¼¾⅓⅔])?$/.exec(s); if (m) return parseFloat(m[1].replace(',', '.')) + (m[2] ? FR[m[2]] : 0);
+    return NaN;
+  }
+  function fmt(n) {
+    if (n >= 10) return String(Math.round(n));
+    const w = Math.floor(n), r = n - w;
+    const fr = [[0, ''], [.25, '¼'], [1 / 3, '⅓'], [.5, '½'], [2 / 3, '⅔'], [.75, '¾'], [1, '']];
+    let best = fr[0], d = 9;
+    fr.forEach(f => { const x = Math.abs(r - f[0]); if (x < d) { d = x; best = f; } });
+    if (d < .04) { const ww = best[0] === 1 ? w + 1 : w; return (ww ? ww : '') + best[1] || '0'; }
+    return (Math.round(n * 10) / 10).toString().replace('.', ',');
+  }
+  /** "200 g bloem" × 1,5 → "300 g bloem". */
+  function scaleText(line, f) {
+    const m = f === 1 ? null : QTY.exec(line);
+    if (!m) return line;
+    const a = num(m[1]); if (!isFinite(a)) return line;
+    let s = fmt(a * f);
+    if (m[3]) { const b = num(m[3]); if (isFinite(b)) s += '–' + fmt(b * f); }
+    return s + line.slice(m[0].length);
+  }
+  /** Dezelfde boodschap uit meerdere recepten samennemen: "200 g gehakt" + "300 g gehakt" → "500 g gehakt". */
+  function combine(lines) {
+    const by = new Map();
+    lines.forEach(l => {
+      const q = parseQty(l), key = q.tekst.trim().toLowerCase();
+      if (!key) return;
+      const m = /^(\S+?)\s*(\S*)$/.exec(q.aantal || '');
+      const n = m ? num(m[1]) : NaN, unit = m ? m[2] : '';
+      const cur = by.get(key);
+      if (!cur) { by.set(key, { tekst: q.tekst.trim(), parts: [{ n, unit, raw: q.aantal }] }); return; }
+      const same = cur.parts.find(p => p.unit === unit && isFinite(p.n) && isFinite(n));
+      if (same) same.n += n; else cur.parts.push({ n, unit, raw: q.aantal });
+    });
+    return [...by.values()].map(x => {
+      const aantal = x.parts.map(p => isFinite(p.n) ? fmt(p.n) + (p.unit ? ' ' + p.unit : '') : p.raw).filter(Boolean).join(' + ');
+      return (aantal ? aantal + ' ' : '') + x.tekst;
+    });
+  }
+
+  window.Boodschappen = { CATS, CAT, guessCat, parseQty, cap, remember, fromRecipe, isStaple, addLines, lists, scaleText, combine, num, fmt };
 })();

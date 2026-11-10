@@ -1,0 +1,62 @@
+/* W2 Apps — judo: examenprogramma's (JBN, vaardigheidseisen judo 1e t/m 3e dan, versie 2022).
+   Bron: jbn.nl › reglementen › vaardigheidseisen (hoofdstuk 6). Controleer vóór je examen altijd de actuele versie;
+   in de app kun je alles zelf aanvullen of weghalen. */
+(function () {
+  const NAGE_NO_KATA = [
+    ['Serie 1 · te-waza', 'uki-otoshi, seoi-nage, kata-guruma'],
+    ['Serie 2 · koshi-waza', 'uki-goshi, harai-goshi, tsurikomi-goshi'],
+    ['Serie 3 · ashi-waza', 'okuri-ashi-barai, sasae-tsurikomi-ashi, uchi-mata'],
+    ['Serie 4 · ma-sutemi-waza', 'tomoe-nage, ura-nage, sumi-gaeshi'],
+    ['Serie 5 · yoko-sutemi-waza', 'yoko-gake, yoko-guruma, uki-waza']
+  ];
+  const KATAME_NO_KATA = [
+    ['Osae-komi-waza', 'kesa-gatame, kata-gatame, kami-shiho-gatame, yoko-shiho-gatame, kuzure-kami-shiho-gatame'],
+    ['Shime-waza', 'kata-juji-jime, hadaka-jime, okuri-eri-jime, kataha-jime, gyaku-juji-jime'],
+    ['Kansetsu-waza', 'ude-garami, ude-hishigi-juji-gatame, ude-hishigi-ude-gatame, ude-hishigi-hiza-gatame, ashi-garami']
+  ];
+  const t = list => list.map(n => ({ n }));
+
+  // Elk onderdeel: { id, naam, uitleg, items: [{ n, sub? }] }
+  const DAN2 = [
+    { id: 'kata', naam: 'Kata', uitleg: 'Twee kata. Verplicht: nage-no-kata als tori (alle 5 series). Keuze: katame-no-kata als tori, óf nage-no-kata als uke (serie 1–3). Met 100 wedstrijdpunten vervalt het keuzeonderdeel.',
+      items: NAGE_NO_KATA.map(([n, sub]) => ({ n: 'Nage-no-kata (tori) · ' + n, sub }))
+        .concat(KATAME_NO_KATA.map(([n, sub]) => ({ n: 'Keuze: katame-no-kata (tori) · ' + n, sub })))
+        .concat(NAGE_NO_KATA.slice(0, 3).map(([n, sub]) => ({ n: 'Of keuze: nage-no-kata als uke · ' + n, sub }))) },
+    { id: 'te', naam: 'Te-waza', uitleg: 'Begint met yaku-soku-geiko: zelf gekozen worpen uit 2 richtingen of richtingsveranderingen. De examinator vraagt er maximaal 3.',
+      items: t(['ippon-seoi-nage', 'morote-seoi-nage', 'tai-otoshi', 'kata-guruma', 'morote-gari']) },
+    { id: 'koshi', naam: 'Koshi-waza', uitleg: 'Maximaal 5 gevraagd.', items: t(['uki-goshi', 'o-goshi', 'koshi-guruma', 'tsurikomi-goshi', 'harai-goshi', 'tsuri-goshi', 'ushiro-goshi', 'utsuri-goshi']) },
+    { id: 'ashi', naam: 'Ashi-waza', uitleg: 'Maximaal 7 gevraagd (uchi-mata mag ook als koshi-waza).',
+      items: t(['de-ashi-barai', 'hiza-guruma', 'sasae-tsurikomi-ashi', 'o-soto-gari', 'o-uchi-gari', 'ko-uchi-gari', 'okuri-ashi-barai', 'uchi-mata', 'harai-tsurikomi-ashi']) },
+    { id: 'sutemi', naam: 'Sutemi-waza', uitleg: 'Maximaal 2 ma-sutemi en 2 yoko-sutemi. Mag in één richting.',
+      items: [{ n: 'tomoe-nage', sub: 'ma-sutemi' }, { n: 'sumi-gaeshi', sub: 'ma-sutemi' }, { n: 'ura-nage', sub: 'ma-sutemi' },
+        { n: 'yoko-tomoe-nage', sub: 'yoko-sutemi' }, { n: 'tani-otoshi', sub: 'yoko-sutemi' }, { n: 'uki-waza', sub: 'yoko-sutemi' }, { n: 'yoko-otoshi', sub: 'yoko-sutemi' }] },
+    { id: 'combi', naam: 'Renraku-, kaeshi- en hikikomi-waza', uitleg: 'Combinaties ontstaan door blokkeren, verzet of ontsnappen uit een realistische geplande worp.',
+      items: [
+        { n: 'Renraku-waza 1', sub: 'op een voorwaartse worp' }, { n: 'Renraku-waza 2', sub: 'op een achterwaartse worp' }, { n: 'Renraku-waza 3', sub: 'van rechts naar links of andersom' },
+        { n: 'Kaeshi-waza 1', sub: 'op een voorwaartse worp' }, { n: 'Kaeshi-waza 2', sub: 'op een voorwaartse worp' },
+        { n: 'Kaeshi-waza 3', sub: 'op een achterwaartse worp' }, { n: 'Kaeshi-waza 4', sub: 'op een achterwaartse worp' },
+        { n: 'Hikikomi-waza 1' }, { n: 'Hikikomi-waza 2' }, { n: 'Hikikomi-waza 3' }, { n: 'Hikikomi-waza 4' }] },
+    { id: 'inter', naam: 'Interactief judo', uitleg: 'Antwoord op een situatie, en één techniek uit kumi-kata spel in twee pakkingen.',
+      items: [{ n: 'Duwende uke', sub: 'passende techniek' }, { n: 'Trekkende uke', sub: 'passende techniek' }, { n: 'Kumi-kata: techniek naar keuze', sub: 'in 2 verschillende pakkingen' }] },
+    { id: 'osae', naam: 'Osae-komi-waza', uitleg: 'Situationeel ne-waza vanuit de 6 basissituaties. Per houdgreep één variatie en twee bevrijdingen.',
+      items: ['kesa-gatame', 'yoko-shiho-gatame', 'tate-shiho-gatame', 'kami-shiho-gatame', 'kata-gatame'].map(n => ({ n, sub: 'variatie + 2 bevrijdingen' })) },
+    { id: 'shime', naam: 'Shime-waza', uitleg: '3 omstrengelingen met vrije startsituatie, plus 2 startposities van de examinator.',
+      items: t(['kata-juji-jime', 'nami-juji-jime', 'gyaku-juji-jime', 'hadaka-jime', 'okuri-eri-jime', 'kataha-jime', 'katate-jime', 'sankaku-jime']) },
+    { id: 'kansetsu', naam: 'Kansetsu-waza', uitleg: '2 armklemmen met vrije startsituatie, plus 2 startposities van de examinator.',
+      items: t(['ude-garami', 'ude-hishigi-juji-gatame', 'ude-hishigi-ude-gatame', 'ude-hishigi-hiza-gatame']) },
+    { id: 'situ', naam: 'Ne-waza: de 6 basissituaties', uitleg: 'Elke techniek begint vanuit één van deze situaties.',
+      items: t(['vanuit nage-waza', 'uke in rugligging (passeren)', 'uke in bokzit', 'uke in buikligging', 'tori in bokzit', 'tori in rugligging']) },
+    { id: 'regel', naam: 'Geregeld', uitleg: 'Minstens 3 jaar JBN-lid. Aanvraag en danexamenregistratie minstens een maand van tevoren.',
+      items: t(['Examen aangevraagd', 'Danexamenregistratie', 'Bondspaspoort', 'Geldige JBN-pas', 'Uke afgesproken', 'Wedstrijdpunten bijgehouden']) }
+  ];
+
+  const PROGRAMMAS = {
+    dan2: { naam: '2e dan judo (JBN)', bron: 'JBN vaardigheidseisen judo 1e–3e dan (2022)', delen: DAN2 }
+  };
+  const STATUS = [
+    { id: 0, naam: 'Nog niet', kleur: 'var(--line)' },
+    { id: 1, naam: 'Oefenen', kleur: '#ffc83d' },
+    { id: 2, naam: 'Zit erin', kleur: '#5ee07a' }
+  ];
+  window.JudoEisen = { PROGRAMMAS, STATUS, NAGE_NO_KATA, KATAME_NO_KATA };
+})();

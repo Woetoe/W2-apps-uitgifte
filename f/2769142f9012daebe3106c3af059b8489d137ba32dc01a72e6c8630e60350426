@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Huis</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#7fd1ff;--acc-ink:#04202e}
+.row .end b{display:block;font:800 18px/1 var(--f-display);color:var(--text)}
+.row.late .end b{color:var(--danger)}
+.row.soon .end b{color:#ffc83d}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 12px;font-size:14px;cursor:pointer}
+.ev{display:flex;gap:8px;align-items:center}
+.ev .in{flex:1}
+.meter .hd{display:flex;align-items:center;gap:12px}
+.meter .hd .grow{flex:1}
+.meter .hd b{font:800 18px var(--f-display)}
+.bars{display:flex;align-items:flex-end;gap:4px;height:90px;margin-top:12px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bars i{display:block;width:100%;background:var(--acc);border-radius:5px 5px 2px 2px;min-height:2px}
+.bars span{font-size:11px;color:var(--muted)}
+.hist{display:flex;flex-direction:column;gap:2px;max-height:30vh;overflow:auto}
+.hist div{display:flex;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--line);font-size:15px}
+.hist div:last-child{border-bottom:0}
+.hist button{border:0;background:transparent;color:var(--muted);cursor:pointer}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat div{background:var(--panel2);border-radius:12px;padding:10px}
+.stat b{display:block;font:800 18px var(--f-display)}
+.stat span{font-size:12px;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#persoonlijk" aria-label="Terug"></a><h1>Huis</h1></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="klus" class="on">Klusjes</button><button type="button" data-v="meter">Meterstanden</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+D.recent('huis');
+
+const EENHEID = { dag: ['dag', 'dagen'], week: ['week', 'weken'], maand: ['maand', 'maanden'], jaar: ['jaar', 'jaar'] };
+const SJABLONEN = [
+  ['🔥', 'CV-ketel onderhoud', 1, 'jaar'], ['🚨', 'Rookmelders testen', 1, 'maand'], ['🍳', 'Afzuigkapfilter schoonmaken', 3, 'maand'],
+  ['🧺', 'Wasmachine heet draaien', 1, 'maand'], ['🍽️', 'Vaatwasserfilter', 1, 'maand'], ['🌬️', 'Ventilatieroosters stofzuigen', 6, 'maand'],
+  ['🪴', 'Planten water geven', 1, 'week'], ['🧊', 'Vriezer ontdooien', 1, 'jaar'], ['🚰', 'Afvoeren ontkalken', 3, 'maand'],
+  ['🛏️', 'Matras keren', 3, 'maand'], ['🪟', 'Ramen wassen', 3, 'maand'], ['🧯', 'Brandblusser controleren', 1, 'jaar']
+];
+const METERS = [{ naam: 'Stroom', eenheid: 'kWh', emoji: '⚡' }, { naam: 'Gas', eenheid: 'm³', emoji: '🔥' }, { naam: 'Water', eenheid: 'm³', emoji: '💧' }];
+
+let data = Object.assign({ klussen: [], meters: [] }, D.get('huis', null) || {});
+let view = location.hash === '#meter' ? 'meter' : 'klus';
+const save = () => { D.set('huis', data); publish(); };
+
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function volgende(k) {
+  const d = D.date.parse(k.laatst || k.start || D.date.today());
+  if (!k.laatst) return k.start || D.date.today();
+  const n = +k.elke || 1;
+  if (k.eenheid === 'dag') d.setDate(d.getDate() + n);
+  else if (k.eenheid === 'week') d.setDate(d.getDate() + 7 * n);
+  else if (k.eenheid === 'maand') d.setMonth(d.getMonth() + n);
+  else d.setFullYear(d.getFullYear() + n);
+  return iso(d);
+}
+const elke = k => `elke ${+k.elke === 1 ? EENHEID[k.eenheid][0] : k.elke + ' ' + EENHEID[k.eenheid][1]}`;
+// "12.345,6" en "12345,6" zijn duidelijk. "10.200" kan 10200 of 10,2 zijn: dan wint wat het dichtst bij de vorige stand ligt
+// (zonder vorige stand: duizendtallen).
+function leesGetal(v, vorige) {
+  const raw = String(v || '').trim().replace(/\s/g, '');
+  if (!raw) return NaN;
+  if (/,/.test(raw)) return parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+  if (/^\d{1,3}(\.\d{3})+$/.test(raw)) {
+    const dz = parseFloat(raw.replace(/\./g, '')), dec = parseFloat(raw);
+    if (vorige == null) return dz;
+    return Math.abs(dz - vorige) <= Math.abs(dec - vorige) ? dz : dec;
+  }
+  return parseFloat(raw);
+}
+const fmt = (n, dec) => n == null || !isFinite(n) ? '–' : n.toLocaleString('nl-NL', { maximumFractionDigits: dec == null ? 1 : dec, minimumFractionDigits: 0 });
+
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', v === 'meter' ? '#meter' : '#'); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+function render() { view === 'meter' ? renderMeters() : renderKlussen(); }
+
+function renderKlussen() {
+  if (!data.klussen.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen klusjes</b>Dingen die steeds terugkomen: de cv-ketel, rookmelders, filters. De app onthoudt wanneer het weer moet${W2.notify && W2.notify.available() ? ' en geeft een melding' : ''}.<br><button class="btn" data-act="new" type="button">${icon('plus')}Klusje toevoegen</button></div>`;
+    return;
+  }
+  const list = data.klussen.map(k => ({ k, nx: volgende(k), d: D.date.days(volgende(k)) })).sort((a, b) => a.d - b.d);
+  app.innerHTML = `<div class="list">${list.map(({ k, d }) => `
+    <button class="row ${d < 0 ? 'late' : d <= 3 ? 'soon' : ''}" data-k="${k.id}" type="button"><span class="ico">${k.emoji || '🔧'}</span>
+      <span class="grow"><b>${esc(k.naam)}</b><span class="sub">${esc(elke(k))}${k.laatst ? ' · laatst ' + esc(D.date.nice(k.laatst, { day: 'numeric', month: 'short', year: 'numeric' })) : ''}</span></span>
+      <span class="end"><b>${d < 0 ? -d : d === 0 ? '!' : d}</b>${d < 0 ? 'dagen te laat' : d === 0 ? 'vandaag' : d === 1 ? 'morgen' : 'dagen'}</span></button>`).join('')}</div>
+    <p class="muted small">Tik op een klusje en kies <b>Gedaan</b>; dan schuift de volgende keer vanzelf op.</p>`;
+}
+
+async function klusSheet(k) {
+  const d = D.date.days(volgende(k));
+  const r = await sheet(`${k.emoji || '🔧'} ${k.naam}`, `
+    <div class="muted">${esc(elke(k))} · volgende keer <b style="color:var(--text)">${esc(D.date.rel(d))}</b> (${esc(D.date.nice(volgende(k), { weekday: 'short', day: 'numeric', month: 'long' }))})</div>
+    ${k.notitie ? `<div style="white-space:pre-wrap">${esc(k.notitie)}</div>` : ''}
+    <button class="btn wide" data-x="done" type="button">${icon('check')}Gedaan vandaag</button>
+    <button class="btn q wide" data-x="doneon" type="button">Gedaan op een andere dag</button>
+    ${(k.hist || []).length ? `<div><div class="muted small" style="font-weight:700;margin-bottom:4px">Eerder gedaan</div><div class="hist">${k.hist.slice().reverse().slice(0, 12).map(h => `<div><span>${esc(D.date.nice(h, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }))}</span></div>`).join('')}</div></div>` : ''}`,
+  [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: 'Bewerken', value: 'edit', kind: 'q' }, { label: 'Sluiten', value: null }]);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) r.close(b.dataset.x); });
+  const v = (await r.done).value;
+  if (v === 'done') return gedaan(k, D.date.today());
+  if (v === 'doneon') {
+    const x = await sheet('Wanneer?', `<label class="f">Datum<input class="in" type="date" name="d" value="${D.date.today()}" max="${D.date.today()}"></label>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+    if (x.value === 'ok' && x.form.d) gedaan(k, x.form.d);
+    return;
+  }
+  if (v === 'edit') return klusForm(k);
+  if (v === 'del' && await confirm(`<b>${esc(k.naam)}</b> verwijderen?`, 'Verwijderen', true)) { data.klussen = data.klussen.filter(x => x !== k); save(); render(); }
+}
+function gedaan(k, dag) {
+  k.hist = (k.hist || []).concat(dag).sort();
+  k.laatst = k.hist[k.hist.length - 1];
+  delete k.start;
+  save(); render();
+  toast(`Gedaan. Volgende keer: ${D.date.nice(volgende(k), { weekday: 'short', day: 'numeric', month: 'long' })}.`);
+}
+
+async function klusForm(k, sj) {
+  const isNew = !k;
+  if (isNew && !sj) {
+    const r = await sheet('Wat moet er gebeuren?', `<div class="chips">${SJABLONEN.filter(s => !data.klussen.some(k => k.naam === s[1])).map((s, i) => `<button class="chip" data-sj="${SJABLONEN.indexOf(s)}" type="button">${s[0]} ${esc(s[1])}</button>`).join('')}</div>`,
+      [{ label: 'Iets anders', value: 'leeg', kind: 'q' }]);
+    r.el.addEventListener('click', e => { const b = e.target.closest('[data-sj]'); if (b) r.close('sj' + b.dataset.sj); });
+    const v = (await r.done).value;
+    if (!v) return;
+    sj = v === 'leeg' ? ['🔧', '', 1, 'maand'] : SJABLONEN[+v.slice(2)];
+  }
+  k = k || { emoji: sj[0], naam: sj[1], elke: sj[2], eenheid: sj[3], laatst: '', notitie: '' };
+  const r = await sheet(isNew ? 'Klusje' : 'Bewerken', `
+    <div class="grid2" style="grid-template-columns:72px 1fr"><label class="f">Icoon<input class="in" name="emoji" value="${esc(k.emoji || '🔧')}" maxlength="4" style="text-align:center;font-size:22px"></label><label class="f">Wat<input class="in" name="naam" value="${esc(k.naam)}" placeholder="Bv. filter afzuigkap"></label></div>
+    <div class="grid2"><label class="f">Elke<input class="in" name="elke" type="number" inputmode="numeric" min="1" value="${k.elke}"></label><label class="f">&nbsp;<select class="in" name="eenheid">${Object.entries(EENHEID).map(([e, l]) => `<option value="${e}" ${e === k.eenheid ? 'selected' : ''}>${l[1]}</option>`).join('')}</select></label></div>
+    <label class="f">Laatst gedaan (leeg = nog nooit, dan meteen)<input class="in" type="date" name="laatst" value="${esc(k.laatst || '')}" max="${D.date.today()}"></label>
+    <label class="f">Notitie<textarea class="in" name="notitie" placeholder="Bv. monteur, telefoonnummer, welk filter">${esc(k.notitie || '')}</textarea></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Wat moet er gebeuren?' : '' }], { focus: isNew && !k.naam }).done;
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  Object.assign(k, { emoji: f.emoji.trim() || '🔧', naam: f.naam.trim(), elke: Math.max(1, +f.elke || 1), eenheid: f.eenheid, notitie: f.notitie.trim() });
+  if (f.laatst !== (k.laatst || '')) { k.laatst = f.laatst; if (f.laatst && !(k.hist || []).includes(f.laatst)) k.hist = (k.hist || []).concat(f.laatst).sort(); }
+  if (isNew) { k.id = D.uid(); data.klussen.push(k); }
+  save(); render();
+  if (isNew && W2.notify && W2.notify.available() && W2.notify.status() !== 'ok') {
+    const st = await W2.notify.ask();
+    if (st !== 'ok') toast('Zonder meldingen zie je het alleen hier en op het overzicht.', 4000);
+  }
+}
+
+// ---------------------------------------------------------------- meterstanden
+function verbruik(m) {
+  const s = (m.standen || []).slice().sort((a, b) => a.datum < b.datum ? -1 : 1);
+  const per = [];
+  for (let i = 1; i < s.length; i++) {
+    const dd = (D.date.parse(s[i].datum) - D.date.parse(s[i - 1].datum)) / 864e5;
+    if (dd > 0) per.push({ van: s[i - 1].datum, tot: s[i].datum, dagen: dd, totaal: s[i].waarde - s[i - 1].waarde, perDag: (s[i].waarde - s[i - 1].waarde) / dd });
+  }
+  // per kalendermaand (gelijkmatig verdeeld over de dagen tussen twee standen)
+  const maand = {};
+  per.forEach(p => {
+    const d = D.date.parse(p.van);
+    for (let i = 0; i < p.dagen; i++) {
+      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i), k = x.getFullYear() + '-' + pad(x.getMonth() + 1);
+      maand[k] = (maand[k] || 0) + p.perDag;
+    }
+  });
+  return { s, per, maand };
+}
+
+function renderMeters() {
+  if (!data.meters.length) {
+    app.innerHTML = `<div class="empty"><b>Meterstanden bijhouden</b>Schrijf af en toe je stand op (bv. elke maand). Dan zie je je verbruik per maand en per dag.<br><button class="btn" data-act="meters" type="button">${icon('plus')}Stroom, gas en water</button></div>`;
+    return;
+  }
+  app.innerHTML = data.meters.map(m => {
+    const { s, per, maand } = verbruik(m), last = s[s.length - 1];
+    const keys = Object.keys(maand).sort().slice(-12), mx = Math.max(1e-9, ...keys.map(k => maand[k]));
+    const lastPer = per[per.length - 1];
+    const jaar = per.length ? per.reduce((a, p) => a + p.totaal, 0) / per.reduce((a, p) => a + p.dagen, 0) * 365 : null;
+    return `<div class="card meter"><div class="hd"><span style="font-size:24px">${m.emoji}</span><div class="grow"><b>${esc(m.naam)}</b><div class="muted small">${last ? 'Laatste stand ' + fmt(last.waarde, 3) + ' ' + esc(m.eenheid) + ' · ' + esc(D.date.rel(D.date.days(last.datum))) : 'Nog geen stand'}</div></div>
+      <button class="btn" data-stand="${m.id}" type="button" style="min-height:42px;padding:6px 14px">${icon('plus')}Stand</button></div>
+      ${per.length ? `<div class="stat"><div><b>${fmt(lastPer.perDag, 2)} ${esc(m.eenheid)}</b><span>per dag (laatst)</span></div><div><b>${fmt(jaar, 0)} ${esc(m.eenheid)}</b><span>per jaar (geschat)</span></div></div>` : s.length ? '<div class="muted small" style="margin-top:8px">Na de volgende stand zie je je verbruik.</div>' : ''}
+      ${keys.length > 1 ? `<div class="bars">${keys.map(k => `<div><i style="height:${maand[k] / mx * 100}%" title="${fmt(maand[k])}"></i><span>${D.date.parse(k + '-01').toLocaleDateString('nl-NL', { month: 'short' }).replace('.', '')}</span></div>`).join('')}</div>` : ''}
+      ${s.length ? `<details style="margin-top:10px"><summary class="muted small">Alle standen (${s.length})</summary><div class="hist">${s.slice().reverse().map(x => `<div><span>${esc(D.date.nice(x.datum, { day: 'numeric', month: 'short', year: 'numeric' }))}</span><span>${fmt(x.waarde, 3)} <button data-rmstand="${m.id}|${x.datum}" type="button" aria-label="Weghalen">✕</button></span></div>`).join('')}</div></details>` : ''}
+    </div>`;
+  }).join('') + `<button class="btn q" data-act="meter" type="button">${icon('plus')}Andere meter</button>`;
+}
+
+async function standForm(m) {
+  const { s } = verbruik(m), last = s[s.length - 1];
+  const r = await sheet(`${m.emoji} ${m.naam}: stand`, `<div class="grid2"><label class="f">Datum<input class="in" type="date" name="datum" value="${D.date.today()}"></label><label class="f">Stand (${esc(m.eenheid)})<input class="in" name="w" inputmode="decimal" placeholder="${last ? fmt(last.waarde, 3) : ''}"></label></div>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => !isFinite(leesGetal(f.w)) ? 'Vul de stand in.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  const w = leesGetal(r.form.w, last ? last.waarde : null);
+  if (last && w < last.waarde && r.form.datum > last.datum && !(await confirm('Deze stand is lager dan de vorige. Toch bewaren (bv. nieuwe meter)?', 'Bewaren'))) return;
+  m.standen = (m.standen || []).filter(x => x.datum !== r.form.datum).concat({ datum: r.form.datum, waarde: w });
+  save(); render();
+}
+
+async function meterForm() {
+  const r = await sheet('Andere meter', `<div class="grid2" style="grid-template-columns:72px 1fr"><label class="f">Icoon<input class="in" name="emoji" value="📟" maxlength="4" style="text-align:center;font-size:22px"></label><label class="f">Naam<input class="in" name="naam" placeholder="Bv. Teruglevering, Warmte"></label></div><label class="f">Eenheid<input class="in" name="eenheid" placeholder="Bv. kWh, GJ"></label>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok', check: f => !f.naam.trim() ? 'Geef de meter een naam.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  data.meters.push({ id: D.uid(), naam: r.form.naam.trim(), eenheid: r.form.eenheid.trim(), emoji: r.form.emoji.trim() || '📟', standen: [] });
+  save(); render();
+}
+
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-k],[data-act],[data-stand],[data-rmstand]'); if (!t) return;
+  const ds = t.dataset;
+  if (ds.k) return klusSheet(data.klussen.find(k => k.id === ds.k));
+  if (ds.stand) return standForm(data.meters.find(m => m.id === ds.stand));
+  if (ds.rmstand) { const [id, d] = ds.rmstand.split('|'); const m = data.meters.find(x => x.id === id); m.standen = m.standen.filter(x => x.datum !== d); save(); return render(); }
+  if (ds.act === 'new') return klusForm();
+  if (ds.act === 'meters') { data.meters = METERS.map(m => ({ id: D.uid(), ...m, standen: [] })); save(); return render(); }
+  if (ds.act === 'meter') return meterForm();
+});
+$('#fab').onclick = () => view === 'meter' ? (data.meters.length ? standForm(data.meters[0]) : (data.meters = METERS.map(m => ({ id: D.uid(), ...m, standen: [] })), save(), render())) : klusForm();
+
+// Overzicht en herinneringen (vanaf de app-versie met meldingen voor klusjes)
+function publish() {
+  const due = data.klussen.map(k => ({ id: k.id, naam: k.naam, emoji: k.emoji || '🔧', datum: volgende(k) }));
+  D.set('dash-huis', due);
+  W2.publish('herinneringen-huis', due.map(x => ({ id: 'huis-' + x.id, titel: `${x.emoji} ${x.naam}`, tekst: 'Klusje in huis: vandaag aan de beurt', datum: x.datum, open: 'huis/index.html' })));
+}
+publish();
+setView(view);
+</script>
+</body>
+</html>

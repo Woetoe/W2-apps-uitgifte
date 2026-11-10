@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Weekmenu</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ffb347;--acc-ink:#2b1500}
+.wknav{display:flex;align-items:center;gap:8px}
+.wknav b{flex:1;text-align:center;font:800 18px var(--f-display)}
+.wknav b small{display:block;font:600 13px var(--f-body);color:var(--muted)}
+.day{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 12px;min-height:68px;cursor:pointer;width:100%;text-align:left;color:inherit}
+.day.today{border-color:var(--acc)}
+.day .dt{width:48px;text-align:center;flex:none}
+.day .dt b{display:block;font:800 20px/1 var(--f-display)}
+.day .dt span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.day.today .dt b{color:var(--acc)}
+.day .ph{width:48px;height:48px;border-radius:12px;background:var(--panel2);flex:none;display:grid;place-items:center;font-size:22px;overflow:hidden}
+.day .ph img{width:100%;height:100%;object-fit:cover}
+.day .grow{flex:1;min-width:0}
+.day .grow b{display:block;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day .grow span{display:block;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day.empty0 .grow b{color:var(--muted);font-weight:600}
+.kok{width:12px;height:12px;border-radius:6px;display:inline-block;margin-right:6px;vertical-align:-1px}
+.rlist{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto}
+.rlist button{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 10px;text-align:left;cursor:pointer;color:inherit}
+.rlist button b{display:block;font-weight:700}
+.rlist button span{display:block;font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 12px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.ing{max-height:46vh;overflow:auto}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Weekmenu</h1></div>
+<main class="page">
+  <div class="wknav"><button class="ib" id="prev" type="button" aria-label="Vorige week"></button><b id="wk"></b><button class="ib" id="next" type="button" aria-label="Volgende week"></button></div>
+  <div class="list" id="days"></div>
+  <button class="btn wide" id="shop" type="button"></button>
+  <p class="muted small" id="hint"></p>
+</main>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="../samen/boodschappen.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, B = Boodschappen;
+const recepten = D.idb('w2-recepten'), fotos = D.idb('w2-recepten-foto');
+$('#back').innerHTML = icon('back');
+$('#prev').innerHTML = icon('back');
+$('#next').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+D.recent('weekmenu');
+
+const DAG = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+const VRIJ = ['🍕 Pizza', '🍽️ Uit eten', '🥡 Afhalen', '♻️ Restjes', '🥪 Brood', '🍳 Iets snels', '🎉 Bij vrienden'];
+let data = Object.assign({ dagen: {}, porties: 2 }, D.get('weekmenu', null) || {});
+let rec = [], offset = 0;
+const save = () => { D.set('weekmenu', data); if (deel) deel.push(); publish(); };
+
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function weekDays(off) {
+  const t = D.date.parse(D.date.today()), dow = (t.getDay() + 6) % 7;
+  return [...Array(7)].map((_, i) => iso(new Date(t.getFullYear(), t.getMonth(), t.getDate() - dow + i + off * 7)));
+}
+function weekNr(s) {
+  const d = D.date.parse(s), t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y) / 864e5 + 1) / 7);
+}
+const leden = () => window.Samen && Samen.cfg ? Object.entries(Samen.data.leden || {}).map(([id, m]) => ({ id, ...m })) : [];
+const recOf = id => rec.find(r => r.id === id);
+
+// ---------------------------------------------------------------- delen via Samen
+let deel = null;
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'weekmenu',
+    lees: async () => Object.fromEntries(Object.entries(data.dagen).filter(([d]) => D.date.days(d) >= -21)),
+    schrijf: async map => { data.dagen = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, JSON.parse(JSON.stringify(v))])); D.set('weekmenu', data); render(); }
+  });
+  W2Deel.badge();
+}
+
+// ---------------------------------------------------------------- tekenen
+async function render() {
+  const days = weekDays(offset), today = D.date.today();
+  $('#wk').innerHTML = `Week ${weekNr(days[0])}<small>${esc(D.date.nice(days[0], { day: 'numeric', month: 'short' }))} – ${esc(D.date.nice(days[6], { day: 'numeric', month: 'short' }))}${offset === 0 ? ' · deze week' : offset === 1 ? ' · volgende week' : ''}</small>`;
+  const ls = leden();
+  $('#days').innerHTML = days.map((d, i) => {
+    const m = data.dagen[d], r = m && m.recept ? recOf(m.recept) : null;
+    const kok = m && m.kok ? ls.find(l => l.id === m.kok) : null;
+    const titel = m ? (r ? r.titel : m.tekst || m.titel) : '';
+    const sub = m ? [m.porties ? m.porties + ' pers.' : '', r && r.tijd ? r.tijd + ' min' : '', kok ? kok.naam + ' kookt' : '', m.notitie].filter(Boolean).join(' · ') : '';
+    return `<button class="day${d === today ? ' today' : ''}${m ? '' : ' empty0'}" data-d="${d}" type="button"><div class="dt"><span>${DAG[i]}</span><b>${D.date.parse(d).getDate()}</b></div>
+      <div class="ph">${r && r.heeftFoto ? `<img data-foto="${r.id}" alt="">` : m ? (r ? '🍲' : (m.tekst || '').split(' ')[0].length <= 2 ? m.tekst.split(' ')[0] : '🍽️') : '+'}</div>
+      <div class="grow"><b>${m ? esc(r ? titel : (m.tekst || '').replace(/^\S{1,2}\s/, '')) : 'Nog niets gepland'}</b>${sub ? `<span>${kok ? `<i class="kok" style="background:${kok.kleur || 'var(--acc)'}"></i>` : ''}${esc(sub)}</span>` : ''}</div></button>`;
+  }).join('');
+  const n = days.filter(d => data.dagen[d] && data.dagen[d].recept && recOf(data.dagen[d].recept)).length;
+  $('#shop').innerHTML = `${icon('plus')}Boodschappen voor ${n ? n + ' recept' + (n === 1 ? '' : 'en') : 'deze week'}`;
+  $('#shop').disabled = !n;
+  $('#hint').textContent = !rec.length ? 'Tip: zet eerst recepten in Recepten; dan kies je ze hier en gaan de ingrediënten in één keer op de boodschappenlijst.' :
+    !(window.Samen && Samen.cfg) ? 'Koppel Samen om het weekmenu met je partner te delen en de boodschappen op jullie gedeelde lijst te zetten.' : '';
+  for (const img of $$('img[data-foto]')) { const v = await fotos.get(img.dataset.foto); if (v) img.src = v; }
+}
+
+// ---------------------------------------------------------------- dag kiezen
+async function dagSheet(d) {
+  const m = data.dagen[d];
+  const r = m && m.recept ? recOf(m.recept) : null;
+  const titel = D.date.nice(d, { weekday: 'long', day: 'numeric', month: 'long' });
+  const recent = new Set(Object.entries(data.dagen).filter(([x]) => Math.abs(D.date.days(x)) < 21).map(([, v]) => v.recept).filter(Boolean));
+  const tips = rec.filter(x => !recent.has(x.id)).sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || Math.random() - .5).slice(0, 3);
+  const ls = leden();
+  let kok = m ? m.kok || '' : '';
+  const s = sheet(titel, `
+    <input class="in" id="zoek" placeholder="${rec.length ? 'Zoek een recept of typ zelf iets' : 'Typ wat jullie eten'}" value="${esc(m && !m.recept ? m.tekst || '' : '')}">
+    <div class="chips">${VRIJ.map(v => `<button type="button" class="chip" data-vrij="${esc(v)}">${esc(v)}</button>`).join('')}</div>
+    ${rec.length ? `<div class="rlist" id="rl"></div>` : ''}
+    ${tips.length && !m ? `<div class="muted small">Idee: ${tips.map(t => `<a href="#" data-rid="${t.id}">${esc(t.titel)}</a>`).join(', ')}</div>` : ''}
+    <div class="grid2"><label class="f">Personen<input class="in" name="porties" type="number" inputmode="numeric" min="1" value="${m && m.porties || data.porties}"></label>
+      ${ls.length ? `<label class="f">Wie kookt<select class="in" name="kok"><option value="">–</option>${ls.map(l => `<option value="${l.id}" ${l.id === kok ? 'selected' : ''}>${esc(l.naam)}</option>`).join('')}</select></label>` : '<span></span>'}</div>
+    ${m ? `<div class="btns">${r ? `<a class="btn q" href="../recepten/index.html#${r.id}">${icon('open')}Recept</a>` : ''}<button class="btn danger" data-x="weg" type="button">${icon('trash')}Weghalen</button></div>` : ''}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }], { focus: !m });
+  let gekozen = m && m.recept ? m.recept : null;
+  const zoek = $('#zoek', s.el), rl = $('#rl', s.el);
+  const draw = () => {
+    if (!rl) return;
+    const q = zoek.value.trim().toLowerCase();
+    const list = rec.filter(x => !q || (x.titel + ' ' + (x.boek || '') + ' ' + (x.ingr || []).join(' ')).toLowerCase().includes(q))
+      .sort((a, b) => (b.id === gekozen) - (a.id === gekozen) || (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || a.titel.localeCompare(b.titel, 'nl')).slice(0, 40);
+    rl.innerHTML = list.map(x => `<button type="button" data-rid="${x.id}" style="${x.id === gekozen ? 'border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--bg))' : ''}"><span style="font-size:20px">${x.fav ? '⭐' : '🍲'}</span><span><b>${esc(x.titel)}</b><span>${esc([x.boek, x.tijd ? x.tijd + ' min' : '', x.personen ? 'voor ' + x.personen : ''].filter(Boolean).join(' · '))}</span></span></button>`).join('') || `<div class="muted small">Geen recept gevonden: wat je typt wordt het menu.</div>`;
+  };
+  draw();
+  zoek.addEventListener('input', () => { gekozen = null; draw(); });
+  s.el.addEventListener('click', e => {
+    const rb = e.target.closest('[data-rid]'), vb = e.target.closest('[data-vrij]'), x = e.target.closest('[data-x]');
+    if (rb) { e.preventDefault(); gekozen = rb.dataset.rid; const rr = recOf(gekozen); zoek.value = rr.titel; if (rr.personen && !m) $('[name=porties]', s.el).value = rr.personen; draw(); }
+    if (vb) { gekozen = null; zoek.value = vb.dataset.vrij; draw(); }
+    if (x) s.close('weg');
+  });
+  const res = await s.done;
+  if (res.value === 'weg') { delete data.dagen[d]; save(); return render(); }
+  if (res.value !== 'ok') return;
+  const tekst = zoek.value.trim();
+  if (!gekozen && !tekst) { delete data.dagen[d]; save(); return render(); }
+  const exact = !gekozen && rec.find(x => x.titel.toLowerCase() === tekst.toLowerCase());
+  if (exact) gekozen = exact.id;
+  data.dagen[d] = { datum: d, recept: gekozen || '', titel: gekozen ? recOf(gekozen).titel : '', tekst: gekozen ? '' : tekst, porties: Math.max(1, +res.form.porties || data.porties), kok: res.form.kok || '' };
+  data.porties = data.dagen[d].porties;
+  save(); render();
+}
+
+// ---------------------------------------------------------------- boodschappen voor de week
+async function boodschappen() {
+  const days = weekDays(offset).filter(d => D.date.days(d) >= 0 || offset > 0);
+  const gerechten = days.map(d => data.dagen[d]).filter(m => m && m.recept && recOf(m.recept));
+  if (!gerechten.length) return toast('Er staan deze week (vanaf vandaag) geen recepten op het menu.');
+  const S = window.Samen;
+  if (!S || !S.cfg) {
+    const r = await sheet('Boodschappenlijst', `<div class="muted">De boodschappenlijst staat in <b style="color:var(--text)">Samen</b>. Zet Samen eerst aan (ook als je hem alleen voor jezelf gebruikt).</div>`, [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Naar Samen', value: 'go' }]).done;
+    if (r.value === 'go') location.href = '../samen/index.html';
+    return;
+  }
+  const lists = B.lists();
+  if (!lists.length) return toast('Er is nog geen boodschappenlijst in Samen. Maak er daar een.');
+  const ruw = [];
+  gerechten.forEach(m => { const r = recOf(m.recept), f = r.personen && m.porties ? m.porties / r.personen : 1; (r.ingr || []).forEach(x => { const t = B.fromRecipe(B.scaleText(x, f)); if (t) ruw.push(t); }); });
+  const lines = B.combine(ruw).map((t, i) => ({ i, t }));
+  const pick = new Set(lines.filter(x => !B.isStaple(x.t)).map(x => x.i));
+  const sh = sheet('Boodschappen voor het weekmenu', `
+    <div class="muted small">${gerechten.map(m => esc(recOf(m.recept).titel)).join(' · ')}</div>
+    ${lists.length > 1 ? `<label class="f">Lijst<select class="in" name="lijst">${lists.map(l => `<option value="${esc(l.id)}">${esc((l.emoji || '') + ' ' + l.naam)}</option>`).join('')}</select></label>` : ''}
+    <div class="card ing">${lines.map(x => `<div class="check pick${pick.has(x.i) ? ' on' : ''}" data-pi="${x.i}"><span class="box">${pick.has(x.i) ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}</span></div>`).join('')}</div>
+    <div class="muted small">Zelfde ingrediënten uit verschillende recepten zijn opgeteld. Zout, peper en olie staan uit.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Erop zetten', value: 'ok' }]);
+  sh.el.addEventListener('click', e => {
+    const c = e.target.closest('[data-pi]'); if (!c) return;
+    const i = +c.dataset.pi, on = !pick.has(i);
+    on ? pick.add(i) : pick.delete(i);
+    c.classList.toggle('on', on);
+    c.querySelector('.box').innerHTML = on ? icon('check', 'width="16" height="16" stroke-width="3"') : '';
+  });
+  const res = await sh.done;
+  if (res.value !== 'ok') return;
+  const L = lists.find(l => l.id === res.form.lijst) || lists[0];
+  try { await S.start(); } catch (e) {}
+  const out = B.addLines(L.id, lines.filter(x => pick.has(x.i)).map(x => x.t), 'Weekmenu');
+  toast(out.added ? `${out.added} dingen op ${(L.emoji || '') + ' ' + L.naam}${out.dup ? ` (${out.dup} stond${out.dup === 1 ? '' : 'en'} er al op)` : ''}` : 'Alles stond er al op.', 3500);
+}
+
+function publish() { W2.publish('weekmenu', weekDays(0).map(d => data.dagen[d] ? { datum: d, titel: data.dagen[d].recept ? data.dagen[d].titel : data.dagen[d].tekst } : null).filter(Boolean)); }
+
+$('#days').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) dagSheet(b.dataset.d); });
+$('#prev').onclick = () => { offset--; render(); };
+$('#next').onclick = () => { offset++; render(); };
+$('#shop').onclick = boodschappen;
+
+(async () => {
+  try { rec = (await recepten.all()) || []; } catch (e) { rec = []; }
+  koppelDeel();
+  if (location.hash === '#volgende') offset = 1;
+  publish();
+  render();
+})();
+</script>
+</body>
+</html>

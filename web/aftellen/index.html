@@ -37,7 +37,7 @@
 <body>
 <div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Aftellen</h1></div>
 <main class="page">
-  <div class="seg" id="seg"><button type="button" data-v="events" class="on">Evenementen</button><button type="button" data-v="jarigen">Verjaardagen</button></div>
+  <div class="seg" id="seg"><button type="button" data-v="events" class="on">Evenementen</button><button type="button" data-v="jarigen">Verjaardagen</button><button type="button" data-v="cadeaus">Cadeaus</button></div>
   <div id="app"></div>
 </main>
 <button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
@@ -66,7 +66,11 @@ const MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli',
 
 let data = D.get('aftellen', null) || { events: [], jarigen: [] };
 data.events = data.events || []; data.jarigen = data.jarigen || [];
-let view = location.hash === '#jarigen' ? 'jarigen' : 'events';
+let view = location.hash === '#jarigen' ? 'jarigen' : location.hash === '#cadeaus' ? 'cadeaus' : 'events';
+// Cadeau-ideeën: alleen op deze telefoon (niet gedeeld via Samen), zodat cadeaus voor elkaar geheim blijven.
+let cad = Object.assign({ ideeen: [] }, D.get('cadeaus', null) || {});
+const saveCad = () => D.set('cadeaus', cad);
+const STATUS_C = { idee: '💡 Idee', gekocht: '🛍️ Gekocht', gegeven: '🎁 Gegeven' };
 let openId = /^#[a-z0-9]{6,}$/.test(location.hash) ? location.hash.slice(1) : null;
 const save = () => { D.set('aftellen', data); if (deel) deel.push(); };
 
@@ -97,10 +101,10 @@ function koppelDeel() {
   W2Deel.badge();
 }
 
-function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', v === 'jarigen' ? '#jarigen' : '#'); render(); }
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', v === 'events' ? '#' : '#' + v); render(); }
 $('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
 
-function render() { view === 'jarigen' ? renderJarigen() : renderEvents(); }
+function render() { view === 'jarigen' ? renderJarigen() : view === 'cadeaus' ? renderCadeaus() : renderEvents(); }
 
 function renderEvents() {
   const today = D.date.today();
@@ -135,8 +139,49 @@ function renderJarigen() {
   const list = data.jarigen.map(j => ({ j, nb: D.date.nextBirthday(j.datum) })).filter(x => x.nb).sort((a, b) => a.nb.date < b.nb.date ? -1 : 1);
   app.innerHTML = `<div class="list">${list.map(({ j, nb }) => {
     const d = D.date.days(nb.date);
-    return `<button class="row jr" data-jr="${j.id}" type="button"><span class="ico">${d === 0 ? '🎉' : '🎂'}</span><span class="grow"><b>${esc(j.naam)}</b><span class="sub">${esc(D.date.nice(nb.date, { weekday: 'short', day: 'numeric', month: 'long' }))}${nb.age ? ' · wordt ' + nb.age : ''}</span></span><span class="end">${d === 0 ? '<span class="pill acc">vandaag</span>' : D.date.rel(d)}</span></button>`;
+    return `<button class="row jr" data-jr="${j.id}" type="button"><span class="ico">${d === 0 ? '🎉' : '🎂'}</span><span class="grow"><b>${esc(j.naam)}</b><span class="sub">${esc(D.date.nice(nb.date, { weekday: 'short', day: 'numeric', month: 'long' }))}${nb.age ? ' · wordt ' + nb.age : ''}${(n => n ? ' · 💡 ' + n : '')(openIdeeen(j.naam).length)}</span></span><span class="end">${d === 0 ? '<span class="pill acc">vandaag</span>' : D.date.rel(d)}</span></button>`;
   }).join('')}</div>`;
+}
+
+// ---------------------------------------------------------------- cadeau-ideeën
+const norm = s => String(s || '').trim().toLowerCase();
+const openIdeeen = naam => cad.ideeen.filter(i => norm(i.voor) === norm(naam) && i.status !== 'gegeven');
+function renderCadeaus() {
+  const namen = [...new Set(cad.ideeen.map(i => i.voor.trim()))];
+  const jr = Object.fromEntries(data.jarigen.map(j => [norm(j.naam), D.date.nextBirthday(j.datum)]));
+  namen.sort((a, b) => { const da = jr[norm(a)] ? D.date.days(jr[norm(a)].date) : 999, db = jr[norm(b)] ? D.date.days(jr[norm(b)].date) : 999; return da - db || a.localeCompare(b, 'nl'); });
+  app.innerHTML = `<p class="muted small" style="margin:0">Alleen op deze telefoon, niet gedeeld: cadeaus voor elkaar blijven een verrassing.</p>` + (namen.length ? namen.map(n => {
+    const nb = jr[norm(n)], d = nb ? D.date.days(nb.date) : null;
+    const list = cad.ideeen.filter(i => norm(i.voor) === norm(n)).sort((a, b) => Object.keys(STATUS_C).indexOf(a.status) - Object.keys(STATUS_C).indexOf(b.status));
+    return `<div class="card"><div style="display:flex;align-items:center;gap:10px"><b style="flex:1;font:800 18px var(--f-display)">🎁 ${esc(n)}</b>${d != null ? `<span class="pill${d <= 30 ? ' acc' : ''}">jarig ${esc(D.date.rel(d))}</span>` : ''}</div>
+      ${list.map(i => `<div class="check${i.status === 'gegeven' ? ' on' : ''}" data-cad="${i.id}"><span class="t"><b style="font-weight:700">${esc(i.tekst)}</b>${i.prijs || i.link || i.notitie ? `<span class="muted small" style="display:block">${esc([i.prijs ? '± €' + i.prijs : '', i.notitie].filter(Boolean).join(' · '))}${i.link ? ` · <a href="${esc(i.link)}" target="_blank" rel="noopener">link</a>` : ''}</span>` : ''}</span><span class="pill${i.status === 'gekocht' ? ' acc' : ''}">${STATUS_C[i.status]}</span></div>`).join('')}
+      <div class="addline" style="margin-top:8px"><input class="in" data-addcad="${esc(n)}" placeholder="Nieuw idee voor ${esc(n)}" enterkeyhint="done"><button class="btn q" data-addcadbtn="${esc(n)}" type="button" aria-label="Toevoegen">${icon('plus')}</button></div></div>`;
+  }).join('') : `<div class="empty"><b>Nog geen cadeau-ideeën</b>Hoor je iemand iets noemen? Schrijf het meteen op. Bij de verjaardag zie je dan wat je al had bedacht.<br><button class="btn" data-act="newcad" type="button">${icon('plus')}Idee toevoegen</button></div>`);
+}
+async function cadForm(i, voor) {
+  const isNew = !i;
+  i = i || { voor: voor || '', tekst: '', prijs: '', link: '', notitie: '', status: 'idee' };
+  const namen = [...new Set(data.jarigen.map(j => j.naam).concat(cad.ideeen.map(x => x.voor)))];
+  const r = await sheet(isNew ? 'Cadeau-idee' : 'Cadeau-idee', `
+    <label class="f">Voor wie<input class="in" name="voor" list="namen" value="${esc(i.voor)}" placeholder="Bv. Mama"><datalist id="namen">${namen.map(n => `<option value="${esc(n)}">`).join('')}</datalist></label>
+    <label class="f">Idee<input class="in" name="tekst" value="${esc(i.tekst)}" placeholder="Bv. die kookcursus waar ze het over had"></label>
+    <div class="grid2"><label class="f">Prijs (± €)<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}"></label><label class="f">Stand<select class="in" name="status">${Object.entries(STATUS_C).map(([k, v]) => `<option value="${k}" ${k === i.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+    <label class="f">Link (optioneel)<input class="in" name="link" type="url" value="${esc(i.link || '')}" placeholder="https://"></label>
+    <label class="f">Notitie<input class="in" name="notitie" value="${esc(i.notitie || '')}" placeholder="Bv. maat M, kleur blauw"></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.voor.trim() ? 'Voor wie is het?' : !f.tekst.trim() ? 'Wat is het idee?' : '' }]), { focus: isNew }).done;
+  if (r.value === 'del') { cad.ideeen = cad.ideeen.filter(x => x !== i); saveCad(); return render(); }
+  if (r.value !== 'ok') return;
+  const f = r.form, link = f.link.trim();
+  Object.assign(i, { voor: f.voor.trim(), tekst: f.tekst.trim(), prijs: f.prijs.trim(), link: /^https?:\/\//i.test(link) ? link : '', notitie: f.notitie.trim(), status: f.status });
+  if (isNew) { i.id = D.uid(); i.t = Date.now(); cad.ideeen.push(i); }
+  saveCad(); render();
+}
+function addCad(voor) {
+  const inp = $(`[data-addcad="${CSS.escape(voor)}"]`), v = inp.value.trim();
+  if (!v) return;
+  cad.ideeen.push({ id: D.uid(), voor, tekst: v, prijs: '', link: '', notitie: '', status: 'idee', t: Date.now() });
+  saveCad(); render();
+  const n = $(`[data-addcad="${CSS.escape(voor)}"]`); n && n.focus();
 }
 
 // ---------------------------------------------------------------- evenement
@@ -177,14 +222,18 @@ async function jrForm(j) {
   const isNew = !j;
   j = j || { naam: '', datum: '' };
   const m = /(\d{4}|-)-(\d\d)-(\d\d)$/.exec(j.datum) || [];
-  const r = await sheet(isNew ? 'Verjaardag toevoegen' : j.naam, `
+  const sh = sheet(isNew ? 'Verjaardag toevoegen' : j.naam, `
     <label class="f">Naam<input class="in" name="naam" value="${esc(j.naam)}" placeholder="Bijv. Mama"></label>
+    ${!isNew ? `<button class="btn q" data-cadvoor type="button">💡 Cadeau-ideeën${openIdeeen(j.naam).length ? ' (' + openIdeeen(j.naam).length + ')' : ''}</button>` : ''}
     <div class="grid3">
       <label class="f">Dag<input class="in" name="dag" type="number" inputmode="numeric" min="1" max="31" value="${m[3] ? +m[3] : ''}"></label>
       <label class="f">Maand<select class="in" name="maand">${MAANDEN.map((n, i) => `<option value="${i + 1}" ${m[2] && +m[2] === i + 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="f">Jaar (opt.)<input class="in" name="jaar" type="number" inputmode="numeric" min="1900" max="2100" value="${m[1] && m[1] !== '-' ? m[1] : ''}"></label>
     </div>`,
-  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : !(+f.dag >= 1 && +f.dag <= 31) ? 'Vul een geldige dag in.' : '' }]), { focus: isNew }).done;
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : !(+f.dag >= 1 && +f.dag <= 31) ? 'Vul een geldige dag in.' : '' }]), { focus: isNew });
+  sh.el.addEventListener('click', e => { if (e.target.closest('[data-cadvoor]')) sh.close('cad'); });
+  const r = await sh.done;
+  if (r.value === 'cad') { setView('cadeaus'); if (!openIdeeen(j.naam).length) cadForm(null, j.naam); return; }
   if (r.value === 'del') {
     if (!(await confirm(`Verjaardag van <b>${esc(j.naam)}</b> verwijderen?`, 'Verwijderen', true))) return;
     data.jarigen = data.jarigen.filter(x => x !== j); save(); return render();
@@ -199,12 +248,16 @@ async function jrForm(j) {
 
 // ---------------------------------------------------------------- klikken
 app.addEventListener('click', async e => {
-  const t = e.target.closest('[data-act],[data-toggle],[data-tick],[data-rm],[data-addbtn],[data-edit],[data-del],[data-jr]');
+  if (e.target.closest('a[href]')) return;
+  const t = e.target.closest('[data-act],[data-toggle],[data-tick],[data-rm],[data-addbtn],[data-edit],[data-del],[data-jr],[data-cad],[data-addcadbtn]');
   if (!t) return;
   const ds = t.dataset;
   const ev = id => data.events.find(x => x.id === id);
   if (ds.act === 'newev') return evForm();
   if (ds.act === 'newjr') return jrForm();
+  if (ds.act === 'newcad') return cadForm();
+  if (ds.cad) return cadForm(cad.ideeen.find(x => x.id === ds.cad));
+  if (ds.addcadbtn) return addCad(ds.addcadbtn);
   if (ds.toggle) { openId = openId === ds.toggle ? null : ds.toggle; return render(); }
   if (ds.rm) { const [id, i] = ds.rm.split(':'); ev(id).lijst.splice(+i, 1); save(); return render(); }
   if (ds.tick) { const [id, i] = ds.tick.split(':'); const x = ev(id).lijst[+i]; x.ok = !x.ok; save(); return render(); }
@@ -217,7 +270,7 @@ app.addEventListener('click', async e => {
   }
   if (ds.jr) return jrForm(data.jarigen.find(x => x.id === ds.jr));
 });
-app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.add) addItem(e.target.dataset.add); });
+app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.add) addItem(e.target.dataset.add); if (e.key === 'Enter' && e.target.dataset.addcad) addCad(e.target.dataset.addcad); });
 function addItem(id) {
   const inp = $(`[data-add="${id}"]`), v = inp.value.trim();
   if (!v) return;
@@ -225,7 +278,7 @@ function addItem(id) {
   save(); render();
   const n = $(`[data-add="${id}"]`); n && n.focus();
 }
-$('#fab').onclick = () => view === 'jarigen' ? jrForm() : evForm();
+$('#fab').onclick = () => view === 'jarigen' ? jrForm() : view === 'cadeaus' ? cadForm() : evForm();
 
 koppelDeel();
 if (location.hash === '#nieuw') { history.replaceState(null, '', '#'); render(); evForm(); } else setView(view);

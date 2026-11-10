@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aftellen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ff6b6b;--acc-ink:#2a0b0b}
+.ev{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;border-left:6px solid var(--c)}
+.ev .hd{display:flex;gap:12px;align-items:center;cursor:pointer}
+.ev .num{min-width:62px;text-align:center}
+.ev .num b{display:block;font:800 30px/1 var(--f-display);color:var(--c)}
+.ev .num span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.ev .t{flex:1;min-width:0}
+.ev .t b{display:block;font:800 18px/1.2 var(--f-display)}
+.ev .t span{color:var(--muted);font-size:14px}
+.ev .more{display:none;flex-direction:column;gap:8px}
+.ev.open .more{display:flex}
+.ev .note{white-space:pre-wrap;color:var(--muted);font-size:15px}
+.jr .ico{background:#3d1f2a;font-size:20px}
+.emojis,.colors{display:flex;gap:6px;flex-wrap:wrap}
+.emojis button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;cursor:pointer}
+.emojis button.on,.colors button.on{outline:2px solid var(--text);outline-offset:2px}
+.colors button{width:34px;height:34px;border-radius:17px;border:0;cursor:pointer}
+.addline{display:flex;gap:8px}
+.addline .in{min-height:44px}
+.addline .btn{min-height:44px;padding:0 14px}
+.grid3{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Aftellen</h1></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="events" class="on">Evenementen</button><button type="button" data-v="jarigen">Verjaardagen</button><button type="button" data-v="cadeaus">Cadeaus</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+D.recent('aftellen');
+
+const KLEUREN = ['#ff6b6b', '#ffc83d', '#2ec4b6', '#4d8dff', '#a76bdc', '#a7e35a', '#ff8a3d'];
+const EMOJI = ['🥋', '🏆', '🎉', '🎂', '🎤', '⚽', '🏃', '🎬', '🍽️', '💍', '🎓', '📅'];
+const SOORTEN = {
+  judo: { naam: 'Judotoernooi', emoji: '🥋', kleur: '#4d8dff', lijst: ['Inschrijving geregeld', 'Judopak gewassen', 'Band', 'Judopas / licentie', 'Gewicht gecheckt', 'Slippers', 'Tape', 'Eten en drinken', 'Startgeld'] },
+  feest: { naam: 'Feestje', emoji: '🎉', kleur: '#ffc83d', lijst: ['Cadeau gekocht', 'Kaartje', 'Vervoer geregeld'] },
+  uitje: { naam: 'Uitje', emoji: '📅', kleur: '#2ec4b6', lijst: ['Kaartjes', 'Vervoer', 'Oppas / planten'] },
+  leeg: { naam: 'Iets anders', emoji: '📅', kleur: '#ff6b6b', lijst: [] }
+};
+const MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+
+let data = D.get('aftellen', null) || { events: [], jarigen: [] };
+data.events = data.events || []; data.jarigen = data.jarigen || [];
+let view = location.hash === '#jarigen' ? 'jarigen' : location.hash === '#cadeaus' ? 'cadeaus' : 'events';
+// Cadeau-ideeën: alleen op deze telefoon (niet gedeeld via Samen), zodat cadeaus voor elkaar geheim blijven.
+let cad = Object.assign({ ideeen: [] }, D.get('cadeaus', null) || {});
+const saveCad = () => D.set('cadeaus', cad);
+const STATUS_C = { idee: '💡 Idee', gekocht: '🛍️ Gekocht', gegeven: '🎁 Gegeven' };
+let openId = /^#[a-z0-9]{6,}$/.test(location.hash) ? location.hash.slice(1) : null;
+const save = () => { D.set('aftellen', data); if (deel) deel.push(); };
+
+// ---------------------------------------------------------------- delen met je partner (Samen)
+// Evenementen en verjaardagen apart gedeeld ("e:<id>" en "j:<id>"), zodat jullie tegelijk kunnen aanpassen.
+let deel = null;
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'aftellen',
+    lees: async () => Object.fromEntries([...data.events.map(e => ['e:' + e.id, e]), ...data.jarigen.map(j => ['j:' + j.id, j])]),
+    schrijf: async map => {
+      const keep = (list, pre) => {
+        const old = Object.fromEntries(list.map(x => [x.id, x]));
+        return Object.entries(map).filter(([k]) => k.startsWith(pre)).map(([k, o]) => {
+          const nu = JSON.parse(JSON.stringify(o)), x = old[k.slice(2)];
+          if (!x) return nu;
+          Object.keys(x).forEach(f => delete x[f]);
+          return Object.assign(x, nu);
+        });
+      };
+      data.events = keep(data.events, 'e:');
+      data.jarigen = keep(data.jarigen, 'j:');
+      save();
+      render();
+    }
+  });
+  W2Deel.badge();
+}
+
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); history.replaceState(null, '', v === 'events' ? '#' : '#' + v); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+
+function render() { view === 'jarigen' ? renderJarigen() : view === 'cadeaus' ? renderCadeaus() : renderEvents(); }
+
+function renderEvents() {
+  const today = D.date.today();
+  const up = data.events.filter(e => e.datum >= today).sort((a, b) => a.datum < b.datum ? -1 : 1);
+  const past = data.events.filter(e => e.datum < today).sort((a, b) => a.datum > b.datum ? -1 : 1);
+  if (!data.events.length) {
+    app.innerHTML = `<div class="empty"><b>Nog niets om af te tellen</b>Een judotoernooi, een feest, een concert. Met een lijstje van wat je nog moet regelen.<br><button class="btn" data-act="newev" type="button">${icon('plus')}Toevoegen</button></div>`;
+    return;
+  }
+  const card = ev => {
+    const d = D.date.days(ev.datum), done = ev.lijst.filter(x => x.ok).length;
+    return `<div class="ev${ev.id === openId ? ' open' : ''}" style="--c:${ev.kleur}" data-ev="${ev.id}">
+      <div class="hd" data-toggle="${ev.id}"><div class="num"><b>${d < 0 ? '✓' : d === 0 ? '!' : d}</b><span>${d < 0 ? 'geweest' : d === 0 ? 'vandaag' : d === 1 ? 'dag' : 'dagen'}</span></div>
+        <div class="t"><b>${ev.emoji} ${esc(ev.naam)}</b><span>${esc(D.date.nice(ev.datum, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}${ev.tijd ? ' · ' + esc(ev.tijd) : ''}${ev.waar ? ' · ' + esc(ev.waar) : ''}</span>
+        ${ev.lijst.length ? `<div class="bar" style="margin-top:8px"><i style="width:${Math.round(done / ev.lijst.length * 100)}%;background:${ev.kleur}"></i></div>` : ''}</div></div>
+      <div class="more">
+        ${ev.notitie ? `<div class="note">${esc(ev.notitie)}</div>` : ''}
+        <div>${ev.lijst.map((x, i) => `<div class="check${x.ok ? ' on' : ''}" data-tick="${ev.id}:${i}"><span class="box">${x.ok ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}</span><button class="x" data-rm="${ev.id}:${i}" type="button" aria-label="Weghalen">${icon('x', 'width="16" height="16"')}</button></div>`).join('')}</div>
+        <div class="addline"><input class="in" data-add="${ev.id}" placeholder="Iets toevoegen" enterkeyhint="done"><button class="btn q" data-addbtn="${ev.id}" type="button" aria-label="Toevoegen">${icon('plus')}</button></div>
+        <div class="btns"><button class="btn q" data-edit="${ev.id}" type="button">${icon('edit')}Bewerken</button><button class="btn danger" data-del="${ev.id}" type="button">${icon('trash')}</button></div>
+      </div></div>`;
+  };
+  app.innerHTML = `<div class="list">${up.map(card).join('') || '<p class="muted">Niets meer gepland.</p>'}</div>` +
+    (past.length ? `<h2>Geweest</h2><div class="list" style="opacity:.7">${past.slice(0, 10).map(card).join('')}</div>` : '');
+}
+
+function renderJarigen() {
+  if (!data.jarigen.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen verjaardagen</b>Zet ze erin, dan zie je op het overzicht wie er binnenkort jarig is en hoe oud ze worden.<br><button class="btn" data-act="newjr" type="button">${icon('plus')}Verjaardag toevoegen</button></div>`;
+    return;
+  }
+  const list = data.jarigen.map(j => ({ j, nb: D.date.nextBirthday(j.datum) })).filter(x => x.nb).sort((a, b) => a.nb.date < b.nb.date ? -1 : 1);
+  app.innerHTML = `<div class="list">${list.map(({ j, nb }) => {
+    const d = D.date.days(nb.date);
+    return `<button class="row jr" data-jr="${j.id}" type="button"><span class="ico">${d === 0 ? '🎉' : '🎂'}</span><span class="grow"><b>${esc(j.naam)}</b><span class="sub">${esc(D.date.nice(nb.date, { weekday: 'short', day: 'numeric', month: 'long' }))}${nb.age ? ' · wordt ' + nb.age : ''}${(n => n ? ' · 💡 ' + n : '')(openIdeeen(j.naam).length)}</span></span><span class="end">${d === 0 ? '<span class="pill acc">vandaag</span>' : D.date.rel(d)}</span></button>`;
+  }).join('')}</div>`;
+}
+
+// ---------------------------------------------------------------- cadeau-ideeën
+const norm = s => String(s || '').trim().toLowerCase();
+const openIdeeen = naam => cad.ideeen.filter(i => norm(i.voor) === norm(naam) && i.status !== 'gegeven');
+function renderCadeaus() {
+  const namen = [...new Set(cad.ideeen.map(i => i.voor.trim()))];
+  const jr = Object.fromEntries(data.jarigen.map(j => [norm(j.naam), D.date.nextBirthday(j.datum)]));
+  namen.sort((a, b) => { const da = jr[norm(a)] ? D.date.days(jr[norm(a)].date) : 999, db = jr[norm(b)] ? D.date.days(jr[norm(b)].date) : 999; return da - db || a.localeCompare(b, 'nl'); });
+  app.innerHTML = `<p class="muted small" style="margin:0">Alleen op deze telefoon, niet gedeeld: cadeaus voor elkaar blijven een verrassing.</p>` + (namen.length ? namen.map(n => {
+    const nb = jr[norm(n)], d = nb ? D.date.days(nb.date) : null;
+    const list = cad.ideeen.filter(i => norm(i.voor) === norm(n)).sort((a, b) => Object.keys(STATUS_C).indexOf(a.status) - Object.keys(STATUS_C).indexOf(b.status));
+    return `<div class="card"><div style="display:flex;align-items:center;gap:10px"><b style="flex:1;font:800 18px var(--f-display)">🎁 ${esc(n)}</b>${d != null ? `<span class="pill${d <= 30 ? ' acc' : ''}">jarig ${esc(D.date.rel(d))}</span>` : ''}</div>
+      ${list.map(i => `<div class="check${i.status === 'gegeven' ? ' on' : ''}" data-cad="${i.id}"><span class="t"><b style="font-weight:700">${esc(i.tekst)}</b>${i.prijs || i.link || i.notitie ? `<span class="muted small" style="display:block">${esc([i.prijs ? '± €' + i.prijs : '', i.notitie].filter(Boolean).join(' · '))}${i.link ? ` · <a href="${esc(i.link)}" target="_blank" rel="noopener">link</a>` : ''}</span>` : ''}</span><span class="pill${i.status === 'gekocht' ? ' acc' : ''}">${STATUS_C[i.status]}</span></div>`).join('')}
+      <div class="addline" style="margin-top:8px"><input class="in" data-addcad="${esc(n)}" placeholder="Nieuw idee voor ${esc(n)}" enterkeyhint="done"><button class="btn q" data-addcadbtn="${esc(n)}" type="button" aria-label="Toevoegen">${icon('plus')}</button></div></div>`;
+  }).join('') : `<div class="empty"><b>Nog geen cadeau-ideeën</b>Hoor je iemand iets noemen? Schrijf het meteen op. Bij de verjaardag zie je dan wat je al had bedacht.<br><button class="btn" data-act="newcad" type="button">${icon('plus')}Idee toevoegen</button></div>`);
+}
+async function cadForm(i, voor) {
+  const isNew = !i;
+  i = i || { voor: voor || '', tekst: '', prijs: '', link: '', notitie: '', status: 'idee' };
+  const namen = [...new Set(data.jarigen.map(j => j.naam).concat(cad.ideeen.map(x => x.voor)))];
+  const r = await sheet(isNew ? 'Cadeau-idee' : 'Cadeau-idee', `
+    <label class="f">Voor wie<input class="in" name="voor" list="namen" value="${esc(i.voor)}" placeholder="Bv. Mama"><datalist id="namen">${namen.map(n => `<option value="${esc(n)}">`).join('')}</datalist></label>
+    <label class="f">Idee<input class="in" name="tekst" value="${esc(i.tekst)}" placeholder="Bv. die kookcursus waar ze het over had"></label>
+    <div class="grid2"><label class="f">Prijs (± €)<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}"></label><label class="f">Stand<select class="in" name="status">${Object.entries(STATUS_C).map(([k, v]) => `<option value="${k}" ${k === i.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+    <label class="f">Link (optioneel)<input class="in" name="link" type="url" value="${esc(i.link || '')}" placeholder="https://"></label>
+    <label class="f">Notitie<input class="in" name="notitie" value="${esc(i.notitie || '')}" placeholder="Bv. maat M, kleur blauw"></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.voor.trim() ? 'Voor wie is het?' : !f.tekst.trim() ? 'Wat is het idee?' : '' }]), { focus: isNew }).done;
+  if (r.value === 'del') { cad.ideeen = cad.ideeen.filter(x => x !== i); saveCad(); return render(); }
+  if (r.value !== 'ok') return;
+  const f = r.form, link = f.link.trim();
+  Object.assign(i, { voor: f.voor.trim(), tekst: f.tekst.trim(), prijs: f.prijs.trim(), link: /^https?:\/\//i.test(link) ? link : '', notitie: f.notitie.trim(), status: f.status });
+  if (isNew) { i.id = D.uid(); i.t = Date.now(); cad.ideeen.push(i); }
+  saveCad(); render();
+}
+function addCad(voor) {
+  const inp = $(`[data-addcad="${CSS.escape(voor)}"]`), v = inp.value.trim();
+  if (!v) return;
+  cad.ideeen.push({ id: D.uid(), voor, tekst: v, prijs: '', link: '', notitie: '', status: 'idee', t: Date.now() });
+  saveCad(); render();
+  const n = $(`[data-addcad="${CSS.escape(voor)}"]`); n && n.focus();
+}
+
+// ---------------------------------------------------------------- evenement
+async function evForm(ev) {
+  const isNew = !ev;
+  let soort = 'judo';
+  if (isNew) {
+    const r = await sheet('Wat voor iets?', `<div class="list">${Object.entries(SOORTEN).map(([k, s]) => `<button class="row" data-s="${k}" type="button"><span class="ico">${s.emoji}</span><span class="grow"><b>${s.naam}</b><span class="sub">${s.lijst.length ? s.lijst.length + ' dingen om te regelen erbij' : 'Leeg beginnen'}</span></span></button>`).join('')}</div>`, []);
+    r.el.addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) { soort = b.dataset.s; r.close('ok'); } });
+    if ((await r.done).value !== 'ok') return;
+    const s = SOORTEN[soort];
+    ev = { naam: soort === 'leeg' ? '' : s.naam, emoji: s.emoji, kleur: s.kleur, datum: '', tijd: '', waar: '', notitie: '', lijst: s.lijst.map(t => ({ t, ok: false })) };
+  }
+  const s = sheet(isNew ? 'Nieuw evenement' : 'Bewerken', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(ev.naam)}" placeholder="Bijv. NK judo Masters"></label>
+    <div class="grid2"><label class="f">Datum<input class="in" type="date" name="datum" value="${esc(ev.datum)}"></label><label class="f">Tijd (optioneel)<input class="in" type="time" name="tijd" value="${esc(ev.tijd || '')}"></label></div>
+    <label class="f">Waar (optioneel)<input class="in" name="waar" value="${esc(ev.waar || '')}" placeholder="Bijv. Sporthal De Kreek"></label>
+    <div class="emojis">${EMOJI.map(e => `<button type="button" data-em="${e}" class="${e === ev.emoji ? 'on' : ''}">${e}</button>`).join('')}</div>
+    <div class="colors">${KLEUREN.map(c => `<button type="button" data-kl="${c}" style="background:${c}" class="${c === ev.kleur ? 'on' : ''}" aria-label="Kleur"></button>`).join('')}</div>
+    <input type="hidden" name="emoji" value="${ev.emoji}"><input type="hidden" name="kleur" value="${ev.kleur}">
+    <label class="f">Notitie (optioneel)<textarea class="in" name="notitie" placeholder="Weegtijden, poule, wie rijdt…">${esc(ev.notitie || '')}</textarea></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Geef het een naam.' : !f.datum ? 'Kies een datum.' : '' }], { focus: isNew && !ev.naam });
+  s.el.addEventListener('click', e => {
+    const em = e.target.closest('[data-em]'), kl = e.target.closest('[data-kl]');
+    if (em) { $$('[data-em]', s.el).forEach(x => x.classList.toggle('on', x === em)); $('[name=emoji]', s.el).value = em.dataset.em; }
+    if (kl) { $$('[data-kl]', s.el).forEach(x => x.classList.toggle('on', x === kl)); $('[name=kleur]', s.el).value = kl.dataset.kl; }
+  });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  Object.assign(ev, { naam: f.naam.trim(), datum: f.datum, tijd: f.tijd, waar: f.waar.trim(), emoji: f.emoji, kleur: f.kleur, notitie: f.notitie.trim() });
+  if (isNew) { ev.id = D.uid(); data.events.push(ev); openId = ev.id; }
+  save(); render();
+}
+
+// ---------------------------------------------------------------- verjaardag
+async function jrForm(j) {
+  const isNew = !j;
+  j = j || { naam: '', datum: '' };
+  const m = /(\d{4}|-)-(\d\d)-(\d\d)$/.exec(j.datum) || [];
+  const sh = sheet(isNew ? 'Verjaardag toevoegen' : j.naam, `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(j.naam)}" placeholder="Bijv. Mama"></label>
+    ${!isNew ? `<button class="btn q" data-cadvoor type="button">💡 Cadeau-ideeën${openIdeeen(j.naam).length ? ' (' + openIdeeen(j.naam).length + ')' : ''}</button>` : ''}
+    <div class="grid3">
+      <label class="f">Dag<input class="in" name="dag" type="number" inputmode="numeric" min="1" max="31" value="${m[3] ? +m[3] : ''}"></label>
+      <label class="f">Maand<select class="in" name="maand">${MAANDEN.map((n, i) => `<option value="${i + 1}" ${m[2] && +m[2] === i + 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label class="f">Jaar (opt.)<input class="in" name="jaar" type="number" inputmode="numeric" min="1900" max="2100" value="${m[1] && m[1] !== '-' ? m[1] : ''}"></label>
+    </div>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : !(+f.dag >= 1 && +f.dag <= 31) ? 'Vul een geldige dag in.' : '' }]), { focus: isNew });
+  sh.el.addEventListener('click', e => { if (e.target.closest('[data-cadvoor]')) sh.close('cad'); });
+  const r = await sh.done;
+  if (r.value === 'cad') { setView('cadeaus'); if (!openIdeeen(j.naam).length) cadForm(null, j.naam); return; }
+  if (r.value === 'del') {
+    if (!(await confirm(`Verjaardag van <b>${esc(j.naam)}</b> verwijderen?`, 'Verwijderen', true))) return;
+    data.jarigen = data.jarigen.filter(x => x !== j); save(); return render();
+  }
+  if (r.value !== 'ok') return;
+  const f = r.form, pad = n => String(n).padStart(2, '0');
+  j.naam = f.naam.trim();
+  j.datum = (f.jaar && +f.jaar > 1900 ? f.jaar : '-') + '-' + pad(+f.maand) + '-' + pad(+f.dag);
+  if (isNew) { j.id = D.uid(); data.jarigen.push(j); }
+  save(); render();
+}
+
+// ---------------------------------------------------------------- klikken
+app.addEventListener('click', async e => {
+  if (e.target.closest('a[href]')) return;
+  const t = e.target.closest('[data-act],[data-toggle],[data-tick],[data-rm],[data-addbtn],[data-edit],[data-del],[data-jr],[data-cad],[data-addcadbtn]');
+  if (!t) return;
+  const ds = t.dataset;
+  const ev = id => data.events.find(x => x.id === id);
+  if (ds.act === 'newev') return evForm();
+  if (ds.act === 'newjr') return jrForm();
+  if (ds.act === 'newcad') return cadForm();
+  if (ds.cad) return cadForm(cad.ideeen.find(x => x.id === ds.cad));
+  if (ds.addcadbtn) return addCad(ds.addcadbtn);
+  if (ds.toggle) { openId = openId === ds.toggle ? null : ds.toggle; return render(); }
+  if (ds.rm) { const [id, i] = ds.rm.split(':'); ev(id).lijst.splice(+i, 1); save(); return render(); }
+  if (ds.tick) { const [id, i] = ds.tick.split(':'); const x = ev(id).lijst[+i]; x.ok = !x.ok; save(); return render(); }
+  if (ds.addbtn) return addItem(ds.addbtn);
+  if (ds.edit) return evForm(ev(ds.edit));
+  if (ds.del) {
+    const x = ev(ds.del);
+    if (await confirm(`<b>${esc(x.naam)}</b> verwijderen?`, 'Verwijderen', true)) { data.events = data.events.filter(y => y !== x); save(); render(); }
+    return;
+  }
+  if (ds.jr) return jrForm(data.jarigen.find(x => x.id === ds.jr));
+});
+app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.add) addItem(e.target.dataset.add); if (e.key === 'Enter' && e.target.dataset.addcad) addCad(e.target.dataset.addcad); });
+function addItem(id) {
+  const inp = $(`[data-add="${id}"]`), v = inp.value.trim();
+  if (!v) return;
+  data.events.find(x => x.id === id).lijst.push({ t: v, ok: false });
+  save(); render();
+  const n = $(`[data-add="${id}"]`); n && n.focus();
+}
+$('#fab').onclick = () => view === 'jarigen' ? jrForm() : view === 'cadeaus' ? cadForm() : evForm();
+
+koppelDeel();
+if (location.hash === '#nieuw') { history.replaceState(null, '', '#'); render(); evForm(); } else setView(view);
+</script>
+</body>
+</html>

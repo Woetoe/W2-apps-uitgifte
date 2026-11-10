@@ -78,6 +78,10 @@
       openReleases() { native && native.openReleases && native.openReleases(); },
       reload() { if (native && native.reloadApp) native.reloadApp(); else location.reload(); }
     },
+    // Gegevens doorgeven aan de app zelf (widgets op het startscherm, herinneringen). Vanaf native 9; daarvoor doet het niets.
+    publish(key, obj) {
+      if (native && native.publish) { try { native.publish(String(key), JSON.stringify(obj)); } catch (e) {} }
+    },
     // Scherm aan houden zolang deze pagina het nodig heeft (hardlooptrainer, kookmodus). Vanaf native 8;
     // in de browser via de Wake Lock-API. Spellen houden het scherm vanzelf aan.
     awake(on) {

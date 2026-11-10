@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>W2 Apps</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Startscherm: elke tegel draagt de kleuren van zijn eigen spel, de rest blijft rustig. */
+:root{--bg:#14161f;--panel:#1d202c;--line:#30344a;--text:#f2efe8;--muted:#a3a6b9;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;--f-body:"Figtree",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.wrap{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 28px) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:26px}
+header{display:flex;align-items:baseline;gap:12px}
+.mark{font:800 52px/0.9 var(--f-display);letter-spacing:-.04em}
+.mark sup{font-size:.45em;vertical-align:.95em;margin-left:2px;color:#ffc83d}
+header p{margin:0;color:var(--muted)}
+h2{font:800 20px/1.2 var(--f-display);margin:0 0 -12px}
+.tiles{display:grid;gap:12px}
+.tile{display:grid;grid-template-columns:84px 1fr;gap:16px;align-items:center;padding:12px 16px 12px 12px;border-radius:20px;text-decoration:none;color:inherit;min-height:108px;position:relative;overflow:hidden}
+.tile:active{transform:scale(.985)}
+.tile .art{width:84px;height:84px;border-radius:14px;display:block}
+.tile b{display:block;font:800 23px/1.1 var(--f-display);margin-bottom:4px}
+.tile span{font-size:15px;opacity:.85}
+.bg{background:#3b2419;color:#f4ecda}
+.lu{background:#17244f;color:#f3f5ff}
+.sc{background:#18212d;color:#eef0f2}
+.cd{background:#2a2236;color:#f3eef7}
+.vs{background:#232534;color:#f4f2ec}
+.wb{background:#16302a;color:#f3efe3}
+.kk{background:#1a1a2a;color:#f4f1ea}
+.tr{background:#0f2a33;color:#f3efe6}
+.soon{border:1.5px dashed var(--line);border-radius:20px;padding:18px;color:var(--muted);font-size:15px}
+footer{color:var(--muted);font-size:13px;text-align:center}
+.diag{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;padding:12px;border:1px dashed var(--line);border-radius:14px}
+.diag svg{width:18px;height:18px}
+@media (prefers-reduced-motion:reduce){.tile:active{transform:none}}
+
+/* Tabbladen onderin en het overzicht */
+body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+.wrap{gap:20px}
+header{justify-content:space-between;align-items:center}
+header .l{display:flex;align-items:baseline;gap:12px}
+.ib{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--muted);text-decoration:none}
+.ib:active{background:var(--panel)}
+.ib svg{width:24px;height:24px}
+.ib{position:relative}
+.ib.dot::after{content:"";position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:5px;background:#ffc83d;box-shadow:0 0 0 2px var(--bg)}
+.panel{display:none;flex-direction:column;gap:12px}
+.panel.on{display:flex}
+.panel>h2{margin:6px 0 0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;justify-content:center;background:rgba(20,22,31,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 6px) max(8px,env(safe-area-inset-left,0px))}
+nav.tabs .in{display:flex;width:100%;max-width:520px}
+nav.tabs button{flex:1;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 4px;font:600 12px var(--f-body);border-radius:14px;cursor:pointer}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button .pip{width:54px;height:30px;border-radius:15px;display:grid;place-items:center;transition:background .15s}
+nav.tabs button.on{color:var(--text)}
+nav.tabs button.on .pip{background:#3a3220;color:#ffc83d}
+.today{color:var(--muted);font-weight:600;margin:-8px 0 0}
+.today::first-letter{text-transform:uppercase}
+.dash{display:flex;flex-direction:column;gap:10px}
+.dcard{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;text-decoration:none;color:inherit;position:relative;overflow:hidden}
+.dcard:active{transform:scale(.99)}
+.dcard .big{flex:none;width:66px;height:66px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c,#2a2f44);color:var(--ci,#fff);line-height:1}
+.dcard .big b{font:800 26px/1 var(--f-display)}
+.dcard .big small{font-size:11px;font-weight:700;opacity:.85;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.dcard .big.em{font-size:30px}
+.dcard .tx{flex:1;min-width:0}
+.dcard .tx b{display:block;font:800 18px/1.2 var(--f-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcard .tx span{display:block;color:var(--muted);font-size:14px}
+.dcard .meter{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:8px}
+.dcard .meter i{display:block;height:100%;border-radius:3px;background:var(--c,#ffc83d)}
+.dcard .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.dcard .chips em{font-style:normal;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:#262a3b;color:#cfd1de}
+.dempty{border:1.5px dashed var(--line);border-radius:18px;padding:20px;color:var(--muted);text-align:center}
+.dempty b{display:block;color:var(--text);font:800 18px/1.2 var(--f-display);margin-bottom:4px}
+.quick{display:flex;gap:10px;flex-wrap:wrap}
+.quick a{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;color:var(--text);text-decoration:none;font-weight:600;font-size:15px}
+.quick a i{width:10px;height:10px;border-radius:5px;background:var(--c)}
+.run{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.run div{background:#181b26;border-radius:12px;padding:8px 10px}
+.run b{display:block;font:800 20px/1.1 var(--f-display)}
+.run span{font-size:12px;color:var(--muted)}
+.tile.ri{background:#0f2f2c;color:#eefaf6}
+.tile.kl{background:#2b2414;color:#fbf3df}
+.tile.af{background:#341b22;color:#fdeef0}
+.tile.hl{background:#1d2c12;color:#f1f8e6}
+.tile.rc{background:#3a1e12;color:#fdf0e6}
+.tile.wm{background:#3a2610;color:#fff3e2}
+.tile.ko{background:#0f2e24;color:#e6fbf3}
+.tile.ju{background:#101d38;color:#eaf1ff}
+.tile.vz{background:#28163d;color:#f6ecff}
+.tile.hu{background:#0e2633;color:#e8f7ff}
+.tile.kj{background:#13301f;color:#eaf7ee}
+.tile.dm{background:#2c1d12;color:#f8ecdf}
+.tile.zs{background:#0b1d31;color:#e6f2fc}
+.soon b{display:block;color:var(--text);font-weight:700}
+nav.tabs button{min-width:0}
+.sl{display:flex;flex-direction:column;gap:10px}
+.sl .dcard .big{font-size:28px;background:color-mix(in srgb,var(--c) 22%,#262a3b)}
+.sl .dcard .cnt{flex:none;text-align:right;font:800 24px/1 var(--f-display);color:var(--c)}
+.sl .dcard .cnt small{display:block;font:600 11px var(--f-body);color:var(--muted);margin-top:3px}
+.sl .new{display:inline-block;background:#ff7eb6;color:#2a0716;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.samenhero{display:flex;flex-direction:column;gap:10px;background:#2c1527;border:1px solid #5a2a4c;border-radius:20px;padding:18px;color:#fff1f8;text-decoration:none}
+.samenhero b{font:800 22px/1.15 var(--f-display)}
+.samenhero span{opacity:.85}
+.samenhero em{font-style:normal;align-self:flex-start;background:#ff7eb6;color:#2a0716;font-weight:800;border-radius:12px;padding:10px 16px}
+.who2{color:var(--muted);font-size:14px;margin:-4px 0 0}
+.alle{color:#ff7eb6;text-decoration:none;font-weight:700;text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="l"><span class="mark">W<sup>2</sup></span><p id="sub">Jouw eigen apps, ook zonder internet.</p></div><a class="ib" id="gear" href="instellingen/index.html" aria-label="Instellingen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></a></header>
+
+  <section class="panel" id="p-overzicht" aria-label="Overzicht">
+    <p class="today" id="today"></p>
+    <div class="dash" id="dash"></div>
+    <div id="runcard"></div>
+    <div id="quickwrap" hidden><h2 style="margin-bottom:10px">Snel naar</h2><div class="quick" id="quick"></div></div>
+  </section>
+
+  <section class="panel" id="p-samen" aria-label="Samen">
+    <h2>Samen</h2>
+    <div id="samenwrap"></div>
+    <h2 style="margin-top:8px">Samen bijhouden</h2>
+    <div class="tiles">
+    <a class="tile ri" href="reizen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#13534b"/>
+        <circle cx="64" cy="20" r="9" fill="#ffd166"/>
+        <rect x="18" y="32" width="40" height="38" rx="7" fill="#2ec4b6"/><rect x="30" y="24" width="16" height="10" rx="3" fill="none" stroke="#e8fffb" stroke-width="3.5"/>
+        <rect x="18" y="44" width="40" height="5" fill="#13534b" opacity=".45"/><circle cx="26" cy="72" r="3.5" fill="#e8fffb"/><circle cx="50" cy="72" r="3.5" fill="#e8fffb"/>
+        <path d="M46 14l14 6-5 2 6 6-3 1-8-5-5 2z" fill="#e8fffb" transform="rotate(-12 52 20) translate(-10 0)"/>
+      </svg>
+      <div><b>Reizen</b><span>Tickets, paklijst en aftellen per reis</span></div>
+    </a>
+    <a class="tile rc" href="recepten/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#6b2d14"/>
+        <path d="M16 40h52v10a18 18 0 0 1-18 18H34a18 18 0 0 1-18-18z" fill="#ff8a3d"/>
+        <rect x="10" y="38" width="64" height="7" rx="3.5" fill="#ffd2b0"/><rect x="8" y="44" width="10" height="4" rx="2" fill="#ff8a3d"/><rect x="66" y="44" width="10" height="4" rx="2" fill="#ff8a3d"/>
+        <path d="M32 30c0-5 5-5 5-10M44 30c0-5 5-5 5-10" fill="none" stroke="#ffd2b0" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div><b>Recepten</b><span>Je receptenboek, met zoeken en kookmodus</span></div>
+    </a>
+    <a class="tile af" href="aftellen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#5c2532"/>
+        <rect x="12" y="16" width="60" height="56" rx="10" fill="#fff4f0"/><rect x="12" y="16" width="60" height="17" rx="10" fill="#ff6b6b"/><rect x="12" y="26" width="60" height="7" fill="#ff6b6b"/>
+        <rect x="24" y="10" width="6" height="13" rx="3" fill="#fff4f0"/><rect x="54" y="10" width="6" height="13" rx="3" fill="#fff4f0"/>
+        <text x="42" y="63" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="28" fill="#5c2532">12</text>
+      </svg>
+      <div><b>Aftellen</b><span>Toernooien, verjaardagen en cadeau-ideeën</span></div>
+    </a>
+    <a class="tile wm" href="weekmenu/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#5a3410"/>
+        <rect x="12" y="14" width="60" height="58" rx="9" fill="#fff3e2"/><rect x="12" y="14" width="60" height="14" rx="9" fill="#ffb347"/><rect x="12" y="22" width="60" height="6" fill="#ffb347"/>
+        <g fill="#5a3410"><rect x="20" y="36" width="9" height="9" rx="2"/><rect x="37" y="36" width="9" height="9" rx="2" opacity=".35"/><rect x="54" y="36" width="9" height="9" rx="2"/><rect x="20" y="53" width="9" height="9" rx="2" opacity=".35"/><rect x="37" y="53" width="9" height="9" rx="2"/><rect x="54" y="53" width="9" height="9" rx="2" opacity=".35"/></g>
+      </svg>
+      <div><b>Weekmenu</b><span>Wat eten we? Met boodschappen in één tik</span></div>
+    </a>
+    <a class="tile ko" href="kosten/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#14523f"/>
+        <circle cx="32" cy="46" r="20" fill="#4fd1a5"/><circle cx="32" cy="46" r="13" fill="none" stroke="#14523f" stroke-width="3"/>
+        <circle cx="56" cy="34" r="18" fill="#e6fbf3"/><text x="56" y="41" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="20" fill="#14523f">€</text>
+      </svg>
+      <div><b>Kosten delen</b><span>Wie betaalde wat, en wie krijgt nog geld</span></div>
+    </a>
+    </div>
+  </section>
+
+  <section class="panel" id="p-spellen" aria-label="Spellen">
+    <h2>Spellen</h2>
+  <div class="tiles">
+    <a class="tile bg" href="backgammon/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#143d30"/>
+        <polygon points="6,0 20,0 13,34" fill="#8f2d2b"/><polygon points="22,0 36,0 29,34" fill="#e6d8b8"/>
+        <polygon points="48,84 62,84 55,50" fill="#e6d8b8"/><polygon points="64,84 78,84 71,50" fill="#8f2d2b"/>
+        <circle cx="13" cy="9" r="7" fill="#e3b04b" stroke="#a97a22"/><circle cx="29" cy="9" r="7" fill="#f4ecda" stroke="#b9ad93"/>
+        <circle cx="55" cy="75" r="7" fill="#f4ecda" stroke="#b9ad93"/><circle cx="71" cy="75" r="7" fill="#e3b04b" stroke="#a97a22"/>
+        <rect x="30" y="32" width="20" height="20" rx="4" fill="#f4ecda"/><circle cx="35.5" cy="37.5" r="2" fill="#2a1a08"/><circle cx="44.5" cy="46.5" r="2" fill="#2a1a08"/>
+      </svg>
+      <div><b>Backgammon</b><span>Tegen de computer of met twee telefoons, offline</span></div>
+    </a>
+    <a class="tile sc" href="schaken/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#7f93a8"/>
+        <rect x="0" y="0" width="42" height="42" fill="#e4e1d8"/><rect x="42" y="42" width="42" height="42" rx="0" fill="#e4e1d8"/>
+        <path d="M0 0h42v42H0z M42 42h42v28a14 14 0 0 1-14 14H42z" fill="none"/>
+        <g transform="translate(46,3) scale(.36)" fill="#232b38" stroke="#0a0e14" stroke-width="4" stroke-linejoin="round"><path d="M66 84H32c0-14 4-24 12-32-6 2-11 5-15 3-5-2-5-8-1-12 6-6 10-12 12-19l3-9 5 7c15 2 26 14 26 34 0 11-2 20-2 28z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+        <g transform="translate(4,45) scale(.36)" fill="#f7f3ea" stroke="#1b2330" stroke-width="4" stroke-linejoin="round"><path d="M46 6h8v8h8v8h-8v10h-8V22h-8v-8h8z"/><path d="M28 40c0-10 44-10 44 0l-6 28H34z"/><path d="M30 70h40l4 12H26z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+      </svg>
+      <div><b>Schaken</b><span>Tegen de computer of met twee telefoons, offline</span></div>
+    </a>
+    <a class="tile cd" href="halma/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#2a2236"/>
+        <polygon points="42,6 73,60 11,60" fill="#efe2c6"/><polygon points="42,78 11,24 73,24" fill="#efe2c6"/>
+        <circle cx="42" cy="16" r="5" fill="#3b82f6"/><circle cx="37" cy="24" r="5" fill="#3b82f6"/><circle cx="47" cy="24" r="5" fill="#3b82f6"/>
+        <circle cx="42" cy="68" r="5" fill="#e5484d"/><circle cx="37" cy="60" r="5" fill="#e5484d"/><circle cx="47" cy="60" r="5" fill="#e5484d"/>
+        <circle cx="20" cy="30" r="5" fill="#2fbf71"/><circle cx="64" cy="54" r="5" fill="#f5b82e"/><circle cx="42" cy="42" r="2.5" fill="#b9a57f"/><circle cx="32" cy="42" r="2.5" fill="#b9a57f"/><circle cx="52" cy="42" r="2.5" fill="#b9a57f"/>
+      </svg>
+      <div><b>Chinees dammen</b><span>Knikkers springen, 2 tot 6 spelers</span></div>
+    </a>
+    <a class="tile wb" href="woordbord/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0d3b2e"/>
+        <g fill="#e9e2cc"><rect x="4" y="4" width="14" height="14" rx="2"/><rect x="20" y="4" width="14" height="14" rx="2"/><rect x="52" y="4" width="14" height="14" rx="2"/><rect x="68" y="4" width="12" height="14" rx="2"/>
+        <rect x="4" y="66" width="14" height="14" rx="2"/><rect x="20" y="66" width="14" height="14" rx="2"/><rect x="36" y="66" width="14" height="14" rx="2"/><rect x="68" y="66" width="12" height="14" rx="2"/>
+        <rect x="4" y="20" width="14" height="14" rx="2"/><rect x="4" y="50" width="14" height="14" rx="2"/><rect x="68" y="20" width="12" height="14" rx="2"/><rect x="68" y="36" width="12" height="14" rx="2"/></g>
+        <rect x="36" y="4" width="14" height="14" rx="2" fill="#d9473b"/><rect x="52" y="66" width="14" height="14" rx="2" fill="#3c8fc4"/><rect x="4" y="36" width="14" height="12" rx="2" fill="#f2b8b0"/><rect x="68" y="52" width="12" height="12" rx="2" fill="#9fd3e8"/>
+        <g font-family="Bricolage Grotesque" font-weight="800" font-size="13" text-anchor="middle" fill="#2b1d0e">
+          <rect x="20" y="20" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="27.5" y="32">W</text>
+          <rect x="20" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="27.5" y="47">O</text>
+          <rect x="35" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="42.5" y="47">R</text>
+          <rect x="50" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="57.5" y="47">D</text>
+          <rect x="20" y="50" width="15" height="15" rx="3" fill="#ffc83d"/><text x="27.5" y="62">!</text></g>
+      </svg>
+      <div><b>Woordbord</b><span>Woorden leggen, tegen de computer of met twee telefoons</span></div>
+    </a>
+    <a class="tile kk" href="kronkel/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#050508"/>
+        <g fill="none" stroke-linecap="round" stroke-width="4">
+          <path d="M8 66c14-2 14-30 30-30s14 22 28 20" stroke="#ff4d4d"/>
+          <path d="M14 12c8 14 26 16 34 4s20-4 22 10" stroke="#ffd23f" stroke-dasharray="30 6 80"/>
+          <path d="M78 76c-12 0-16-12-28-10s-10 10-22 6" stroke="#3d9bff"/>
+        </g>
+        <g fill="#ffe14d"><circle cx="66" cy="56" r="3.2"/><circle cx="70" cy="26" r="3.2"/><circle cx="28" cy="72" r="3.2"/></g>
+      </svg>
+      <div><b>Kronkel</b><span>Lijnen sturen tot iemand botst, 2 tot 8 spelers</span></div>
+    </a>
+    <a class="tile tr" href="tegelrummy/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0f3d49"/>
+        <g font-family="Bricolage Grotesque" font-weight="800" font-size="15" text-anchor="middle">
+          <rect x="6" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="6" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="14.5" y="28" fill="#d3352c">7</text>
+          <rect x="25" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="25" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="33.5" y="28" fill="#1d63c9">7</text>
+          <rect x="44" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="44" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="52.5" y="28" fill="#e08600">7</text>
+          <rect x="16" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="16" y="68" width="17" height="3" rx="1" fill="#cdbd98"/><text x="24.5" y="64" fill="#22242b">4</text>
+          <rect x="35" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="35" y="68" width="17" height="3" rx="1" fill="#cdbd98"/><text x="43.5" y="64" fill="#22242b">5</text>
+          <rect x="54" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="54" y="68" width="17" height="3" rx="1" fill="#cdbd98"/>
+          <g transform="translate(55.5 52) scale(.35)"><path d="M20 3c1.6 9 3.5 11.2 17 17H20z" fill="#d3352c"/><path d="M37 20c-13.5 5.8-15.4 8-17 17V20z" fill="#1d63c9"/><path d="M20 37c-1.6-9-3.5-11.2-17-17h17z" fill="#e08600"/><path d="M3 20C16.5 14.2 18.4 12 20 3v17z" fill="#22242b"/></g></g>
+      </svg>
+      <div><b>Tegelrummy</b><span>Reeksen en groepen leggen, 2 tot 4 spelers</span></div>
+    </a>
+    <a class="tile lu" href="legtuit/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#203165"/>
+        <rect x="14" y="12" width="56" height="60" rx="8" fill="#fbf7ee" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="22" width="5" height="9" rx="1" fill="#ff6b5b" transform="rotate(-6 42 42)"/><rect x="28" y="24" width="30" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="35" width="5" height="9" rx="1" fill="#22b5a4" transform="rotate(-6 42 42)"/><rect x="28" y="37" width="24" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="48" width="5" height="9" rx="1" fill="#a76bdc" transform="rotate(-6 42 42)"/><rect x="28" y="50" width="34" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <circle cx="66" cy="66" r="12" fill="#ffc83d"/><text x="66" y="71" text-anchor="middle" font-family="Dela Gothic One" font-size="13" fill="#1a1d2b">30</text>
+      </svg>
+      <div><b>Leg ’t Uit</b><span>Vijf woorden, dertig seconden, met teams</span></div>
+    </a>
+    <a class="tile vs" href="vingerspel/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#12131a"/>
+        <circle cx="26" cy="28" r="11" fill="none" stroke="#ff5d5d" stroke-width="3"/><circle cx="26" cy="28" r="7" fill="#ff5d5d"/>
+        <circle cx="58" cy="24" r="11" fill="none" stroke="#4d8dff" stroke-width="3"/><circle cx="58" cy="24" r="7" fill="#4d8dff"/>
+        <circle cx="42" cy="58" r="17" fill="#5ee07a" opacity=".22"/><circle cx="42" cy="58" r="13" fill="none" stroke="#5ee07a" stroke-width="3.5"/><circle cx="42" cy="58" r="9" fill="#5ee07a"/>
+      </svg>
+      <div><b>Vingerspel</b><span>Wie begint, wie haalt de friet? De app kiest</span></div>
+    </a>
+    <a class="tile kj" href="klaverjassen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#1f6b45"/>
+        <g transform="rotate(-14 42 42)"><rect x="14" y="16" width="34" height="48" rx="4" fill="#fbf8f1"/><text x="31" y="49" text-anchor="middle" font-size="26" fill="#1d1f24">♣</text></g>
+        <g transform="rotate(10 42 42)"><rect x="36" y="20" width="34" height="48" rx="4" fill="#fbf8f1"/><text x="53" y="53" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="24" fill="#d23a35">B</text></g>
+      </svg>
+      <div><b>Klaverjassen</b><span>Met je maat tegen de computer of aan tafel met 4 telefoons</span></div>
+    </a>
+    <a class="tile dm" href="dammen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#e9d6b5"/>
+        <g fill="#8a5a36"><rect x="0" y="0" width="21" height="21" rx="0"/><rect x="42" y="0" width="21" height="21"/><rect x="21" y="21" width="21" height="21"/><rect x="63" y="21" width="21" height="21"/><rect x="0" y="42" width="21" height="21"/><rect x="42" y="42" width="21" height="21"/><rect x="21" y="63" width="21" height="21"/><rect x="63" y="63" width="21" height="21"/></g>
+        <circle cx="31" cy="34" r="9" fill="#2a211b"/><circle cx="53" cy="54" r="9" fill="#f7efe1" stroke="#c9b79a" stroke-width="2"/><circle cx="73" cy="34" r="9" fill="#2a211b"/>
+      </svg>
+      <div><b>Dammen</b><span>Internationaal 10×10, met vliegende dammen</span></div>
+    </a>
+    <a class="tile zs" href="zeeslag/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0e3555"/>
+        <path d="M0 60q10-6 21 0t21 0 21 0 21 0V84H0z" fill="#0b2c48"/>
+        <path d="M12 50h52l-7 10H19z" fill="#9fb4c8"/><rect x="28" y="38" width="18" height="12" rx="2" fill="#9fb4c8"/><rect x="35" y="30" width="4" height="8" fill="#9fb4c8"/>
+        <circle cx="64" cy="24" r="9" fill="#ff6b35"/><circle cx="64" cy="24" r="4" fill="#ffd2b8"/>
+      </svg>
+      <div><b>Zeeslag</b><span>Zoek en tor­pedeer de vloot, tegen de computer of met twee telefoons</span></div>
+    </a>
+
+  </div>
+
+
+    <a class="diag" href="verbinding/index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/><path d="M2 9a14.5 14.5 0 0 1 20 0"/></svg>Verbinding testen</a>
+  </section>
+
+  <section class="panel" id="p-persoonlijk" aria-label="Persoonlijk">
+    <h2>Persoonlijk</h2>
+    <p class="who2">Alleen op deze telefoon, niets gaat via internet.</p>
+    <div class="tiles">
+    <a class="tile kl" href="kluis/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#4a3b16"/>
+        <rect x="12" y="14" width="60" height="56" rx="9" fill="#f2b53a"/><rect x="18" y="20" width="48" height="44" rx="6" fill="#c98a12"/>
+        <circle cx="42" cy="42" r="12" fill="#f8e3b0"/><circle cx="42" cy="42" r="4" fill="#4a3b16"/>
+        <path d="M42 30v5M42 49v5M30 42h5M49 42h5" stroke="#4a3b16" stroke-width="3" stroke-linecap="round"/>
+        <rect x="18" y="70" width="10" height="5" rx="2" fill="#f2b53a"/><rect x="56" y="70" width="10" height="5" rx="2" fill="#f2b53a"/>
+      </svg>
+      <div><b>Kluis</b><span>Belangrijke documenten, versleuteld en op slot</span></div>
+    </a>
+    <a class="tile hl" href="hardlopen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#2f4a17"/>
+        <path d="M6 66c20-10 52-10 72 0" fill="none" stroke="#a7e35a" stroke-width="4" stroke-dasharray="7 6"/>
+        <path d="M18 52c4-8 8-12 14-12l10 2c4 1 6 4 12 5l10 2c4 1 6 4 6 7H22c-3 0-5-2-4-4z" fill="#e8f7d2"/>
+        <path d="M18 56h52" stroke="#a7e35a" stroke-width="5" stroke-linecap="round"/>
+        <path d="M38 44l3 4M44 45l3 4" stroke="#2f4a17" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M60 18l-6 12h8l-6 12" fill="none" stroke="#ffd166" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div><b>Hardlopen</b><span>Intervalschema's met piep en trilling, logboek</span></div>
+    </a>
+    <a class="tile ju" href="judo/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#1b3a7a"/>
+        <path d="M18 70V40l24-16 24 16v30z" fill="#eaf1ff"/><path d="M42 24v46" stroke="#1b3a7a" stroke-width="3"/>
+        <path d="M30 34l12 14 12-14" fill="none" stroke="#1b3a7a" stroke-width="3"/>
+        <rect x="16" y="50" width="52" height="8" rx="2" fill="#111"/><path d="M38 58l-6 16M46 58l6 16" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div><b>Judo</b><span>Trainingen en de eisen voor je 2e dan</span></div>
+    </a>
+    <a class="tile vz" href="verzameling/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#4a2672"/>
+        <circle cx="54" cy="44" r="22" fill="#111"/><circle cx="54" cy="44" r="15" fill="none" stroke="#333" stroke-width="1.5"/><circle cx="54" cy="44" r="7" fill="#c58cff"/>
+        <rect x="12" y="16" width="30" height="42" rx="5" fill="#ffd166" transform="rotate(-10 27 37)"/><rect x="16" y="20" width="22" height="18" rx="3" fill="#4a2672" transform="rotate(-10 27 37)"/>
+      </svg>
+      <div><b>Verzameling</b><span>Kaarten en platen: wat je hebt en zoekt</span></div>
+    </a>
+    <a class="tile hu" href="huis/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#16506b"/>
+        <path d="M14 42L42 18l28 24v28H14z" fill="#e8f7ff"/><rect x="34" y="50" width="16" height="20" fill="#16506b"/>
+        <path d="M56 56l12-12" stroke="#7fd1ff" stroke-width="6" stroke-linecap="round"/><circle cx="70" cy="42" r="6" fill="none" stroke="#7fd1ff" stroke-width="4"/>
+      </svg>
+      <div><b>Huis</b><span>Terugkerende klusjes en meterstanden</span></div>
+    </a>
+    </div>
+  </section>
+
+  <footer id="ver"></footer>
+</div>
+<nav class="tabs" aria-label="Afdelingen"><div class="in"><button type="button" data-tab="overzicht"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg></span>Overzicht</button><button type="button" data-tab="samen"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c3 .2 5 2.3 5 5.2"/></svg></span>Samen</button><button type="button" data-tab="persoonlijk"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg></span>Persoonlijk</button><button type="button" data-tab="spellen"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg></span>Spellen</button></div></nav>
+<script src="w2.js"></script>
+<script src="w2data.js"></script>
+<script>
+  // Lettertypes in de tegeltjes pas tekenen als ze geladen zijn
+  if (document.fonts && document.fonts.load) document.fonts.load('13px "Dela Gothic One"');
+  const U = window.W2 && W2.update;
+  const verEl = document.getElementById('ver'), gear = document.getElementById('gear');
+  const info = U && U.available() ? U.info() : {};
+  verEl.textContent = window.W2 && W2.inApp ? 'W2 Apps ' + (info.build ? '1.0.' + info.build : '') : 'W2 Apps · browserversie (twee telefoons werkt alleen in de app)';
+
+  /* Updates staan in Instellingen. Hier alleen stil zoeken bij openen (hooguit eens per dag, uit te zetten
+     in Instellingen); is er iets nieuws, dan krijgt het tandwiel een stipje. Fouten blijven hier stil. */
+  const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
+  function dot() {
+    const v = ls('w2-upd-new');
+    gear.classList.toggle('dot', !!v);
+    gear.setAttribute('aria-label', v ? 'Instellingen, nieuwe versie ' + v + ' beschikbaar' : 'Instellingen');
+  }
+  dot();
+  if (U && U.available()) {
+    U.on(ev => {
+      if (ev.state === 'available' || ev.state === 'apk') ls('w2-upd-new', ev.version || '?');
+      else if (ev.state === 'none') ls('w2-upd-new', null);
+      dot();
+    });
+    const auto = ls('w2-upd-auto') !== '0', last = +ls('w2-upd-last') || 0;
+    if (auto && navigator.onLine !== false && Date.now() - last > 864e5) { ls('w2-upd-last', String(Date.now())); U.check(); }
+  }
+</script>
+<script src="samen/sync.js"></script>
+<script src="start.js"></script>
+</body>
+</html>

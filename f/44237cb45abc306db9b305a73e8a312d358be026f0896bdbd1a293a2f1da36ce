@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kosten delen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#4fd1a5;--acc-ink:#03261a}
+.gcard .end b{display:block;font:800 17px/1.1 var(--f-display);color:var(--text)}
+.plus{color:var(--ok)}.min{color:var(--danger)}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}
+.sum b{display:block;font:800 22px/1.1 var(--f-display)}
+.sum span{font-size:12px;color:var(--muted);font-weight:700}
+.u .end b{display:block;font-weight:800;color:var(--text)}
+.u.terug .ico{background:#173420}
+.day{font:800 14px var(--f-display);color:var(--muted);margin:8px 0 -4px}
+.bal{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.bal:last-child{border-bottom:0}
+.bal .grow{flex:1}
+.bal .bar2{height:8px;border-radius:4px;background:var(--line);position:relative;margin-top:6px}
+.bal .bar2 i{position:absolute;top:0;bottom:0;border-radius:4px}
+.tr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.tr:last-child{border-bottom:0}
+.tr .grow{flex:1}
+.who{display:flex;flex-wrap:wrap;gap:6px}
+.who button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 12px;cursor:pointer;font-size:15px}
+.who button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.amt{display:grid;grid-template-columns:1fr 96px;gap:8px}
+.amt .in:first-child{font:800 24px var(--f-display)}
+.mens{display:flex;flex-direction:column;gap:6px}
+.mens div{display:flex;gap:8px}
+.mens .in{flex:1}
+.cats{display:flex;gap:6px;flex-wrap:wrap}
+.cats button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:20px;cursor:pointer}
+.cats button.on{outline:2px solid var(--acc);outline-offset:1px}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Kosten delen</h1><button class="ib" id="menu" type="button" aria-label="Meer" hidden></button></div>
+<main class="page">
+  <div class="seg" id="seg" hidden><button type="button" data-v="uit" class="on">Uitgaven</button><button type="button" data-v="saldo">Wie krijgt wat</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="reken.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, K = Kosten, app = $('#app');
+$('#fab').innerHTML = icon('plus');
+$('#menu').innerHTML = icon('more');
+D.recent('kosten');
+
+const CATS = ['🛒', '🍽️', '🏨', '✈️', '🚗', '⛽', '🎟️', '🍹', '🏠', '🎁', '💊', '📦'];
+const VALUTA = ['EUR', 'USD', 'GBP', 'NOK', 'SEK', 'DKK', 'CHF', 'ANG', 'AWG'];
+// Ruwe koers als begin (aanpassen in de groep): hoeveel euro voor 1 eenheid.
+const START_KOERS = { USD: 0.92, GBP: 1.17, NOK: 0.085, SEK: 0.087, DKK: 0.134, CHF: 1.05, ANG: 0.51, AWG: 0.51 };
+
+let data = Object.assign({ groepen: [], uitgaven: [] }, D.get('kosten', null) || {});
+let cur = null, view = 'uit';
+const save = () => { D.set('kosten', data); if (deel) deel.push(); };
+const groep = id => data.groepen.find(g => g.id === id);
+const uitVan = g => data.uitgaven.filter(u => u.groep === g.id);
+const naam = (g, id) => ((g.mensen || []).find(m => m.id === id) || {}).naam || '?';
+const ik = g => { const me = window.Samen && Samen.cfg && Samen.cfg.me ? Samen.cfg.me.naam : D.get('kosten-ik', ''); return (g.mensen.find(m => m.naam.toLowerCase() === String(me).toLowerCase()) || {}).id || ''; };
+
+// ---------------------------------------------------------------- delen via Samen: groepen en uitgaven los
+let deel = null;
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'kosten',
+    lees: async () => Object.fromEntries([...data.groepen.map(g => ['g:' + g.id, g]), ...data.uitgaven.map(u => ['u:' + u.id, u])]),
+    schrijf: async map => {
+      const pick = pre => Object.entries(map).filter(([k]) => k.startsWith(pre)).map(([, v]) => JSON.parse(JSON.stringify(v)));
+      data.groepen = pick('g:'); data.uitgaven = pick('u:');
+      D.set('kosten', data);
+      if (cur && !groep(cur)) cur = null;
+      render();
+    }
+  });
+  W2Deel.badge();
+}
+
+// ---------------------------------------------------------------- tekenen
+function open(id) {
+  cur = id; view = 'uit';
+  history.replaceState(null, '', id ? '#' + id : '#');
+  render();
+  window.scrollTo(0, 0);
+}
+function render() {
+  const g = cur && groep(cur);
+  $('#seg').hidden = !g; $('#menu').hidden = !g;
+  $('#title').textContent = g ? `${g.emoji || '💶'} ${g.naam}` : 'Kosten delen';
+  $('#back').innerHTML = icon('back');
+  $('#back').href = g ? '#' : '../index.html#samen';
+  $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
+  if (!g) return renderGroepen();
+  view === 'saldo' ? renderSaldo(g) : renderUitgaven(g);
+}
+
+function renderGroepen() {
+  if (!data.groepen.length) {
+    app.innerHTML = `<div class="empty"><b>Samen kosten bijhouden</b>Voor een reis, een weekendje weg of het huishouden: wie betaalde wat, en wie wie nog iets schuldig is. Ook in dollars of kronen.<br><button class="btn" data-act="newg" type="button">${icon('plus')}Nieuwe groep</button></div>`;
+    return;
+  }
+  app.innerHTML = `<div class="list">${data.groepen.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).map(g => {
+    const u = uitVan(g), tot = u.filter(x => x.soort !== 'terug').reduce((s, x) => s + K.inHoofd(x, g), 0);
+    const s = K.saldi(g, u), me = ik(g), mijn = me ? s[me] || 0 : null;
+    return `<button class="row gcard" data-g="${g.id}" type="button"><span class="ico">${g.emoji || '💶'}</span><span class="grow"><b>${esc(g.naam)}</b><span class="sub">${u.length} uitgaven · ${K.geld(tot, g.valuta)} samen</span></span>
+      <span class="end">${mijn == null ? '' : mijn === 0 ? '<b>quitte</b>' : `<b class="${mijn > 0 ? 'plus' : 'min'}">${K.geld(Math.abs(mijn), g.valuta)}</b>${mijn > 0 ? 'krijg je' : 'betaal je'}`}</span></button>`;
+  }).join('')}</div>`;
+}
+
+function renderUitgaven(g) {
+  const u = uitVan(g).sort((a, b) => (b.datum || '') < (a.datum || '') ? -1 : (b.datum || '') > (a.datum || '') ? 1 : (b.t || 0) - (a.t || 0));
+  const echte = u.filter(x => x.soort !== 'terug');
+  const tot = echte.reduce((s, x) => s + K.inHoofd(x, g), 0);
+  const me = ik(g), mijnDeel = me ? echte.reduce((s, x) => s + (K.verdeel(K.inHoofd(x, g), x.voor || {})[me] || 0), 0) : null;
+  if (!u.length) {
+    app.innerHTML = `<div class="empty"><b>Nog geen uitgaven</b>Tik op + en vul in wat er betaald is, door wie en voor wie.<br><button class="btn" data-act="newu" type="button">${icon('plus')}Uitgave</button></div>`;
+    return;
+  }
+  let last = '', html = `<div class="card sum"><div><b>${K.geld(tot, g.valuta)}</b><span>samen uitgegeven</span></div><div><b>${mijnDeel == null ? '–' : K.geld(mijnDeel, g.valuta)}</b><span>${mijnDeel == null ? 'kies wie jij bent (⋮)' : 'jouw deel'}</span></div></div>`;
+  u.forEach(x => {
+    if (x.datum !== last) { html += `<div class="day">${esc(x.datum ? D.date.nice(x.datum, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Zonder datum')}</div>`; last = x.datum; }
+    const voor = Object.keys(x.voor || {}).filter(id => x.voor[id] > 0);
+    const wie = x.soort === 'terug' ? `${esc(naam(g, x.betaald))} → ${esc(naam(g, voor[0]))}` : `${esc(naam(g, x.betaald))} betaalde · ${voor.length === g.mensen.length ? 'voor iedereen' : 'voor ' + voor.map(id => esc(naam(g, id))).join(', ')}`;
+    html += `<button class="row u${x.soort === 'terug' ? ' terug' : ''}" data-u="${x.id}" type="button"><span class="ico">${x.soort === 'terug' ? '↩️' : x.cat || '💶'}</span><span class="grow"><b>${esc(x.soort === 'terug' ? 'Terugbetaald' : x.wat)}</b><span class="sub">${wie}</span></span>
+      <span class="end"><b>${K.geld(x.bedrag, x.valuta || g.valuta)}</b>${x.valuta && x.valuta !== g.valuta ? K.geld(K.inHoofd(x, g), g.valuta) : ''}</span></button>`;
+  });
+  app.innerHTML = `<div class="list">${html}</div>`;
+}
+
+function renderSaldo(g) {
+  const u = uitVan(g), s = K.saldi(g, u), tr = K.verrekenen(s), mx = Math.max(1, ...Object.values(s).map(Math.abs));
+  const me = ik(g);
+  const echte = u.filter(x => x.soort !== 'terug');
+  const betaald = {}; echte.forEach(x => { betaald[x.betaald] = (betaald[x.betaald] || 0) + K.inHoofd(x, g); });
+  app.innerHTML = `
+    <div class="card">${g.mensen.map(m => { const c = s[m.id] || 0; return `<div class="bal"><div class="grow"><b>${esc(m.naam)}${m.id === me ? ' (jij)' : ''}</b><div class="muted small">betaalde ${K.geld(betaald[m.id] || 0, g.valuta)}</div>
+      <div class="bar2"><i style="${c >= 0 ? 'left:50%' : 'right:50%'};width:${Math.abs(c) / mx * 50}%;background:${c >= 0 ? 'var(--ok)' : 'var(--danger)'}"></i></div></div>
+      <b class="${c > 0 ? 'plus' : c < 0 ? 'min' : ''}" style="font:800 18px var(--f-display);min-width:96px;text-align:right">${c === 0 ? 'quitte' : (c > 0 ? '+' : '') + K.geld(c, g.valuta)}</b></div>`; }).join('')}</div>
+    <h2>Zo maak je het gelijk</h2>
+    ${tr.length ? `<div class="card">${tr.map((t, i) => `<div class="tr"><div class="grow"><b>${esc(naam(g, t.van))}</b> betaalt <b>${esc(naam(g, t.naar))}</b><div style="font:800 20px var(--f-display);margin-top:2px">${K.geld(t.bedrag, g.valuta)}</div></div><button class="btn q" data-pay="${i}" type="button">${icon('check')}Betaald</button></div>`).join('')}</div>
+      <p class="muted small">Zo weinig mogelijk overboekingen. Tik op <b>Betaald</b> als het geld is overgemaakt; dan komt het als terugbetaling in de lijst.</p>` :
+      `<div class="card acc"><b>Iedereen staat quitte 🎉</b></div>`}`;
+  app._tr = tr;
+}
+
+// ---------------------------------------------------------------- formulieren
+async function groepForm(g) {
+  const isNew = !g;
+  const ls = window.Samen && Samen.cfg ? Object.values(Samen.data.leden || {}).map(m => m.naam) : [];
+  const reizen = (D.get('dash-reizen', []) || []).filter(r => D.date.days(r.tot || r.van) >= -30);
+  g = g || { naam: '', emoji: '✈️', valuta: 'EUR', koersen: {}, mensen: (ls.length ? ls : ['', '']).map(n => ({ id: D.uid(), naam: n })) };
+  const s = sheet(isNew ? 'Nieuwe groep' : 'Groep', `
+    ${isNew && reizen.length ? `<div class="who">${reizen.map(r => `<button type="button" data-reis="${esc(r.naam)}" data-em="${esc(r.emoji || '✈️')}">${esc((r.emoji || '✈️') + ' ' + r.naam)}</button>`).join('')}</div>` : ''}
+    <div class="grid2" style="grid-template-columns:72px 1fr"><label class="f">Icoon<input class="in" name="emoji" value="${esc(g.emoji)}" maxlength="4" style="text-align:center;font-size:22px"></label><label class="f">Naam<input class="in" name="naam" value="${esc(g.naam)}" placeholder="Bv. Bonaire, Huishouden"></label></div>
+    <label class="f">Valuta waarin je afrekent<select class="in" name="valuta">${VALUTA.map(v => `<option ${v === g.valuta ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Wie doen er mee?</div><div class="mens" id="mens">${g.mensen.map(m => `<div><input class="in" data-mid="${m.id}" value="${esc(m.naam)}" placeholder="Naam"></div>`).join('')}</div>
+      <button class="btn q" data-x="plus" type="button" style="margin-top:6px">${icon('plus')}Nog iemand</button></div>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Geef de groep een naam.' : $$('[data-mid]', s.el).filter(i => i.value.trim()).length < 2 ? 'Vul minstens twee namen in.' : '' }]), { focus: isNew && !reizen.length });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-x],[data-reis]'); if (!b) return;
+    if (b.dataset.reis) { $('[name=naam]', s.el).value = b.dataset.reis; $('[name=emoji]', s.el).value = b.dataset.em; return; }
+    const div = document.createElement('div'); div.innerHTML = `<input class="in" data-mid="${D.uid()}" placeholder="Naam">`; $('#mens', s.el).appendChild(div); div.firstChild.focus();
+  });
+  const r = await s.done;
+  if (r.value === 'del') {
+    if (!(await confirm(`<b>${esc(g.naam)}</b> en alle uitgaven erin verwijderen?`, 'Verwijderen', true))) return;
+    data.uitgaven = data.uitgaven.filter(u => u.groep !== g.id); data.groepen = data.groepen.filter(x => x !== g); save(); return open(null);
+  }
+  if (r.value !== 'ok') return;
+  const inp = $$('[data-mid]', s.el);
+  const gebruikt = new Set(uitVan(g).flatMap(u => [u.betaald, ...Object.keys(u.voor || {})]));
+  const mensen = inp.map(i => ({ id: i.dataset.mid, naam: i.value.trim() })).filter(m => m.naam || gebruikt.has(m.id)).map(m => ({ ...m, naam: m.naam || '?' }));
+  Object.assign(g, { naam: r.form.naam.trim(), emoji: r.form.emoji.trim() || '💶', valuta: r.form.valuta, mensen });
+  if (isNew) { g.id = D.uid(); g.t = Date.now(); data.groepen.push(g); }
+  save();
+  isNew ? open(g.id) : render();
+}
+
+async function uitForm(g, u) {
+  const isNew = !u;
+  const me = ik(g);
+  u = u || { wat: '', bedrag: 0, valuta: g.lastValuta || g.valuta, betaald: me || g.mensen[0].id, voor: Object.fromEntries(g.mensen.map(m => [m.id, 1])), datum: D.date.today(), cat: '' };
+  const voor = new Set(Object.keys(u.voor || {}).filter(id => u.voor[id] > 0));
+  let betaald = u.betaald, cat = u.cat;
+  if (u.soort === 'terug') return terugForm(g, u);
+  const s = sheet(isNew ? 'Uitgave' : 'Uitgave', `
+    <label class="f">Wat<input class="in" name="wat" value="${esc(u.wat)}" placeholder="Bv. boodschappen, huurauto"></label>
+    <div class="amt"><input class="in" name="bedrag" inputmode="decimal" value="${u.bedrag ? (u.bedrag / 100).toFixed(2).replace('.', ',') : ''}" placeholder="0,00"><select class="in" name="valuta">${VALUTA.map(v => `<option ${v === (u.valuta || g.valuta) ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Betaald door</div><div class="who" id="bet">${g.mensen.map(m => `<button type="button" data-b="${m.id}" class="${m.id === betaald ? 'on' : ''}">${esc(m.naam)}</button>`).join('')}</div></div>
+    <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Voor wie (gelijk verdeeld)</div><div class="who" id="voor">${g.mensen.map(m => `<button type="button" data-v="${m.id}" class="${voor.has(m.id) ? 'on' : ''}">${esc(m.naam)}</button>`).join('')}</div></div>
+    <div class="cats">${CATS.map(c => `<button type="button" data-c="${c}" class="${c === cat ? 'on' : ''}">${c}</button>`).join('')}</div>
+    <label class="f">Datum<input class="in" type="date" name="datum" value="${esc(u.datum || '')}"></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.wat.trim() ? 'Waar was het voor?' : !(K.leesBedrag(f.bedrag) > 0) ? 'Vul een bedrag in.' : !voor.size ? 'Kies voor wie het was.' : '' }]), { focus: isNew });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-b]'), v = e.target.closest('[data-v]'), c = e.target.closest('[data-c]');
+    if (b) { betaald = b.dataset.b; $$('[data-b]', s.el).forEach(x => x.classList.toggle('on', x === b)); }
+    if (v) { const id = v.dataset.v; voor.has(id) ? voor.delete(id) : voor.add(id); v.classList.toggle('on', voor.has(id)); }
+    if (c) { cat = cat === c.dataset.c ? '' : c.dataset.c; $$('[data-c]', s.el).forEach(x => x.classList.toggle('on', x.dataset.c === cat)); }
+  });
+  const r = await s.done;
+  if (r.value === 'del') { if (await confirm(`<b>${esc(u.wat)}</b> verwijderen?`, 'Verwijderen', true)) { data.uitgaven = data.uitgaven.filter(x => x !== u); save(); render(); } return; }
+  if (r.value !== 'ok') return;
+  Object.assign(u, { wat: r.form.wat.trim(), bedrag: K.leesBedrag(r.form.bedrag), valuta: r.form.valuta, betaald, voor: Object.fromEntries([...voor].map(id => [id, 1])), datum: r.form.datum, cat });
+  if (isNew) { u.id = D.uid(); u.groep = g.id; u.t = Date.now(); data.uitgaven.push(u); }
+  if (u.valuta !== g.valuta && !(g.koersen || {})[u.valuta]) { g.koersen = Object.assign({}, g.koersen, { [u.valuta]: START_KOERS[u.valuta] || 1 }); toast(`Koers ${u.valuta} gezet op ${String(g.koersen[u.valuta]).replace('.', ',')} ${g.valuta}. Aanpassen via ⋮.`, 4500); }
+  g.lastValuta = u.valuta;
+  save(); render();
+}
+
+async function terugForm(g, u, pre) {
+  const isNew = !u;
+  u = u || { soort: 'terug', bedrag: pre ? pre.bedrag : 0, valuta: g.valuta, betaald: pre ? pre.van : g.mensen[0].id, voor: { [pre ? pre.naar : g.mensen[1].id]: 1 }, datum: D.date.today() };
+  const naar = Object.keys(u.voor)[0];
+  const r = await sheet('Terugbetaling', `
+    <div class="grid2"><label class="f">Van<select class="in" name="van">${g.mensen.map(m => `<option value="${m.id}" ${m.id === u.betaald ? 'selected' : ''}>${esc(m.naam)}</option>`).join('')}</select></label>
+      <label class="f">Aan<select class="in" name="naar">${g.mensen.map(m => `<option value="${m.id}" ${m.id === naar ? 'selected' : ''}>${esc(m.naam)}</option>`).join('')}</select></label></div>
+    <label class="f">Bedrag (${esc(g.valuta)})<input class="in" name="bedrag" inputmode="decimal" value="${(u.bedrag / 100).toFixed(2).replace('.', ',')}"></label>
+    <label class="f">Datum<input class="in" type="date" name="datum" value="${esc(u.datum)}"></label>`,
+  (isNew ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => f.van === f.naar ? 'Van en aan zijn dezelfde.' : !(K.leesBedrag(f.bedrag) > 0) ? 'Vul een bedrag in.' : '' }])).done;
+  if (r.value === 'del') { data.uitgaven = data.uitgaven.filter(x => x !== u); save(); return render(); }
+  if (r.value !== 'ok') return;
+  Object.assign(u, { betaald: r.form.van, voor: { [r.form.naar]: 1 }, bedrag: K.leesBedrag(r.form.bedrag), valuta: g.valuta, datum: r.form.datum });
+  if (isNew) { u.id = D.uid(); u.groep = g.id; u.t = Date.now(); data.uitgaven.push(u); }
+  save(); render();
+  if (isNew) toast('Terugbetaling bijgeschreven.');
+}
+
+async function menu(g) {
+  const vreemd = [...new Set(uitVan(g).map(u => u.valuta).filter(v => v && v !== g.valuta))];
+  const r = await sheet(g.naam, `
+    <label class="f">Wie ben jij in deze groep?<select class="in" name="ik"><option value="">–</option>${g.mensen.map(m => `<option value="${esc(m.naam)}" ${m.id === ik(g) ? 'selected' : ''}>${esc(m.naam)}</option>`).join('')}</select></label>
+    ${vreemd.length ? `<div class="muted small" style="font-weight:600">Koersen (1 vreemde munt = … ${esc(g.valuta)})</div>${vreemd.map(v => `<label class="f">1 ${v} =<input class="in" name="k_${v}" inputmode="decimal" value="${String((g.koersen || {})[v] || START_KOERS[v] || 1).replace('.', ',')}"></label>`).join('')}` : ''}
+    <button class="btn q wide" data-x="groep" type="button">${icon('edit')}Naam en mensen</button>
+    <button class="btn q wide" data-x="terug" type="button">↩️ Terugbetaling bijschrijven</button>`,
+  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) r.close(b.dataset.x); });
+  const res = await r.done;
+  if (res.value === 'groep') return groepForm(g);
+  if (res.value === 'terug') return terugForm(g);
+  if (res.value !== 'ok') return;
+  if (!(window.Samen && Samen.cfg)) D.set('kosten-ik', res.form.ik);
+  vreemd.forEach(v => { const k = parseFloat(String(res.form['k_' + v]).replace(',', '.')); if (k > 0) g.koersen = Object.assign({}, g.koersen, { [v]: k }); });
+  save(); render();
+}
+
+// ---------------------------------------------------------------- klikken
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { view = b.dataset.v; render(); } };
+$('#back').addEventListener('click', e => { if (cur) { e.preventDefault(); open(null); } });
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-g],[data-u],[data-act],[data-pay]'); if (!t) return;
+  const g = cur && groep(cur);
+  if (t.dataset.g) return open(t.dataset.g);
+  if (t.dataset.u) return uitForm(g, data.uitgaven.find(u => u.id === t.dataset.u));
+  if (t.dataset.pay) return terugForm(g, null, app._tr[+t.dataset.pay]);
+  if (t.dataset.act === 'newg') return groepForm();
+  if (t.dataset.act === 'newu') return uitForm(g);
+});
+$('#fab').onclick = () => cur && groep(cur) ? uitForm(groep(cur)) : groepForm();
+$('#menu').onclick = () => menu(groep(cur));
+window.__w2back = () => { if (cur) { open(null); return true; } return false; };
+
+koppelDeel();
+const h = location.hash.slice(1);
+open(h && groep(h) ? h : null);
+</script>
+</body>
+</html>

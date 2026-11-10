@@ -20,7 +20,7 @@
 
   // lijsten/items/leden: Samen-lijsten. reizen/recepten/aftellen: gedeelde onderdelen (via deel.js).
   // bestanden: beschrijving van een gedeeld bestand; de inhoud staat in stukjes onder /s/<ruimte>/<id>/<n>.
-  const KINDS = ['lijsten', 'items', 'leden', 'reizen', 'recepten', 'aftellen', 'bestanden'];
+  const KINDS = ['lijsten', 'items', 'leden', 'reizen', 'recepten', 'aftellen', 'bestanden', 'weekmenu', 'kosten'];
   const BASIC = new Set(['lijsten', 'items', 'leden']);
   // Niet als leesbare kopie op de telefoon bewaren: Reizen heeft zijn eigen versleutelde opslag achter het slot.
   const PRIVATE = new Set(['reizen']);
@@ -294,7 +294,7 @@
         if (Object.keys(groups[g]).length) {
           const st = await send(groups[g]);
           if (st === 401 || st === 403 || st === 400) {
-            if (g === 1) { rulesOld = Date.now(); refused = 'De database-regels in Firebase kennen recepten/reizen/aftellen nog niet. Plak de nieuwe regels in Firebase.'; continue; }
+            if (g === 1) { rulesOld = Date.now(); refused = 'De database-regels in Firebase kennen een nieuw onderdeel (bv. weekmenu of kosten) nog niet. Kopieer de nieuwe regels via Samen › tandwiel › database-regels kopiëren en plak ze in Firebase.'; continue; }
             setStatus('fout', 'Opslaan geweigerd door de database. Kloppen de regels in Firebase?'); flushing = false; return;
           }
           if (st < 200 || st >= 300) throw new Error('fout ' + st);
@@ -395,7 +395,20 @@
       t: Date.now()
     };
   }
-  function saveDash() { if (cfg) D.set('dash-samen', summary()); }
+  function saveDash() {
+    if (!cfg) return;
+    D.set('dash-samen', summary());
+    // widget op het startscherm: eerste boodschappenlijst met wat er nog open staat
+    try {
+      const l = Object.entries(data.lijsten || {}).map(([id, x]) => Object.assign({ id }, x)).filter(x => x.soort === 'boodschappen')
+        .sort((a, b) => (a.pos || 0) - (b.pos || 0) || (a.gemaakt || 0) - (b.gemaakt || 0))[0];
+      if (l && window.W2 && W2.publish) {
+        const open = Object.values(data.items || {}).filter(i => i.lijst === l.id && !i.ok).sort((a, b) => (a.gemaakt || 0) - (b.gemaakt || 0));
+        const sig = l.id + '|' + open.map(i => i.tekst + i.aantal).join('|');
+        if (sig !== saveDash.last) { saveDash.last = sig; W2.publish('boodschappen', { id: l.id, lijst: l.naam, emoji: l.emoji || '🛒', n: open.length, items: open.slice(0, 4).map(i => (i.aantal ? i.aantal + ' ' : '') + i.tekst) }); }
+      }
+    } catch (e) {}
+  }
 
   // ---------------------------------------------------------------- opstarten
   let started = false, wired = false;

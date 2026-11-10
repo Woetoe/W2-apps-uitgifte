@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Samen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ff7eb6;--acc-ink:#2a0716}
+.st{display:inline-flex;align-items:center;gap:6px;border:0;background:var(--panel);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;flex:none}
+.st i{width:8px;height:8px;border-radius:4px;background:var(--muted)}
+.st.live i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.st.verbinden i{background:#ffc83d}
+.st.fout{color:var(--danger)} .st.fout i{background:var(--danger)}
+/* welkom */
+.hero{text-align:center;padding:18px 8px 4px}
+.hero .art{width:96px;height:96px;margin:0 auto 10px;display:block}
+.hero b{display:block;font:800 30px/1.1 var(--f-display);letter-spacing:-.02em;margin-bottom:6px}
+.hero p{margin:0;color:var(--muted)}
+.err{color:var(--danger);font-size:14px;font-weight:600}
+/* leden */
+.who{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.av{width:28px;height:28px;border-radius:14px;display:inline-grid;place-items:center;font:800 14px var(--f-display);color:#14161f;background:var(--c,#888);flex:none}
+.av.s{width:22px;height:22px;font-size:12px;border-radius:11px}
+.who .nm{font-weight:700;font-size:15px;margin-right:6px}
+/* lijsten */
+.lrow .ico{background:color-mix(in srgb,var(--c) 22%,var(--panel2));font-size:22px}
+.lrow .cnt{font:800 22px/1 var(--f-display);color:var(--c);text-align:right}
+.lrow .cnt small{display:block;font:600 12px var(--f-body);color:var(--muted)}
+.new{display:inline-block;background:var(--acc);color:var(--acc-ink);border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px;margin-left:6px;vertical-align:2px}
+/* toevoegen */
+.add{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:4;background:var(--bg);padding:4px 0 8px;display:flex;flex-direction:column;gap:8px}
+.add form{display:flex;gap:8px}
+.add .in{min-height:52px;font-size:17px;border-radius:14px;background:var(--panel)}
+.add .btn{min-width:52px;padding:0 14px;border-radius:14px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.st.live span{display:none}
+.st.live{padding:6px 8px}
+.chip{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:color-mix(in srgb,var(--c,var(--acc)) 22%,var(--panel));border-color:var(--c,var(--acc));color:var(--text)}
+.chip .av{width:18px;height:18px;font-size:10px}
+.chip.sug{color:var(--muted)}
+.chip.sug b{color:var(--text);font-weight:700}
+.chips .sep{flex:none;width:1px;background:var(--line);margin:4px 2px}
+/* items */
+.grp{display:flex;align-items:center;gap:8px;margin:14px 2px 4px;font:800 15px var(--f-display);color:var(--muted)}
+.grp span{font-size:18px}
+.items{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.it{display:flex;align-items:center;gap:12px;padding:12px 6px 12px 14px;border-bottom:1px solid var(--line);min-height:58px;cursor:pointer}
+.it:last-child{border-bottom:0}
+.it:active{background:var(--panel2)}
+.it .box{width:28px;height:28px;border-radius:14px;border:2px solid var(--muted);display:grid;place-items:center;flex:none;color:var(--acc-ink)}
+.it .box svg{width:18px;height:18px;opacity:0}
+.it.ok .box{background:var(--c,var(--acc));border-color:var(--c,var(--acc))}
+.it.ok .box svg{opacity:1}
+.it .tx{flex:1;min-width:0}
+.it .tx b{display:block;font-weight:600;font-size:17px;line-height:1.3;word-break:break-word}
+.it.ok .tx b{color:var(--muted);text-decoration:line-through;font-weight:500}
+.it .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:3px;font-size:13px;color:var(--muted)}
+.it .meta .pill{padding:1px 8px;font-size:12px}
+.it .meta .late{background:#3e1712;color:#ff8a7a}
+.it .meta .today{background:#3a2a10;color:#ffc83d}
+.it .qty{font:800 14px var(--f-display);background:var(--panel2);border-radius:8px;padding:3px 8px;color:var(--text);flex:none}
+.it .ed{border:0;background:transparent;color:var(--muted);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;cursor:pointer}
+.it .ed svg{width:20px;height:20px}
+.it.fresh{animation:fresh 1.6s ease-out}
+.it .dotnew{width:8px;height:8px;border-radius:4px;background:var(--acc);flex:none}
+@keyframes fresh{from{background:color-mix(in srgb,var(--acc) 26%,var(--panel))}to{background:transparent}}
+.donehd{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 4px}
+.donehd b{font:800 15px var(--f-display);color:var(--muted)}
+.linkbtn{border:0;background:none;color:var(--acc);font-weight:700;font-size:14px;cursor:pointer;padding:8px 4px}
+.code{font:800 26px/1.2 var(--f-display);letter-spacing:.06em;text-align:center;background:var(--bg);border:1px dashed var(--line);border-radius:14px;padding:14px;user-select:all;-webkit-user-select:all}
+.emojis,.colors{display:flex;gap:6px;flex-wrap:wrap}
+.emojis button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;cursor:pointer}
+.emojis button.on,.colors button.on{outline:2px solid var(--text);outline-offset:2px}
+.colors button{width:34px;height:34px;border-radius:17px;border:0;cursor:pointer}
+.mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mrow b{flex:1}
+@media (prefers-reduced-motion:reduce){.it.fresh{animation:none}}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Samen</h1><button class="st" id="st" type="button" hidden></button><button class="ib" id="menu" type="button" aria-label="Instellingen" hidden></button></div>
+<main class="page" id="app"></main>
+<button class="fab" id="fab" type="button" aria-label="Nieuwe lijst" hidden></button>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="sync.js"></script>
+<script src="boodschappen.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, S = Samen, app = $('#app');
+const WEB = !!window.W2WEB;   // webversie (laptop), zonder startscherm eromheen
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+$('#menu').innerHTML = icon('gear');
+D.recent('samen');
+const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} };
+
+const KLEUREN = ['#5ee07a', '#4d8dff', '#ff7eb6', '#ffc83d', '#ff8a3d', '#a76bdc', '#2ec4b6', '#ff6b6b'];
+const EMOJI = ['🛒', '✅', '🏠', '🎁', '🧳', '🍽️', '🎉', '📝', '🧹', '🐾', '🌱', '💡'];
+const SOORTEN = { boodschappen: 'Boodschappen', todo: 'To-do', lijst: 'Gewone lijst' };
+
+// ---------------------------------------------------------------- boodschappen (gedeeld met Recepten: boodschappen.js)
+const { CATS, CAT, guessCat, parseQty, cap, remember } = Boodschappen;
+
+// Regels voor de eigen Firebase-database (zelfde als tools/firebase/regels.json). Nieuwe onderdelen passen er vanzelf in.
+const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
+
+// ---------------------------------------------------------------- hulpjes
+const me = () => S.cfg && S.cfg.me;
+const anderen = () => { const n = leden().filter(x => x.id !== me().id).map(x => x.naam); return n.length === 1 ? n[0] : 'iemand anders'; };
+const leden = () => Object.entries(S.data.leden).map(([id, m]) => Object.assign({ id }, m)).sort((a, b) => (b.id === me().id) - (a.id === me().id) || (a.sinds || 0) - (b.sinds || 0));
+const lid = id => S.data.leden[id];
+const naamVan = id => id === me().id ? 'jij' : (lid(id) ? lid(id).naam : 'iemand');
+const av = (id, cls) => { const m = lid(id) || {}; return `<span class="av ${cls || ''}" style="--c:${esc(m.kleur || '#888')}" title="${esc(m.naam || '')}">${esc((m.naam || '?').charAt(0).toUpperCase())}</span>`; };
+const lijsten = () => Object.entries(S.data.lijsten).map(([id, l]) => Object.assign({ id }, l)).sort((a, b) => (a.pos || 0) - (b.pos || 0) || (a.gemaakt || 0) - (b.gemaakt || 0));
+const itemsVan = lid_ => Object.entries(S.data.items).map(([id, it]) => Object.assign({ id }, it)).filter(i => i.lijst === lid_);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dayPlus = n => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d); };
+const weekend = () => { const d = new Date(); const add = (6 - d.getDay() + 7) % 7; d.setDate(d.getDate() + add); return iso(d); };
+function dateLabel(s) {
+  const n = D.date.days(s);
+  if (n == null) return '';
+  if (n < 0) return n === -1 ? 'gisteren' : `${-n} dagen te laat`;
+  if (n <= 1) return D.date.rel(n);
+  if (n < 7) return D.date.nice(s, { weekday: 'long' });
+  return D.date.nice(s, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// ---------------------------------------------------------------- status
+function renderStatus() {
+  const b = $('#st');
+  if (!S.cfg) { b.hidden = true; return; }
+  const st = S.status;
+  b.hidden = false;
+  b.className = 'st ' + st.status;
+  const txt = st.status === 'live' ? (st.pending ? 'Versturen…' : 'Live')
+    : st.status === 'offline' ? 'Offline' + (st.pending ? ' · ' + st.pending : '')
+      : st.status === 'fout' ? 'Fout' : 'Verbinden…';
+  b.innerHTML = `<i></i><span>${esc(txt)}</span>`;
+  b.setAttribute('aria-label', txt);
+}
+$('#st').onclick = () => {
+  const st = S.status;
+  const last = st.lastSync ? new Date(st.lastSync).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : 'nog nooit';
+  const msg = st.status === 'fout' ? st.msg
+    : st.status === 'offline' ? `Geen internet. Je kunt gewoon doorgaan; ${st.pending ? st.pending + ' wijziging(en) gaan' : 'wijzigingen gaan'} mee zodra je weer online bent.`
+      : st.status === 'live' ? `Alles is bij. Wijzigingen van de ander komen meteen binnen. Laatst bijgewerkt ${last}.`
+        : `Bezig met verbinden… Laatst bijgewerkt ${last}.`;
+  toast(msg, 4500);
+};
+
+// ---------------------------------------------------------------- routes
+let view = null;          // {kind:'home'} | {kind:'lijst', id}
+function route() {
+  const m = /^#l=(.+)$/.exec(location.hash);
+  const next = !S.cfg ? { kind: 'setup' } : m && S.data.lijsten[m[1]] ? { kind: 'lijst', id: m[1] } : { kind: 'home' };
+  if (view && view.kind === 'lijst' && (next.kind !== 'lijst' || next.id !== view.id)) markSeen(view.id);
+  view = next;
+  if (view.kind !== 'setup') S.seen();
+  $('#fab').hidden = view.kind !== 'home';
+  $('#menu').hidden = view.kind === 'setup';
+  $('#back').setAttribute('href', view.kind === 'lijst' ? '#' : '../index.html#samen');
+  window.scrollTo(0, 0);
+  if (view.kind === 'setup') renderSetup();
+  else if (view.kind === 'home') renderHome();
+  else renderLijst(true);
+  renderStatus();
+}
+addEventListener('hashchange', route);
+window.UIback = () => { if (view && view.kind === 'lijst') { location.hash = ''; return true; } return false; };
+
+S.on(what => {
+  renderStatus();
+  if (what === 'data' && !document.hidden && view && view.kind !== 'setup') S.seen();   // live gezien: geen melding meer nodig
+  if (what === 'status' || !view) return;
+  if (view.kind === 'home') renderHome();
+  else if (view.kind === 'lijst') { if (!S.data.lijsten[view.id]) { location.hash = ''; return; } renderLijst(false); }
+});
+
+// ---------------------------------------------------------------- welkom / koppelen
+function renderSetup() {
+  $('#title').textContent = 'Samen';
+  const needUrl = !S.DEFAULT_URL;
+  app.innerHTML = `
+    <div class="hero">
+      <svg class="art" viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" rx="24" fill="#3a1630"/>
+        <rect x="18" y="18" width="44" height="54" rx="9" fill="#ff7eb6" transform="rotate(-8 40 45)"/>
+        <rect x="34" y="26" width="44" height="54" rx="9" fill="#fff3f8" transform="rotate(6 56 53)"/>
+        <g transform="rotate(6 56 53)" stroke="#3a1630" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M42 40l3 3 6-6M42 54l3 3 6-6"/><path d="M57 40h13M57 54h13M42 68h28" stroke-width="3"/></g></svg>
+      <b>Samen</b>
+      <p>Boodschappen en to-do's die je deelt. Wat de een erop zet, ziet de ander meteen. Werkt ook zonder internet; het haalt later in.</p>
+    </div>
+    <label class="f">Jouw naam<input class="in" id="naam" autocomplete="given-name" placeholder="bv. Wouter" maxlength="24"></label>
+    <div class="seg" id="mode"><button type="button" data-v="nieuw" class="on">Nieuw beginnen</button><button type="button" data-v="code">Ik heb een code</button></div>
+    <div id="m-nieuw" class="card small muted">Je krijgt meteen een lijst <b style="color:var(--text)">🛒 Boodschappen</b> en <b style="color:var(--text)">✅ To-do's</b>, plus een code om je vriendin uit te nodigen.</div>
+    <label class="f" id="m-code" hidden>Code of het hele uitnodigingsbericht<textarea class="in" id="code" rows="3" placeholder="ABCD-EFGH-JKLM-NPQR"></textarea></label>
+    <label class="f" id="m-url" ${needUrl ? '' : 'hidden'}>Database-adres (Firebase)<input class="in" id="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://…firebasedatabase.app"></label>
+    <div class="err" id="err" hidden></div>
+    <button class="btn wide" id="go" type="button">Beginnen</button>`;
+  let mode = 'nieuw';
+  $('#naam').value = (D.get('samen-naam', '') || '');
+  $('#mode').onclick = e => {
+    const b = e.target.closest('[data-v]'); if (!b) return;
+    mode = b.dataset.v;
+    $$('#mode button').forEach(x => x.classList.toggle('on', x === b));
+    $('#m-nieuw').hidden = mode !== 'nieuw';
+    $('#m-code').hidden = mode !== 'code';
+    $('#go').textContent = mode === 'nieuw' ? 'Beginnen' : 'Koppelen';
+  };
+  $('#code').addEventListener('input', () => {
+    const p = S.parseInvite($('#code').value);
+    if (p.url) { $('#url').value = p.url; $('#m-url').hidden = true; }
+  });
+  const fail = msg => { const e = $('#err'); e.textContent = msg; e.hidden = !msg; };
+  const chooseWho = (leden, naam) => sheet('Wie ben jij?', `<div class="muted">Ben je al lid (bijvoorbeeld op je telefoon) en koppel je nu een tweede apparaat? Kies dan je naam, dan tel je als één persoon.</div>
+    <div class="list">${leden.map((m, i) => `<button class="row" type="button" data-m="${i}">${av0(m)}<div class="grow"><b>Ik ben ${esc(m.naam)}</b><div class="sub">Zelfde persoon, ander apparaat</div></div></button>`).join('')}
+    <button class="row" type="button" data-m="new"><span class="av" style="--c:#ff7eb6">+</span><div class="grow"><b>${naam ? 'Ik ben ' + esc(naam) + ' (nieuw)' : 'Iemand nieuw'}</b><div class="sub">Nog niet eerder gekoppeld</div></div></button></div>`, []);
+  const av0 = m => `<span class="av" style="--c:${esc(m.kleur || '#888')}">${esc((m.naam || '?').charAt(0).toUpperCase())}</span>`;
+  $('#go').onclick = async () => {
+    fail('');
+    const naam = $('#naam').value.trim();
+    if (!naam && mode === 'nieuw') { fail('Vul eerst je naam in, zodat de ander ziet wie wat heeft toegevoegd.'); $('#naam').focus(); return; }
+    if (naam) D.set('samen-naam', naam);
+    let code = null, url = $('#url').value.trim() || S.DEFAULT_URL;
+    if (mode === 'code') {
+      const p = S.parseInvite($('#code').value);
+      if (!p.code) { fail(p.badCode ? 'Die code bevat tekens die niet kunnen. Plak het bericht nog eens.' : 'Geen geldige code gevonden. Een code heeft 16 tekens, zoals ABCD-EFGH-JKLM-NPQR.'); return; }
+      code = p.code; url = p.url || url;
+    }
+    if (!S.urlOk(url)) { $('#m-url').hidden = false; fail(url ? 'Dat database-adres klopt niet. Het eindigt op firebasedatabase.app of firebaseio.com.' : 'Vul het database-adres in (van Firebase).'); return; }
+    const go = $('#go'), label = go.textContent;
+    const reset = () => { go.disabled = false; go.textContent = label; };
+    go.disabled = true; go.textContent = 'Even geduld…';
+    const kleur = mode === 'nieuw' ? '#4d8dff' : '#ff7eb6';
+    let als = null;
+    try {
+      if (mode === 'code') {
+        const pv = await S.preview(url, code);
+        if (!pv.lijsten && !pv.leden.length) {
+          reset();
+          if (!await confirm('Bij deze code staan nog geen lijsten. Klopt de code? Je kunt toch koppelen als de ander net begonnen is en nog geen internet had.', 'Toch koppelen')) return;
+        } else if (pv.leden.length) {
+          reset();
+          const r = await new Promise(res => {
+            const sh = chooseWho(pv.leden, naam);
+            sh.el.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b) sh.close(b.dataset.m); });
+            sh.done.then(x => res(x.value));
+          });
+          if (r == null) return;
+          if (r !== 'new') als = pv.leden[+r];
+          else if (!naam) { fail('Vul je naam in, zodat de ander ziet wie wat heeft toegevoegd.'); $('#naam').focus(); return; }
+        }
+        if (!als && !naam) { reset(); fail('Vul je naam in.'); $('#naam').focus(); return; }
+        go.disabled = true; go.textContent = 'Even geduld…';
+      }
+      await S.setup({ url, code, naam, kleur, join: mode === 'code', check: mode !== 'code', als });
+    } catch (e) { reset(); fail(e.message); return; }
+    toast(mode === 'nieuw' ? 'Klaar! Nodig nu je vriendin uit.' : als ? `Gekoppeld als ${als.naam}` : 'Gekoppeld!');
+    location.hash = '';
+    route();
+    if (mode === 'nieuw') setTimeout(inviteSheet, 600);
+  };
+}
+
+// ---------------------------------------------------------------- overzicht van lijsten
+function renderHome() {
+  $('#title').textContent = 'Samen';
+  const ls = lijsten(), m = leden(), sum = S.summary();
+  const byId = Object.fromEntries(sum.lijsten.map(l => [l.id, l]));
+  const alleen = m.length < 2;
+  app.innerHTML = `
+    <div class="who">${m.map(x => `${av(x.id)}<span class="nm">${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</span>`).join('')}</div>
+    ${alleen ? `<div class="card acc"><b>Nog niemand gekoppeld</b><div class="muted small" style="margin:4px 0 10px">Stuur je vriendin de code. Zodra ze koppelt, zien jullie allebei dezelfde lijsten.</div><button class="btn" id="inv" type="button">Uitnodigen</button></div>` : ''}
+    <div class="list">${ls.map(l => {
+      const s = byId[l.id] || { open: 0, klaar: 0, laat: 0, nieuw: 0 };
+      const sub = l.soort === 'boodschappen' ? (s.open ? `${s.open} te halen` : 'Alles in huis') + (s.klaar ? ` · ${s.klaar} in mandje` : '')
+        : (s.open ? `${s.open} open` : 'Alles af') + (s.laat ? ` · ${s.laat} te laat` : '');
+      return `<a class="row lrow" href="#l=${esc(l.id)}" style="--c:${esc(l.kleur || '#ff7eb6')}">
+        <div class="ico">${esc(l.emoji || '📝')}</div>
+        <div class="grow"><b>${esc(l.naam)}${s.nieuw ? `<span class="new">${s.nieuw} nieuw</span>` : ''}</b><div class="sub">${esc(sub)}</div></div>
+        <div class="cnt">${s.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
+    }).join('') || `<div class="empty"><b>Nog geen lijsten</b>Maak er een met de plusknop.</div>`}</div>`;
+  const inv = $('#inv'); if (inv) inv.onclick = inviteSheet;
+}
+
+$('#fab').onclick = () => lijstSheet(null);
+
+function lijstSheet(l) {
+  const nieuw = !l;
+  l = l || { naam: '', soort: 'boodschappen', emoji: '🛒', kleur: KLEUREN[lijsten().length % KLEUREN.length] };
+  const sh = sheet(nieuw ? 'Nieuwe lijst' : 'Lijst aanpassen', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(l.naam)}" maxlength="40" placeholder="bv. Albert Heijn, Klusjes, Cadeaus"></label>
+    ${nieuw ? `<div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600">Soort<div class="seg" id="soort">${Object.entries(SOORTEN).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === l.soort ? 'on' : ''}">${v}</button>`).join('')}</div></div>
+      <div class="muted small" id="soortuitleg"></div>` : ''}
+    <div class="emojis" id="emo">${EMOJI.map(e => `<button type="button" class="${e === l.emoji ? 'on' : ''}">${e}</button>`).join('')}</div>
+    <div class="colors" id="col">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === l.kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>`,
+  [...(nieuw ? [] : [{ label: 'Verwijderen', value: 'del', kind: 'danger' }]), { label: 'Annuleren', value: null, kind: 'q' }, { label: nieuw ? 'Maken' : 'Bewaren', value: 'ok', check: f => f.naam.trim() ? '' : 'Geef de lijst een naam.' }], { focus: nieuw });
+  const st = { soort: l.soort, emoji: l.emoji, kleur: l.kleur };
+  const uitleg = { boodschappen: 'Op winkelvolgorde gesorteerd, afvinken gaat naar het mandje.', todo: 'Met wie het doet en wanneer het af moet.', lijst: 'Gewoon een lijstje om af te vinken.' };
+  const setU = () => { const u = $('#soortuitleg', sh.el); if (u) u.textContent = uitleg[st.soort]; };
+  setU();
+  sh.el.addEventListener('click', e => {
+    const s = e.target.closest('#soort [data-v]');
+    if (s) { st.soort = s.dataset.v; $$('#soort button', sh.el).forEach(b => b.classList.toggle('on', b === s)); setU();
+      const n = $('[name=naam]', sh.el); if (!n.value.trim()) { st.emoji = { boodschappen: '🛒', todo: '✅', lijst: '📝' }[st.soort]; $$('#emo button', sh.el).forEach(b => b.classList.toggle('on', b.textContent === st.emoji)); } }
+    const em = e.target.closest('#emo button');
+    if (em) { st.emoji = em.textContent; $$('#emo button', sh.el).forEach(b => b.classList.toggle('on', b === em)); }
+    const c = e.target.closest('#col [data-c]');
+    if (c) { st.kleur = c.dataset.c; $$('#col button', sh.el).forEach(b => b.classList.toggle('on', b === c)); }
+  });
+  sh.done.then(async r => {
+    if (r.value === 'ok') {
+      const naam = r.form.naam.trim();
+      if (nieuw) {
+        const id = D.uid();
+        const pos = lijsten().reduce((m, x) => Math.max(m, x.pos || 0), 0) + 1;
+        S.put('lijsten', id, { naam, soort: st.soort, emoji: st.emoji, kleur: st.kleur, pos, door: me().id, gemaakt: Date.now() });
+        location.hash = 'l=' + id;
+      } else S.update('lijsten', l.id, { naam, emoji: st.emoji, kleur: st.kleur });
+    } else if (r.value === 'del') {
+      const n = itemsVan(l.id).length;
+      if (!await confirm(`Lijst “${esc(l.naam)}” verwijderen${n ? ` met ${n} item${n === 1 ? '' : 's'}` : ''}? Hij verdwijnt ook bij de ander.`, 'Verwijderen', true)) return;
+      itemsVan(l.id).forEach(i => S.del('items', i.id));
+      S.del('lijsten', l.id);
+      location.hash = '';
+    }
+  });
+}
+
+// ---------------------------------------------------------------- één lijst
+let fresh = new Set();        // nieuw van de ander sinds je de lijst voor het laatst zag
+let justAdded = null;
+let next = { wie: '', datum: '' };   // to-do: geldt voor wat je hierna toevoegt
+let showDone = false;
+function markSeen(id) { const s = D.get('samen-seen', {}) || {}; s[id] = Date.now(); D.set('samen-seen', s); }
+
+function renderLijst(first) {
+  const l = Object.assign({ id: view.id }, S.data.lijsten[view.id]);
+  document.documentElement.style.setProperty('--c', l.kleur || '#ff7eb6');
+  $('#title').textContent = (l.emoji ? l.emoji + ' ' : '') + l.naam;
+  if (first) {
+    const seen = (D.get('samen-seen', {}) || {})[l.id] || 0;
+    fresh = new Set(itemsVan(l.id).filter(i => i.door !== me().id && (i.gemaakt || 0) > seen).map(i => i.id));
+    markSeen(l.id);
+    next = { wie: '', datum: '' }; showDone = false;
+    const ph = l.soort === 'boodschappen' ? 'Wat moet er in huis?' : l.soort === 'todo' ? 'Nieuwe taak' : 'Toevoegen';
+    app.innerHTML = `<div class="add"><form id="addf" autocomplete="off"><input class="in" id="addin" placeholder="${ph}" enterkeyhint="done" maxlength="120"><button class="btn" type="submit" aria-label="Toevoegen">${icon('plus')}</button></form><div class="chips" id="chips"></div></div>
+      <div id="body"></div>`;
+    $('#addf').onsubmit = e => { e.preventDefault(); addItem(l, $('#addin').value); };
+    $('#addin').addEventListener('input', () => renderChips(l));
+    $('#chips').addEventListener('click', e => onChip(l, e));
+  }
+  renderChips(l);
+  renderItems(l);
+}
+
+function addItem(l, raw) {
+  raw = (raw || '').trim();
+  if (!raw) { $('#addin').focus(); return; }
+  const open = itemsVan(l.id).filter(i => !i.ok);
+  let it;
+  if (l.soort === 'boodschappen') {
+    const q = parseQty(raw);
+    const tekst = cap(q.tekst);
+    const dup = open.find(i => i.tekst.toLowerCase() === tekst.toLowerCase());
+    if (dup) {
+      if (q.aantal && q.aantal !== dup.aantal) S.update('items', dup.id, { aantal: q.aantal });
+      toast(`${tekst} staat er al op${dup.door !== me().id ? ' (van ' + naamVan(dup.door) + ')' : ''}`);
+      $('#addin').value = ''; renderChips(l); return;
+    }
+    it = { lijst: l.id, tekst, aantal: q.aantal, cat: guessCat(tekst) };
+    remember(tekst, it.cat);
+  } else {
+    it = { lijst: l.id, tekst: cap(raw) };
+    if (l.soort === 'todo') { if (next.wie) it.wie = next.wie; if (next.datum) it.datum = next.datum; }
+  }
+  const id = D.uid();
+  S.put('items', id, Object.assign(it, { ok: false, door: me().id, gemaakt: Date.now() }));
+  justAdded = id;
+  buzz();
+  $('#addin').value = '';
+  $('#addin').focus();
+  renderChips(l);
+}
+
+
+function renderChips(l) {
+  const host = $('#chips'); if (!host) return;
+  if (l.soort === 'boodschappen') {
+    const q = ($('#addin').value || '').trim().toLowerCase();
+    const open = new Set(itemsVan(l.id).filter(i => !i.ok).map(i => i.tekst.toLowerCase()));
+    const h = Object.values(D.get('samen-hist', {}) || {}).filter(x => !open.has(x.tekst.toLowerCase()));
+    const now = Date.now();
+    const list = (q ? h.filter(x => x.tekst.toLowerCase().includes(q) && x.tekst.toLowerCase() !== q) : h)
+      .sort((a, b) => (q ? (b.tekst.toLowerCase().startsWith(q) - a.tekst.toLowerCase().startsWith(q)) : 0) || (b.n / (1 + (now - b.t) / 6048e5)) - (a.n / (1 + (now - a.t) / 6048e5)))
+      .slice(0, 10);
+    host.innerHTML = list.map(x => `<button type="button" class="chip sug" data-sug="${esc(x.tekst)}">+ <b>${esc(x.tekst)}</b></button>`).join('');
+    host.hidden = !list.length;
+  } else if (l.soort === 'todo') {
+    const m = leden();
+    const wie = m.length > 1 ? m.map(x => `<button type="button" class="chip ${next.wie === x.id ? 'on' : ''}" data-wie="${esc(x.id)}" style="--c:${esc(x.kleur)}">${av(x.id)}${x.id === me().id ? 'Ik' : esc(x.naam)}</button>`).join('') +
+      `<button type="button" class="chip ${next.wie === 'samen' ? 'on' : ''}" data-wie="samen">👫 Samen</button><span class="sep"></span>` : '';
+    const opts = [['Vandaag', dayPlus(0)], ['Morgen', dayPlus(1)], ['Weekend', weekend()]];
+    const custom = next.datum && !opts.some(o => o[1] === next.datum);
+    host.innerHTML = wie + opts.map(([t, d]) => `<button type="button" class="chip ${next.datum === d ? 'on' : ''}" data-dat="${d}">${t}</button>`).join('') +
+      `<button type="button" class="chip ${custom ? 'on' : ''}" data-dat="kies">📅 ${custom ? esc(dateLabel(next.datum)) : 'Datum'}</button>`;
+    host.hidden = false;
+  } else host.hidden = true;
+  host.classList.toggle('wrap', l.soort === 'todo');
+}
+
+function onChip(l, e) {
+  const s = e.target.closest('[data-sug]');
+  if (s) { addItem(l, s.dataset.sug); return; }
+  const w = e.target.closest('[data-wie]');
+  if (w) { next.wie = next.wie === w.dataset.wie ? '' : w.dataset.wie; renderChips(l); return; }
+  const d = e.target.closest('[data-dat]');
+  if (d) {
+    if (d.dataset.dat === 'kies') {
+      const sh = sheet('Wanneer?', `<input class="in" type="date" name="d" value="${esc(next.datum || dayPlus(0))}">`, [{ label: 'Geen datum', value: 'none', kind: 'q' }, { label: 'Kiezen', value: 'ok' }]);
+      sh.done.then(r => { if (r.value === 'ok' && r.form.d) next.datum = r.form.d; else if (r.value === 'none') next.datum = ''; renderChips(l); });
+      return;
+    }
+    next.datum = next.datum === d.dataset.dat ? '' : d.dataset.dat;
+    renderChips(l);
+  }
+}
+
+function itemRow(i, l) {
+  const meta = [];
+  if (l.soort === 'todo') {
+    if (i.datum && !i.ok) {
+      const n = D.date.days(i.datum);
+      meta.push(`<span class="pill ${n < 0 ? 'late' : n === 0 ? 'today' : ''}">${esc(dateLabel(i.datum))}</span>`);
+    }
+    if (i.wie === 'samen') meta.push('<span>👫 samen</span>');
+    else if (i.wie && lid(i.wie)) meta.push(`${av(i.wie, 's')}<span>${i.wie === me().id ? 'jij' : esc(lid(i.wie).naam)}</span>`);
+  }
+  if (i.notitie) meta.push(`<span>📝 ${esc(i.notitie.length > 40 ? i.notitie.slice(0, 40) + '…' : i.notitie)}</span>`);
+  if (i.ok && i.okDoor && i.okDoor !== me().id && l.soort !== 'boodschappen') meta.push(`<span>afgevinkt door ${esc(naamVan(i.okDoor))}</span>`);
+  else if (!i.ok && i.door && i.door !== me().id) meta.push(`<span>van ${esc(naamVan(i.door))}</span>`);
+  return `<div class="it ${i.ok ? 'ok' : ''} ${i.id === justAdded ? 'fresh' : ''}" data-id="${esc(i.id)}" role="checkbox" aria-checked="${i.ok ? 'true' : 'false'}">
+    <span class="box">${icon('check')}</span>
+    <div class="tx"><b>${esc(i.tekst)}</b>${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}</div>
+    ${fresh.has(i.id) && !i.ok ? '<span class="dotnew" title="nieuw"></span>' : ''}
+    ${i.aantal ? `<span class="qty">${esc(i.aantal)}</span>` : ''}
+    <button class="ed" type="button" data-ed="${esc(i.id)}" aria-label="Aanpassen">${icon('edit')}</button></div>`;
+}
+
+function renderItems(l) {
+  const body = $('#body'); if (!body) return;
+  const all = itemsVan(l.id);
+  const open = all.filter(i => !i.ok), done = all.filter(i => i.ok).sort((a, b) => (b.okOp || 0) - (a.okOp || 0));
+  let html = '';
+  if (l.soort === 'boodschappen') {
+    if (!open.length) html += `<div class="empty"><b>${done.length ? 'Alles in het mandje!' : 'Niets te halen'}</b>${done.length ? 'Klaar met boodschappen? Leeg het mandje.' : 'Typ hierboven wat er op moet. “2 melk” of “500 g gehakt” mag ook.'}</div>`;
+    CATS.forEach(c => {
+      const its = open.filter(i => (i.cat || 'overig') === c.id).sort((a, b) => a.tekst.localeCompare(b.tekst, 'nl'));
+      if (!its.length) return;
+      html += `<div class="grp"><span>${c.emoji}</span>${esc(c.naam)}</div><div class="items">${its.map(i => itemRow(i, l)).join('')}</div>`;
+    });
+    if (done.length) html += `<div class="donehd"><b>🧺 In het mandje (${done.length})</b><button class="linkbtn" id="clear" type="button">Mandje leegmaken</button></div><div class="items">${done.map(i => itemRow(i, l)).join('')}</div>`;
+  } else {
+    const t = D.date.today();
+    const filt = open.filter(i => l.soort !== 'todo' || filter === 'alles' || (filter === 'ik' ? (i.wie === me().id || i.wie === 'samen' || !i.wie) : i.wie === filter));
+    if (l.soort === 'todo' && leden().length > 1) {
+      const fs = [['alles', 'Alles'], ['ik', 'Voor mij'], ...leden().filter(m => m.id !== me().id).map(m => [m.id, 'Voor ' + m.naam]), ['samen', 'Samen']];
+      html += `<div class="chips" id="filt">${fs.map(([k, v]) => `<button type="button" class="chip ${filter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(v)}</button>`).join('')}</div>`;
+    }
+    const groups = l.soort === 'todo' ? [
+      ['⏰ Te laat', filt.filter(i => i.datum && i.datum < t)],
+      ['📌 Vandaag', filt.filter(i => i.datum === t)],
+      ['📅 Binnenkort', filt.filter(i => i.datum && i.datum > t).sort((a, b) => a.datum < b.datum ? -1 : 1)],
+      ['💭 Zonder datum', filt.filter(i => !i.datum).sort((a, b) => (b.gemaakt || 0) - (a.gemaakt || 0))]
+    ] : [['', filt.sort((a, b) => (a.gemaakt || 0) - (b.gemaakt || 0))]];
+    groups.forEach(([k, its]) => {
+      if (k === '⏰ Te laat' || k === '📌 Vandaag') its.sort((a, b) => (a.datum < b.datum ? -1 : 1));
+      if (its.length) html += (k ? `<div class="grp">${k}</div>` : '') + `<div class="items">${its.map(i => itemRow(i, l)).join('')}</div>`;
+    });
+    if (!filt.length) html += `<div class="empty"><b>${open.length ? 'Niets voor dit filter' : done.length ? 'Alles af! 🎉' : 'Nog niets op de lijst'}</b>${open.length ? '' : 'Typ hierboven wat er moet gebeuren.'}</div>`;
+    if (done.length) {
+      html += `<div class="donehd"><b>✔️ Klaar (${done.length})</b><span><button class="linkbtn" id="toggleDone" type="button">${showDone ? 'Verbergen' : 'Tonen'}</button>${showDone ? '<button class="linkbtn" id="clear" type="button">Opruimen</button>' : ''}</span></div>`;
+      if (showDone) html += `<div class="items">${done.slice(0, 50).map(i => itemRow(i, l)).join('')}</div>`;
+    }
+  }
+  body.innerHTML = html;
+  justAdded = null;
+}
+let filter = 'alles';
+
+app.addEventListener('click', async e => {
+  if (!view || view.kind !== 'lijst') return;
+  const l = Object.assign({ id: view.id }, S.data.lijsten[view.id]);
+  const ed = e.target.closest('[data-ed]');
+  if (ed) { itemSheet(l, ed.dataset.ed); return; }
+  const row = e.target.closest('.it[data-id]');
+  if (row) {
+    const it = S.data.items[row.dataset.id]; if (!it) return;
+    buzz();
+    S.update('items', row.dataset.id, it.ok ? { ok: false, okDoor: '', okOp: 0 } : { ok: true, okDoor: me().id, okOp: Date.now() });
+    return;
+  }
+  const f = e.target.closest('#filt [data-f]');
+  if (f) { filter = f.dataset.f; renderItems(l); return; }
+  if (e.target.closest('#toggleDone')) { showDone = !showDone; renderItems(l); return; }
+  if (e.target.closest('#clear')) {
+    const done = itemsVan(l.id).filter(i => i.ok);
+    const msg = l.soort === 'boodschappen' ? `${done.length} item${done.length === 1 ? '' : 's'} uit het mandje halen? Ze verdwijnen ook bij de ander (en blijven als suggestie).` : `${done.length} afgevinkte taak${done.length === 1 ? '' : 'en'} opruimen? Ze verdwijnen ook bij de ander.`;
+    if (!await confirm(msg, l.soort === 'boodschappen' ? 'Leegmaken' : 'Opruimen')) return;
+    done.forEach(i => S.del('items', i.id));
+    toast(l.soort === 'boodschappen' ? 'Mandje is leeg' : 'Opgeruimd');
+  }
+});
+
+function itemSheet(l, id) {
+  const i = S.data.items[id]; if (!i) return;
+  const m = leden();
+  let wie = i.wie || '';
+  const sh = sheet(l.soort === 'todo' ? 'Taak' : 'Item', `
+    <label class="f">${l.soort === 'boodschappen' ? 'Wat' : 'Omschrijving'}<input class="in" name="tekst" value="${esc(i.tekst)}" maxlength="120"></label>
+    ${l.soort === 'boodschappen' ? `<div class="grid2"><label class="f">Hoeveel<input class="in" name="aantal" value="${esc(i.aantal || '')}" placeholder="bv. 2 of 500 g" maxlength="20"></label>
+      <label class="f">Afdeling<select class="in" name="cat">${CATS.map(c => `<option value="${c.id}" ${c.id === (i.cat || 'overig') ? 'selected' : ''}>${c.emoji} ${esc(c.naam)}</option>`).join('')}</select></label></div>` : ''}
+    ${l.soort === 'todo' ? `${m.length > 1 ? `<div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600">Wie<div class="seg" id="wie"><button type="button" data-v="" class="${!wie ? 'on' : ''}">—</button>${m.map(x => `<button type="button" data-v="${esc(x.id)}" class="${wie === x.id ? 'on' : ''}">${x.id === me().id ? 'Ik' : esc(x.naam)}</button>`).join('')}<button type="button" data-v="samen" class="${wie === 'samen' ? 'on' : ''}">Samen</button></div></div>` : ''}
+      <label class="f">Wanneer af<input class="in" type="date" name="datum" value="${esc(i.datum || '')}"></label>` : ''}
+    <label class="f">Notitie<textarea class="in" name="notitie" rows="2" maxlength="500" placeholder="${l.soort === 'boodschappen' ? 'bv. merk, de grote pot' : 'Details'}">${esc(i.notitie || '')}</textarea></label>
+    <div class="muted small">Toegevoegd door ${esc(naamVan(i.door))}${i.gemaakt ? ', ' + new Date(i.gemaakt).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}${i.ok && i.okDoor ? ` · afgevinkt door ${esc(naamVan(i.okDoor))}` : ''}</div>`,
+  [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.tekst.trim() ? '' : 'Vul iets in.' }]);
+  sh.el.addEventListener('click', e => {
+    const b = e.target.closest('#wie [data-v]');
+    if (b) { wie = b.dataset.v; $$('#wie button', sh.el).forEach(x => x.classList.toggle('on', x === b)); }
+  });
+  $('.btns [data-i="0"]', sh.el).setAttribute('aria-label', 'Verwijderen');
+  $('.btns [data-i="0"]', sh.el).style.flex = '0 0 56px';
+  sh.done.then(r => {
+    if (r.value === 'del') { S.del('items', id); toast(`“${i.tekst}” verwijderd`); return; }
+    if (r.value !== 'ok' || !S.data.items[id]) return;
+    const f = r.form, p = { tekst: cap(f.tekst.trim()), notitie: f.notitie.trim() };
+    if (l.soort === 'boodschappen') { p.aantal = f.aantal.trim(); p.cat = f.cat; if (f.cat !== i.cat) remember(p.tekst, f.cat); }
+    if (l.soort === 'todo') { p.datum = f.datum || ''; p.wie = wie; }
+    S.update('items', id, p);
+  });
+}
+
+// ---------------------------------------------------------------- instellingen
+$('#menu').onclick = () => {
+  if (view && view.kind === 'lijst') {
+    const l = Object.assign({ id: view.id }, S.data.lijsten[view.id]);
+    lijstSheet(l);
+    return;
+  }
+  settingsSheet();
+};
+
+function inviteSheet() {
+  const sh = sheet('Uitnodigen', `
+    <div class="muted">Stuur dit naar je vriendin (bv. via WhatsApp). Zij opent W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">Ik heb een code</b> en plakt het bericht.</div>
+    <div class="code">${esc(S.prettyCode(S.cfg.code))}</div>
+    <div class="muted small">Iedereen met deze code kan jullie lijsten zien en aanpassen. Deel hem dus alleen met wie mee mag doen.</div>`,
+  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bericht kopiëren', value: 'copy' }]);
+  sh.done.then(async r => {
+    if (r.value !== 'copy') return;
+    const text = S.invite();
+    try { await navigator.clipboard.writeText(text); toast('Gekopieerd. Plak het in WhatsApp.'); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove();
+      toast(ok ? 'Gekopieerd. Plak het in WhatsApp.' : 'Kopiëren lukte niet. Neem de code over.');
+    }
+  });
+}
+
+function settingsSheet() {
+  const m = leden();
+  const sh = sheet('Samen', `
+    <button class="btn wide" type="button" id="s-inv">Iemand uitnodigen</button>
+    <div class="card" style="padding:4px 14px">${m.map(x => `<div class="mrow">${av(x.id)}<b>${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</b></div>`).join('')}</div>
+    <label class="f">Jouw naam<input class="in" name="naam" value="${esc(me().naam)}" maxlength="24"></label>
+    <div class="colors" id="mycol">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === me().kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>
+    ${S.canWatch() ? `<div class="toggle"><div class="grow"><b>Meldingen</b><span class="muted small">Als ${esc(anderen())} iets op een lijst zet. De app kijkt ongeveer elk kwartier; ligt je telefoon lang stil, dan soms later.</span></div><button type="button" class="sw ${S.watching ? 'on' : ''}" id="s-notif" aria-label="Meldingen"></button></div>`
+      : W2.inApp ? `<div class="muted small">Meldingen als de ander iets toevoegt: werkt vanaf de nieuwe app-versie (Instellingen › Updates).</div>` : ''}
+    <div class="muted small">Database: ${esc(S.cfg.url.replace('https://', ''))} · <a href="#" id="s-rules">database-regels kopiëren</a></div>
+    <button class="btn danger wide" type="button" id="s-leave">Ontkoppelen op deze telefoon</button>`,
+  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
+  let kleur = me().kleur;
+  const ru = sh.el.querySelector('#s-rules');
+  if (ru) ru.addEventListener('click', async e => {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(REGELS); toast('Gekopieerd. Plak ze in Firebase › Realtime Database › Regels en kies Publiceren.', 6000); }
+    catch (err) { toast('Kopiëren lukte niet.'); }
+  });
+  const nt = sh.el.querySelector('#s-notif');
+  if (nt) nt.addEventListener('click', async () => {
+    const want = !nt.classList.contains('on');
+    if (want) {
+      const st = await W2.notify.ask();
+      if (st !== 'ok') { toast(st === 'blocked' || st === 'off' ? 'Meldingen staan uit voor W2 Apps. Zet ze aan in het scherm dat net openging en probeer opnieuw.' : 'Zonder toestemming voor meldingen kan het niet.', 5000); return; }
+    }
+    const r = await S.setWatch(want);
+    nt.classList.toggle('on', want && r === 'ok');
+    if (want) toast(r === 'ok' ? 'Je krijgt een melding als ' + anderen() + ' iets toevoegt.' : 'Aanzetten lukte niet (' + r + ').', 4000);
+  });
+  sh.el.addEventListener('click', async e => {
+    const c = e.target.closest('#mycol [data-c]');
+    if (c) { kleur = c.dataset.c; $$('#mycol button', sh.el).forEach(b => b.classList.toggle('on', b === c)); }
+    if (e.target.closest('#s-inv')) { sh.close(null); setTimeout(inviteSheet, 250); }
+    if (e.target.closest('#s-leave')) {
+      sh.close(null);
+      if (!await confirm('Ontkoppelen? De lijsten verdwijnen van deze telefoon, maar blijven bij de ander. Met de code kun je later weer koppelen.', 'Ontkoppelen', true)) return;
+      S.leave(); location.hash = ''; route();
+    }
+  });
+  sh.done.then(r => {
+    if (r.value !== 'ok') return;
+    const naam = (r.form.naam || '').trim() || me().naam;
+    if (naam !== me().naam || kleur !== me().kleur) { S.setMe({ naam, kleur }); D.set('samen-naam', naam); }
+  });
+}
+
+// ---------------------------------------------------------------- start
+if (D.outdated === undefined) {}
+route();
+if (S.cfg) S.start();
+addEventListener('pagehide', () => { if (view && view.kind === 'lijst') markSeen(view.id); });
+</script>
+</body>
+</html>

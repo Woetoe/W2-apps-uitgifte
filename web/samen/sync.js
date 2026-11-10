@@ -20,7 +20,7 @@
 
   // lijsten/items/leden: Samen-lijsten. reizen/recepten/aftellen: gedeelde onderdelen (via deel.js).
   // bestanden: beschrijving van een gedeeld bestand; de inhoud staat in stukjes onder /s/<ruimte>/<id>/<n>.
-  const KINDS = ['lijsten', 'items', 'leden', 'reizen', 'recepten', 'aftellen', 'bestanden', 'weekmenu', 'kosten'];
+  const KINDS = ['lijsten', 'items', 'leden', 'reizen', 'recepten', 'aftellen', 'bestanden', 'weekmenu', 'kosten', 'verzameling'];
   const BASIC = new Set(['lijsten', 'items', 'leden']);
   // Niet als leesbare kopie op de telefoon bewaren: Reizen heeft zijn eigen versleutelde opslag achter het slot.
   const PRIVATE = new Set(['reizen']);

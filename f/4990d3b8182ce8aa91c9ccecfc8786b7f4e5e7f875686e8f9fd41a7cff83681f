@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Verzameling</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#c58cff;--acc-ink:#1d0b30}
+.cols{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cols::-webkit-scrollbar{display:none}
+.cols button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.cols button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.tot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.tot b{display:block;font:800 22px/1.1 var(--f-display)}
+.tot span{font-size:12px;color:var(--muted);font-weight:700}
+.tot .upd{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+.tot .upd .btn{padding:8px 14px;min-height:0}
+.tot .upd small{color:var(--muted);font-size:12px}
+.up{color:var(--ok)}.down{color:var(--danger)}
+.tools{display:flex;gap:8px}
+.tools .in{flex:1}
+.tools select.in{flex:none;width:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;color:inherit}
+.cardi .ph{aspect-ratio:3/4;background:var(--panel2);display:grid;place-items:center;font-size:40px;position:relative}
+.cardi.lp .ph{aspect-ratio:1/1}
+.cardi .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cardi .ph .w{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:800}
+.cardi .ph .n{position:absolute;top:8px;right:8px;background:var(--acc);color:var(--acc-ink);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:800}
+.cardi .tx{padding:10px 12px}
+.cardi b{display:block;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cardi span{display:block;color:var(--muted);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cardi .v{color:var(--text);font-weight:700;margin-top:4px}
+.cardi .v em{font-style:normal;font-size:12px;margin-left:4px}
+.big{width:100%;max-height:52vh;object-fit:contain;border-radius:14px;background:var(--bg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.fphoto{display:flex;gap:12px;align-items:center}
+.fphoto .pv{width:84px;height:84px;border-radius:12px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none;font-size:28px}
+.fphoto .pv img{width:100%;height:100%;object-fit:cover}
+.waarde{background:var(--panel2);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.waarde b{font:800 24px/1.1 var(--f-display)}
+.waarde small{color:var(--muted)}
+.spark{display:block;width:100%;height:36px;margin-top:6px}
+.kies{display:flex;gap:12px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:8px;cursor:pointer;width:100%;text-align:left;color:inherit}
+.kies img,.kies .ni{width:62px;height:62px;object-fit:contain;border-radius:8px;background:var(--bg);flex:none;display:grid;place-items:center;font-size:26px}
+.kies.kaart img,.kies.kaart .ni{height:86px}
+.kies .grow{flex:1;min-width:0}
+.kies b{display:block;font-weight:800;line-height:1.25}
+.kies span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.kies .p{color:var(--text);font-weight:700}
+.kies.top{border-color:var(--acc)}
+.busy{display:flex;align-items:center;gap:14px;padding:6px 0 10px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--acc);animation:sp 0.8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prog{height:10px;border-radius:5px;background:var(--panel2);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+.hint{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Verzameling</h1><button class="ib" id="menu" type="button" aria-label="Meer"></button></div>
+<main class="page">
+  <div class="cols" id="cols"></div>
+  <div class="seg" id="seg"><button type="button" data-v="bezit" class="on">In bezit</button><button type="button" data-v="wens">Verlanglijst</button></div>
+  <div id="app"></div>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Toevoegen"></button>
+<input type="file" id="file" accept="image/*" hidden>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="zoek.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, app = $('#app');
+const db = D.idb('w2-verzameling'), fotos = D.idb('w2-verzameling-foto');
+$('#back').innerHTML = icon('back');
+$('#fab').innerHTML = icon('plus');
+$('#menu').innerHTML = icon('more');
+D.recent('verzameling');
+
+// Soorten verzameling: velden die erbij horen. Eigen soorten krijgen de velden van "Anders".
+const SOORTEN = {
+  kaarten: { naam: 'Ruilkaarten', emoji: '🃏', vorm: 'kaart', velden: [['set', 'Set / serie', 'Bv. Base Set, Scarlet & Violet 151'], ['nummer', 'Nummer', 'Bv. 58/102'], ['zeld', 'Zeldzaamheid / variant', 'Bv. Holo, Shining, Promo'], ['taal', 'Taal', 'Bv. Engels, Japans']] },
+  platen: { naam: 'Platen', emoji: '💿', vorm: 'lp', velden: [['artiest', 'Artiest', ''], ['jaar', 'Jaar', ''], ['label', 'Label / persing', 'Bv. eerste persing, NL'], ['formaat', 'Formaat', 'Bv. LP, 7", 2LP']] },
+  anders: { naam: 'Anders', emoji: '📦', vorm: 'kaart', velden: [['merk', 'Merk / maker', ''], ['jaar', 'Jaar', ''], ['soort', 'Soort', '']] }
+};
+const STATEN = ['Mint', 'Near Mint', 'Excellent', 'Good', 'Light played', 'Played', 'Poor'];
+const START = [{ id: 'pokemon', naam: 'Pokémon-kaarten', soort: 'kaarten', taal: 'en' }, { id: 'vinyl', naam: 'Platen', soort: 'platen' }];
+// Talen waarin TCGdex kaarten kent (Nederlandse Pokémon-kaarten bestaan niet)
+const TALEN = { en: 'Engels', de: 'Duits', fr: 'Frans', it: 'Italiaans', es: 'Spaans', pt: 'Portugees', ja: 'Japans' };
+const VARIANTEN = { normal: 'Normaal', holo: 'Holo', reverse: 'Reverse holo' };
+
+let cfg = Object.assign({ cols: START, col: 'pokemon', sort: 'nieuw', laatst: {} }, D.get('verzameling', null) || {});
+cfg.laatst = cfg.laatst || {};
+let items = [], view = 'bezit', zoek = '', deel = null, bezigMet = false;
+const saveCfg = () => D.set('verzameling', cfg);
+const col = () => cfg.cols.find(c => c.id === cfg.col) || cfg.cols[0];
+const colOf = i => cfg.cols.find(c => c.id === i.col) || col();
+const soortOf = c => SOORTEN[c.soort] || SOORTEN.anders;
+const eur = c => c == null || c === '' ? '' : '€ ' + (Math.round(+c * 100) / 100).toFixed(2).replace('.', ',');
+const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/[€\s]/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
+const today = () => D.date.today();
+const kort = d => d ? D.date.nice(d, { day: 'numeric', month: 'short' }) : '';
+// Foto-sleutel: oude items gebruiken het id zelf (foto: true), nieuwe een eigen sleutel (zodat een nieuwe foto ook gedeeld wordt)
+const fkey = i => i.foto === true ? i.id : i.foto || '';
+const kanOpzoeken = c => c.soort === 'kaarten' || c.soort === 'platen';
+
+async function load() { items = (await db.all()) || []; render(); }
+async function bewaar(i) { await db.put(i.id, i); deel && deel.push(); }
+async function weg(i) { await db.del(i.id); if (i.foto) await fotos.del(fkey(i)); deel && deel.push(); }
+async function zetFoto(i, data) {
+  const oud = i.foto ? fkey(i) : '';
+  if (data) { const k = D.uid(); await fotos.put(k, data); i.foto = k; } else i.foto = false;
+  if (oud) await fotos.del(oud);
+}
+
+function renderCols() {
+  $('#cols').innerHTML = cfg.cols.map(c => `<button type="button" data-c="${esc(c.id)}" class="${c.id === cfg.col ? 'on' : ''}">${soortOf(c).emoji} ${esc(c.naam)} <span style="opacity:.7">${items.filter(i => i.col === c.id && !i.wens).length}</span></button>`).join('') +
+    `<button type="button" data-c="+">${icon('plus', 'width="16" height="16" style="vertical-align:-3px"')} Nieuwe</button>`;
+}
+
+function render() {
+  renderCols();
+  const c = col(), so = soortOf(c);
+  const mine = items.filter(i => i.col === c.id);
+  const own = mine.filter(i => !i.wens), wish = mine.filter(i => i.wens);
+  const paid = own.reduce((s, i) => s + (num(i.prijs) || 0) * (i.aantal || 1), 0);
+  const val = own.reduce((s, i) => s + (num(i.waarde) != null ? num(i.waarde) : num(i.prijs) || 0) * (i.aantal || 1), 0);
+  let list = view === 'wens' ? wish : own;
+  if (zoek) { const q = zoek.toLowerCase(); list = list.filter(i => JSON.stringify([i.naam, i.notitie, i.staat, ...Object.values(i.v || {})]).toLowerCase().includes(q)); }
+  const by = { nieuw: (a, b) => (b.t || 0) - (a.t || 0), naam: (a, b) => a.naam.localeCompare(b.naam, 'nl'), waarde: (a, b) => (num(b.waarde) || num(b.prijs) || 0) - (num(a.waarde) || num(a.prijs) || 0), set: (a, b) => JSON.stringify(a.v || {}).localeCompare(JSON.stringify(b.v || {}), 'nl') || a.naam.localeCompare(b.naam, 'nl') };
+  list.sort(by[cfg.sort] || by.nieuw);
+  const diff = val - paid;
+  const gekoppeld = mine.filter(i => i.ref).length;
+  const upd = kanOpzoeken(c) && mine.length ? `<div class="upd">${gekoppeld ? `<button class="btn q" data-act="prijzen" type="button">${icon('refresh')}Waardes bijwerken</button><small>${cfg.laatst[c.id] ? 'laatst ' + kort(cfg.laatst[c.id]) : 'nog niet gedaan'} · ${gekoppeld} van ${mine.length} gekoppeld</small>`
+    : `<small>Voeg toe met een foto of via zoeken, dan haalt de app de waarde op (${c.soort === 'kaarten' ? 'Cardmarket' : 'Discogs'}).</small>`}</div>` : '';
+  app.innerHTML = `
+    ${view === 'bezit' && own.length ? `<div class="card tot"><div><b>${own.reduce((s, i) => s + (i.aantal || 1), 0)}</b><span>stuks</span></div><div><b>${eur(paid) || '–'}</b><span>betaald</span></div><div><b>${eur(val) || '–'}</b><span>waarde${paid && val ? ` <em class="${diff >= 0 ? 'up' : 'down'}" style="font-style:normal">${diff >= 0 ? '+' : '−'}${Math.round(Math.abs(diff))}</em>` : ''}</span></div>${upd}</div>` : view === 'wens' && wish.length && kanOpzoeken(c) ? `<div class="card tot" style="grid-template-columns:1fr">${upd}</div>` : ''}
+    ${mine.length ? `<div class="tools"><input class="in" id="q" type="search" placeholder="Zoeken in ${esc(c.naam)}" value="${esc(zoek)}"><select class="in" id="sort"><option value="nieuw">Nieuwste</option><option value="naam">Naam</option><option value="set">${esc(so.velden[0][1])}</option><option value="waarde">Waarde</option></select></div>` : ''}
+    ${list.length ? `<div class="grid">${list.map(i => card(i, so)).join('')}</div>` :
+      mine.length && zoek ? `<p class="muted">Niets gevonden voor "${esc(zoek)}".</p>` :
+      `<div class="empty"><b>${view === 'wens' ? 'Verlanglijst is leeg' : 'Nog niets in ' + esc(c.naam)}</b>${view === 'wens' ? 'Zet erop wat je zoekt. Op een beurs of in de winkel zie je dan meteen of je het al hebt.' : kanOpzoeken(c) ? 'Maak een foto van een ' + (c.soort === 'kaarten' ? 'kaart' : 'plaat (streepjescode of hoes)') + ': de app zoekt op wat het is en wat het waard is.' : 'Voeg toe wat je hebt, met een foto, de staat en wat je ervoor betaalde.'}<br><button class="btn" data-act="new" type="button">${icon('plus')}Toevoegen</button></div>`}`;
+  const s = $('#sort'); if (s) s.value = cfg.sort;
+  hydrate();
+}
+
+function trend(i) {
+  const h = i.hist || [];
+  if (h.length < 2) return '';
+  const d = h[h.length - 1][1] - h[h.length - 2][1];
+  if (Math.abs(d) < 0.01) return '';
+  return `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}</em>`;
+}
+const card = (i, so) => {
+  const sub = so.velden.map(([k]) => (i.v || {})[k]).filter(Boolean).slice(0, 2).join(' · ');
+  const w = num(i.waarde) != null ? i.waarde : i.prijs;
+  return `<button class="cardi ${so.vorm}" data-i="${esc(i.id)}" type="button"><div class="ph">${i.foto ? `<img data-ph="${esc(fkey(i))}" alt="">` : so.emoji}${i.staat ? `<span class="w">${esc(i.staat)}</span>` : ''}${(i.aantal || 1) > 1 ? `<span class="n">${i.aantal}×</span>` : ''}</div>
+    <div class="tx"><b>${esc(i.naam)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${w ? `<span class="v">${eur(num(w))}${trend(i)}</span>` : ''}</div></button>`;
+};
+async function hydrate() {
+  for (const img of $$('img[data-ph]')) { const v = await fotos.get(img.dataset.ph); if (v) img.src = v; }
+}
+
+// ---------------------------------------------------------------- waarde
+function zetWaarde(i, p) {
+  i.waarde = String(p.waarde);
+  i.waardeBron = p.bron;
+  i.waardeDatum = today();
+  i.hist = (i.hist || []).filter(h => h[0] !== today()).concat([[today(), p.waarde]]).slice(-30);
+}
+function spark(h) {
+  if (!h || h.length < 2) return '';
+  const vs = h.map(x => x[1]), lo = Math.min(...vs), hi = Math.max(...vs), W = 300, H = 36;
+  const pts = vs.map((v, k) => `${(k / (vs.length - 1) * W).toFixed(1)},${(H - 3 - (hi > lo ? (v - lo) / (hi - lo) : .5) * (H - 6)).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function waardeBlok(i) {
+  if (num(i.waarde) == null) return '';
+  const h = i.hist || [], eerst = h.length > 1 ? h[0] : null;
+  const d = eerst ? num(i.waarde) - eerst[1] : 0;
+  return `<div class="waarde"><small>Waarde${i.waardeDatum ? ' op ' + esc(D.date.nice(i.waardeDatum, { day: 'numeric', month: 'long', year: 'numeric' })) : ''}</small><b>${eur(num(i.waarde))}${(i.aantal || 1) > 1 ? ` <small>× ${i.aantal}</small>` : ''}</b>
+    ${i.waardeBron ? `<small>${esc(i.waardeBron)}</small>` : ''}
+    ${eerst && Math.abs(d) >= 0.01 ? `<small><span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : '−'}${eur(Math.abs(d))}</span> sinds ${esc(D.date.nice(eerst[0], { day: 'numeric', month: 'short', year: 'numeric' }))}</small>` : ''}${spark(h)}</div>`;
+}
+async function haalWaarde(i, stil) {
+  const p = await Zoek.prijs(W2.get, i.ref);
+  if (!p) { if (!stil) toast(i.ref.bron === 'discogs' ? 'Er staat nu niets te koop op Discogs, dus geen prijs.' : 'Geen prijs gevonden voor deze kaart.', 4000); return false; }
+  zetWaarde(i, p);
+  await bewaar(i);
+  return true;
+}
+
+// ---------------------------------------------------------------- bekijken
+async function show(i) {
+  const c = colOf(i), so = soortOf(c);
+  const foto = i.foto ? await fotos.get(fkey(i)) : '';
+  const rows = [...so.velden.map(([k, l]) => [l, (i.v || {})[k]]), ['Uitvoering', i.ref && i.ref.variant && i.ref.variant !== 'normal' ? VARIANTEN[i.ref.variant] : ''], ['Staat', i.staat], ['Aantal', (i.aantal || 1) > 1 ? i.aantal : ''], [i.wens ? 'Wil ik hooguit voor betalen' : 'Betaald', eur(num(i.prijs))], ['Gekocht', i.datum && !i.wens ? D.date.nice(i.datum, { day: 'numeric', month: 'long', year: 'numeric' }) : '']].filter(r => r[1]);
+  const knoppen = [];
+  if (i.wens) knoppen.push(`<button class="btn wide" data-x="got" type="button">${icon('check')}Gekocht! Naar mijn verzameling</button>`);
+  if (i.ref) knoppen.push(`<button class="btn q wide" data-x="haal" type="button">${icon('refresh')}Waarde nu ophalen</button>`);
+  else if (kanOpzoeken(c)) knoppen.push(`<button class="btn q wide" data-x="koppel" type="button">${icon('search')}Opzoeken bij ${c.soort === 'kaarten' ? 'Cardmarket' : 'Discogs'}</button>`);
+  knoppen.push(`<button class="btn q wide" data-x="val" type="button">${icon('edit')}Waarde zelf invullen</button>`);
+  const r = await sheet(i.naam, `${foto ? `<img class="big" src="${foto}" alt="">` : ''}
+    ${waardeBlok(i)}
+    ${rows.length ? `<dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    ${i.notitie ? `<div style="white-space:pre-wrap">${esc(i.notitie)}</div>` : ''}
+    ${knoppen.join('')}`,
+  [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: 'Bewerken', value: 'edit', kind: 'q' }, { label: 'Sluiten', value: null }]);
+  r.el.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) r.close(b.dataset.x); });
+  const v = (await r.done).value;
+  if (v === 'edit') return form(i);
+  if (v === 'del') { if (await confirm(`<b>${esc(i.naam)}</b> verwijderen?`, 'Verwijderen', true)) { await weg(i); load(); } return; }
+  if (v === 'got') { i.wens = false; i.datum = today(); i.t = Date.now(); await bewaar(i); load(); toast('Naar je verzameling gezet. Vul gerust de prijs in.'); return form(i); }
+  if (v === 'haal') {
+    const w = bezig('Waarde ophalen…');
+    try { if (await haalWaarde(i)) toast('Waarde: ' + eur(num(i.waarde))); } catch (e) { toast(e.message, 4000); }
+    w.close(); await load(); return show(i);
+  }
+  if (v === 'koppel') return zoekSheet({ bestaand: i, q: c.soort === 'kaarten' ? { namen: [i.naam], num: ((i.v || {}).nummer || '').split('/')[0], den: ((i.v || {}).nummer || '').split('/')[1] || '' } : { tekst: [(i.v || {}).artiest, i.naam].filter(Boolean).join(' ') } });
+  if (v === 'val') {
+    const res = await sheet('Waarde', `<label class="f">Wat is het nu waard (per stuk)?<input class="in" name="w" inputmode="decimal" value="${esc(i.waarde || '')}" placeholder="Bv. 45"></label>`,
+      [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }], { focus: true }).done;
+    if (res.value !== 'ok') return;
+    const n = num(res.form.w);
+    if (n == null) { i.waarde = ''; i.waardeBron = ''; } else zetWaarde(i, { waarde: n, bron: 'Zelf ingevuld' });
+    await bewaar(i); load();
+  }
+}
+
+// ---------------------------------------------------------------- toevoegen
+async function nieuw() {
+  const c = col();
+  const rij = (x, ic, t, s) => `<button class="row" data-x="${x}" type="button"><span class="ico">${ic}</span><span class="grow"><b>${t}</b><span class="sub">${s}</span></span></button>`;
+  const opts = c.soort === 'kaarten' ? [
+    rij('cam', icon('camera'), 'Foto van de kaart', 'De app leest naam en nummer en zoekt de kaart op'),
+    rij('gal', icon('image'), 'Foto uit je galerij', 'Zelfde, met een foto die je al hebt'),
+    rij('zoek', icon('search'), 'Zoeken', 'Op naam en nummer, bv. Pikachu 25/198')
+  ] : c.soort === 'platen' ? [
+    rij('cam', icon('camera'), 'Foto van de plaat', 'Van de streepjescode (achterkant) of de voorkant van de hoes'),
+    rij('gal', icon('image'), 'Foto uit je galerij', 'Zelfde, met een foto die je al hebt'),
+    rij('zoek', icon('search'), 'Zoeken', 'Op artiest en titel, of typ de streepjescode')
+  ] : [
+    rij('cam', icon('camera'), 'Foto maken', 'En daarna de gegevens invullen'),
+    rij('gal', icon('image'), 'Foto uit je galerij', 'En daarna de gegevens invullen')
+  ];
+  opts.push(rij('zelf', icon('edit'), 'Zelf invullen', view === 'wens' ? 'Op de verlanglijst zetten' : 'Zonder foto of opzoeken'));
+  const s = sheet(view === 'wens' ? 'Op de verlanglijst' : 'Toevoegen aan ' + c.naam, `<div class="list">${opts.join('')}</div>`, [{ label: 'Annuleren', value: null, kind: 'q' }]);
+  s.el.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) s.close(b.dataset.x); });
+  const v = (await s.done).value;
+  if (v === 'cam' || v === 'gal') return vanFoto(v === 'cam');
+  if (v === 'zoek') return zoekSheet({});
+  if (v === 'zelf') return form(null);
+}
+
+/** Even-geduld-venster. */
+function bezig(tekst) {
+  const s = sheet('', `<div class="busy"><div class="spin"></div><div id="bt">${esc(tekst)}</div></div>`, [{ label: 'Stoppen', value: 'stop', kind: 'q' }]);
+  const o = { stop: false, tekst: t => { const el = $('#bt', s.el); if (el) el.textContent = t; }, close: () => s.close('klaar') };
+  s.done.then(r => { if (r.value !== 'klaar') o.stop = true; });
+  return o;
+}
+
+async function vanFoto(camera) {
+  const c = col();
+  const f = await pickFoto(camera);
+  if (!f) return;
+  if (!kanOpzoeken(c)) return form(null, { foto: f.klein });
+  if (!W2.herken.available()) { toast('Herkennen kan alleen in de app (nieuwste versie). Zoek hem op of vul hem zelf in.', 4500); return zoekSheet({ foto: f.klein }); }
+  const w = bezig('Foto bekijken…');
+  try {
+    const scan = await W2.herken.foto(f.groot, c.soort === 'platen' ? 'alles' : 'tekst');
+    if (w.stop) return;
+    if (!scan || !scan.ok) throw new Error('De foto kon niet gelezen worden. Probeer het met meer licht of van dichterbij.');
+    if (c.soort === 'kaarten') {
+      const q = Zoek.leesKaart(scan);
+      if (!q.namen.length && !q.num) { w.close(); toast('Geen tekst gevonden op de foto. Zoek de kaart zelf op.', 4000); return zoekSheet({ foto: f.klein }); }
+      w.tekst('Kaart opzoeken' + (q.namen[0] ? ': ' + q.namen[0] : '') + (q.num ? ' ' + q.num + (q.den ? '/' + q.den : '') : '') + '…');
+      const list = await Zoek.zoekKaart(W2.get, q, c.taal);
+      if (w.stop) return;
+      w.close();
+      return kiesKaart(list, { foto: f.klein, q });
+    }
+    let list = [], via = '', code = (scan.codes || [])[0] || '';
+    if (code) { w.tekst('Streepjescode ' + code + ' opzoeken…'); list = await Zoek.zoekBarcode(W2.get, code); via = 'code'; }
+    const tekst = Zoek.leesHoes(scan);
+    if (!list.length && tekst) { w.tekst('Zoeken op "' + tekst.slice(0, 60) + '"…'); list = await Zoek.zoekPlaat(W2.get, tekst); via = 'tekst'; }
+    if (w.stop) return;
+    w.close();
+    const wachtCode = !code && /download/i.test(scan.codeFout || '');
+    if (wachtCode) toast('De streepjescode-lezer wordt nog klaargezet door Google Play-services. Probeer het over een minuutje nog eens; nu is op tekst gezocht.', 6000);
+    if (!list.length && !code && !tekst) { if (!wachtCode) toast('Geen streepjescode of tekst gevonden. Zoek de plaat zelf op.', 4000); return zoekSheet({ foto: f.klein }); }
+    return kiesPlaat(list, { foto: f.klein, via, q: { tekst: code || tekst } });
+  } catch (e) {
+    if (!w.stop) w.close();
+    toast(e.message, 4500);
+    return zoekSheet({ foto: f.klein });
+  }
+}
+
+/** Zelf zoeken (ook als de foto niets opleverde, of om een bestaand item te koppelen). */
+async function zoekSheet(ctx) {
+  const c = ctx.bestaand ? colOf(ctx.bestaand) : col(), q = ctx.q || {};
+  const kaarten = c.soort === 'kaarten';
+  const r = await sheet(ctx.bestaand ? 'Opzoeken' : kaarten ? 'Kaart zoeken' : 'Plaat zoeken', kaarten ?
+    `<label class="f">Naam op de kaart<input class="in" name="naam" value="${esc((q.namen || [])[0] || '')}" placeholder="Bv. Charizard ex"></label>
+     <label class="f">Nummer (linksonder op de kaart)<input class="in" name="nr" value="${esc(q.num ? q.num + (q.den ? '/' + q.den : '') : '')}" placeholder="Bv. 25/198 of SWSH050"></label>
+     <div class="hint">Taal van de kaarten: ${esc(TALEN[c.taal || 'en'] || 'Engels')} (aan te passen via de drie puntjes).</div>` :
+    `<label class="f">Artiest en titel, of de streepjescode<input class="in" name="tekst" value="${esc(q.tekst || '')}" placeholder="Bv. Golden Earring Moontan"></label>
+     <label class="f">Of plak een Discogs-link<input class="in" name="dc" placeholder="https://www.discogs.com/release/…"></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }].concat(ctx.bestaand ? [] : [{ label: 'Zelf invullen', value: 'zelf', kind: 'q' }]).concat([{ label: 'Zoeken', value: 'ok', check: f => kaarten ? (!f.naam.trim() && !f.nr.trim() ? 'Vul een naam of nummer in.' : '') : (!f.tekst.trim() && !Zoek.leesDiscogs(f.dc) ? 'Vul iets in om op te zoeken.' : '') }]), { focus: true }).done;
+  if (r.value === 'zelf') return form(null, { foto: ctx.foto });
+  if (r.value !== 'ok') return;
+  const w = bezig('Zoeken…');
+  try {
+    if (kaarten) {
+      const m = r.form.nr.trim().match(/^([A-Za-z]*\d+)\s*(?:\/\s*([A-Za-z]*\d+))?/);
+      const nq = { namen: r.form.naam.trim() ? [r.form.naam.trim()] : [], num: m ? m[1].toUpperCase() : '', den: m && m[2] ? m[2].toUpperCase() : '' };
+      const list = await Zoek.zoekKaart(W2.get, nq, c.taal);
+      if (w.stop) return;
+      w.close();
+      return kiesKaart(list, { ...ctx, q: nq });
+    }
+    const dc = Zoek.leesDiscogs(r.form.dc);
+    if (dc) { w.close(); return maakPlaat(null, { ...ctx, discogs: dc }); }
+    const t = r.form.tekst.trim();
+    const list = /^\d{8,14}$/.test(t.replace(/\s/g, '')) ? await Zoek.zoekBarcode(W2.get, t.replace(/\s/g, '')) : await Zoek.zoekPlaat(W2.get, t);
+    if (w.stop) return;
+    w.close();
+    return kiesPlaat(list, { ...ctx, q: { tekst: t } });
+  } catch (e) {
+    if (!w.stop) w.close();
+    toast(e.message, 4500);
+  }
+}
+
+async function kiesKaart(list, ctx) {
+  const c = ctx.bestaand ? colOf(ctx.bestaand) : col();
+  const html = list.length ? `<div class="list">${list.slice(0, 8).map((k, n) => {
+    const p = k.kaart ? Zoek.kaartPrijs(k.kaart, k.varianten && !k.varianten.normal && k.varianten.holo ? 'holo' : 'normal') : null;
+    return `<button class="kies kaart${n === 0 && k.score >= 1.6 ? ' top' : ''}" data-k="${n}" type="button">${k.plaatje ? `<img src="${esc(k.plaatje)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ni',textContent:'🃏'}))">` : '<span class="ni">🃏</span>'}
+      <span class="grow"><b>${esc(k.naam)}</b><span>${esc([k.set, k.nummer].filter(Boolean).join(' · '))}</span>${k.zeld ? `<span>${esc(k.zeld)}</span>` : ''}${p ? `<span class="p">${eur(p.waarde)}</span>` : ''}</span></button>`;
+  }).join('')}</div>` : `<p>Geen kaart gevonden${ctx.q && (ctx.q.namen || [])[0] ? ' voor "' + esc(ctx.q.namen[0]) + '"' : ''}${ctx.q && ctx.q.num ? ' met nummer ' + esc(ctx.q.num) : ''}.</p><p class="hint">Probeer zoeken met alleen de naam, of alleen het nummer. Taal: ${esc(TALEN[c.taal || 'en'] || 'Engels')}.</p>`;
+  const s = sheet(list.length ? (list.length === 1 ? 'Is het deze?' : 'Welke is het?') : 'Niet gevonden', html,
+    [{ label: 'Zelf zoeken', value: 'zoek', kind: 'q' }].concat(ctx.bestaand ? [] : [{ label: 'Zonder koppeling', value: 'zelf', kind: 'q' }]));
+  s.el.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) s.close('k' + b.dataset.k); });
+  const v = (await s.done).value;
+  if (v === 'zoek') return zoekSheet(ctx);
+  if (v === 'zelf') return form(null, { foto: ctx.foto });
+  if (!v || v[0] !== 'k') return;
+  const k = list[+v.slice(1)];
+  const vs = k.varianten || {};
+  const variant = vs.normal || (!vs.holo && !vs.reverse) ? 'normal' : vs.holo ? 'holo' : 'reverse';
+  const ref = { bron: 'tcgdex', id: k.id, lang: k.lang, variant };
+  const p = k.kaart ? Zoek.kaartPrijs(k.kaart, variant) : null;
+  if (ctx.bestaand) {
+    const i = ctx.bestaand;
+    i.ref = ref;
+    i.v = Object.assign({ set: k.set, nummer: k.nummer, zeld: k.zeld }, i.v || {});
+    if (p) zetWaarde(i, p);
+    await bewaar(i); await load();
+    toast(p ? 'Gekoppeld. Waarde: ' + eur(p.waarde) : 'Gekoppeld, maar er is nu geen prijs bekend.');
+    return show(i);
+  }
+  let foto = ctx.foto;
+  if (!foto && k.groot) { const w = bezig('Plaatje ophalen…'); foto = await haalFoto(k.groot); w.close(); }
+  const item = { naam: k.naam, col: c.id, v: { set: k.set, nummer: k.nummer, zeld: k.zeld, taal: TALEN[k.lang] || '' }, ref };
+  if (p) zetWaarde(item, p);
+  return form(null, { item, foto, kaart: k.kaart });
+}
+
+async function kiesPlaat(list, ctx) {
+  const html = list.length ? `<div class="list">${list.slice(0, 10).map((p, n) => `<button class="kies" data-k="${n}" type="button"><img src="${esc(p.plaatje)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ni',textContent:'💿'}))">
+      <span class="grow"><b>${esc(p.titel)}</b><span>${esc([p.artiest, p.jaar].filter(Boolean).join(' · '))}</span><span>${esc([p.formaat, p.land, p.label].filter(Boolean).join(' · '))}</span></span></button>`).join('')}</div>
+      ${ctx.via === 'code' ? '<p class="hint">Gevonden via de streepjescode.</p>' : ''}` :
+    `<p>Niets gevonden${ctx.q && ctx.q.tekst ? ' voor "' + esc(ctx.q.tekst) + '"' : ''}.</p><p class="hint">Probeer artiest en titel, of plak een Discogs-link.</p>`;
+  const s = sheet(list.length ? 'Welke is het?' : 'Niet gevonden', html,
+    [{ label: 'Zelf zoeken', value: 'zoek', kind: 'q' }].concat(ctx.bestaand ? [] : [{ label: 'Zonder koppeling', value: 'zelf', kind: 'q' }]));
+  s.el.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) s.close('k' + b.dataset.k); });
+  const v = (await s.done).value;
+  if (v === 'zoek') return zoekSheet(ctx);
+  if (v === 'zelf') return form(null, { foto: ctx.foto });
+  if (!v || v[0] !== 'k') return;
+  return maakPlaat(list[+v.slice(1)], ctx);
+}
+
+async function maakPlaat(p, ctx) {
+  const c = ctx.bestaand ? colOf(ctx.bestaand) : col();
+  const w = bezig('Prijs zoeken op Discogs…');
+  let dc = ctx.discogs || null, pr = null, foto = ctx.foto;
+  try {
+    if (!dc && p) dc = await Zoek.discogsBij(W2.get, p);
+    if (w.stop) return;
+    if (dc) pr = await Zoek.plaatPrijs(W2.get, dc).catch(() => null);
+    if (w.stop) return;
+    // voorkant van de hoes: mooier dan een foto van de streepjescode
+    if (!ctx.bestaand && p && (ctx.via === 'code' || !foto)) { w.tekst('Hoes ophalen…'); foto = (await haalFoto('https://coverartarchive.org/release/' + p.mbid + '/front-500')) || foto; }
+  } catch (e) { toast(e.message, 4000); }
+  if (!w.stop) w.close(); else return;
+  const ref = dc ? { bron: 'discogs', type: dc.type, id: dc.id } : null;
+  if (ctx.bestaand) {
+    const i = ctx.bestaand;
+    if (!ref) { toast('Deze plaat staat (nog) niet aan Discogs gekoppeld in MusicBrainz. Plak de Discogs-link via Opzoeken.', 5000); return; }
+    i.ref = ref; if (p) i.mb = p.mbid;
+    if (pr) zetWaarde(i, pr);
+    await bewaar(i); await load();
+    toast(pr ? 'Gekoppeld. Waarde: ' + eur(pr.waarde) : 'Gekoppeld; er staat nu niets te koop, dus nog geen prijs.', 4000);
+    return show(i);
+  }
+  if (!ref && p) toast('Geen Discogs-koppeling gevonden; de waarde kun je later koppelen of zelf invullen.', 4500);
+  const item = p ? { naam: p.titel, col: c.id, v: { artiest: p.artiest, jaar: p.jaar, label: [p.label, p.catno, p.land].filter(Boolean).join(' · '), formaat: p.formaat }, ref, mb: p.mbid } : { naam: '', col: c.id, v: {}, ref };
+  if (pr) zetWaarde(item, pr);
+  return form(null, { item, foto });
+}
+
+async function haalFoto(url) {
+  try {
+    const r = await W2.get(url, true);
+    if (!r || r.status !== 200 || !r.b64) return '';
+    const bin = atob(r.b64), u8 = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+    return await verklein(new Blob([u8], { type: r.type || 'image/jpeg' }), 1000, .82);
+  } catch (e) { return ''; }
+}
+
+// ---------------------------------------------------------------- bewerken
+let pendingFoto;
+async function form(i, pre) {
+  pre = pre || {};
+  const isNew = !i;
+  const c = i ? colOf(i) : col();
+  const so = soortOf(c);
+  i = i || Object.assign({ naam: '', col: c.id, v: {}, staat: '', aantal: 1, prijs: '', datum: view === 'wens' ? '' : today(), waarde: '', notitie: '', wens: view === 'wens' }, pre.item || {});
+  pendingFoto = pre.foto ? pre.foto : undefined;
+  const cur = pre.foto || (i.foto ? await fotos.get(fkey(i)) : '');
+  const vs = pre.kaart && pre.kaart.variants || null;
+  const varKeuze = i.ref && i.ref.bron === 'tcgdex' ? Object.keys(VARIANTEN).filter(k => !vs || vs[k] || (i.ref && i.ref.variant === k)) : [];
+  const s = sheet(isNew ? (i.wens ? 'Op de verlanglijst' : 'Toevoegen') : 'Bewerken', `
+    <div class="fphoto"><div class="pv" id="pv">${cur ? `<img src="${cur}" alt="">` : so.emoji}</div><div class="btns" style="flex:1"><button class="btn q" data-x="cam" type="button">${icon('camera')}</button><button class="btn q" data-x="gal" type="button">${icon('image')}</button>${cur ? `<button class="btn danger" data-x="nofoto" type="button">${icon('trash')}</button>` : ''}</div></div>
+    ${num(i.waarde) != null && i.ref ? `<div class="waarde"><small>Waarde nu</small><b id="fw">${eur(num(i.waarde))}</b><small id="fb">${esc(i.waardeBron || '')}</small></div>` : ''}
+    <label class="f">Naam<input class="in" name="naam" value="${esc(i.naam)}" placeholder="${c.soort === 'platen' ? 'Bv. Abbey Road' : c.soort === 'kaarten' ? 'Bv. Pikachu with Grey Felt Hat' : ''}"></label>
+    <div class="grid2">${so.velden.map(([k, l, ph]) => `<label class="f">${esc(l)}<input class="in" name="v_${k}" value="${esc((i.v || {})[k] || '')}" placeholder="${esc(ph)}"></label>`).join('')}</div>
+    ${varKeuze.length > 1 ? `<label class="f">Uitvoering<select class="in" name="variant">${varKeuze.map(k => `<option value="${k}" ${i.ref.variant === k ? 'selected' : ''}>${VARIANTEN[k]}</option>`).join('')}</select></label>` : ''}
+    <div class="grid2"><label class="f">Staat<select class="in" name="staat"><option value="">–</option>${STATEN.map(x => `<option ${x === i.staat ? 'selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">Aantal<input class="in" name="aantal" type="number" inputmode="numeric" min="1" value="${i.aantal || 1}"></label></div>
+    ${i.wens ? `<label class="f">Wil ik hooguit voor betalen<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}" placeholder="Bv. 30"></label>` :
+      `<div class="grid2"><label class="f">Betaald (€)<input class="in" name="prijs" inputmode="decimal" value="${esc(i.prijs || '')}"></label><label class="f">Gekocht op<input class="in" type="date" name="datum" value="${esc(i.datum || '')}"></label></div>`}
+    ${!i.ref ? `<label class="f">Waarde nu (€, optioneel)<input class="in" name="waarde" inputmode="decimal" value="${esc(i.waarde || '')}" placeholder="${kanOpzoeken(c) ? 'Of later laten opzoeken' : 'Laat leeg = wat je betaalde'}"></label>` : ''}
+    ${c.soort === 'platen' && !(i.ref && i.ref.bron === 'discogs') ? `<label class="f">Discogs-link (optioneel, voor de waarde)<input class="in" name="dc" placeholder="https://www.discogs.com/release/…"></label>` : ''}
+    <label class="f">Notitie<textarea class="in" name="notitie" placeholder="Bv. waar gekocht, gesigneerd, in sleeve/toploader">${esc(i.notitie || '')}</textarea></label>
+    ${!isNew ? '' : `<div class="toggle"><div class="grow"><b>Op de verlanglijst</b><div class="muted small">Heb ik nog niet, zoek ik</div></div><button type="button" class="sw${i.wens ? ' on' : ''}" data-x="wens" aria-label="Verlanglijst"></button></div>`}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : '' }], { focus: isNew && !i.naam });
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-x]'); if (!b) return;
+    if (b.dataset.x === 'cam' || b.dataset.x === 'gal') pickFoto(b.dataset.x === 'cam').then(v => { if (v) { pendingFoto = v.klein; $('#pv', s.el).innerHTML = `<img src="${v.klein}" alt="">`; } });
+    if (b.dataset.x === 'nofoto') { pendingFoto = ''; $('#pv', s.el).textContent = so.emoji; b.remove(); }
+    if (b.dataset.x === 'wens') { i.wens = !i.wens; b.classList.toggle('on', i.wens); }
+  });
+  s.el.addEventListener('change', e => {
+    if (e.target.name !== 'variant' || !pre.kaart) return;
+    const p = Zoek.kaartPrijs(pre.kaart, e.target.value);
+    const fw = $('#fw', s.el), fb = $('#fb', s.el);
+    if (fw) fw.textContent = p ? eur(p.waarde) : '–';
+    if (fb) fb.textContent = p ? p.bron : 'Geen prijs bekend';
+  });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  i.naam = f.naam.trim();
+  const oudV = i.v || {};
+  i.v = {}; so.velden.forEach(([k]) => { const x = (f['v_' + k] || '').trim(); if (x) i.v[k] = x; });
+  Object.keys(oudV).forEach(k => { if (!so.velden.some(v => v[0] === k) && oudV[k]) i.v[k] = oudV[k]; });
+  i.staat = f.staat; i.aantal = Math.max(1, +f.aantal || 1); i.prijs = (f.prijs || '').trim(); i.notitie = f.notitie.trim();
+  if (!i.wens) i.datum = f.datum || '';
+  if (!i.ref && f.waarde != null) {
+    const n = num(f.waarde);
+    if (n == null) { i.waarde = ''; i.waardeBron = ''; } else if (n !== num(i.waarde)) zetWaarde(i, { waarde: n, bron: 'Zelf ingevuld' });
+  }
+  let opnieuw = false;
+  if (f.variant && i.ref && f.variant !== i.ref.variant) {
+    i.ref = { ...i.ref, variant: f.variant };
+    if (pre.kaart) { const p = Zoek.kaartPrijs(pre.kaart, f.variant); if (p) zetWaarde(i, p); } else opnieuw = true;
+  }
+  const dc = f.dc && Zoek.leesDiscogs(f.dc);
+  if (dc) { i.ref = { bron: 'discogs', type: dc.type, id: dc.id }; opnieuw = true; }
+  if (isNew) { i.id = D.uid(); i.t = Date.now(); }
+  if (pendingFoto !== undefined) await zetFoto(i, pendingFoto);
+  await bewaar(i);
+  if (isNew && i.wens !== (view === 'wens')) setView(i.wens ? 'wens' : 'bezit');
+  await load();
+  if (opnieuw) haalWaarde(i, true).then(ok => { if (ok) { load(); toast('Waarde opgehaald: ' + eur(num(i.waarde))); } }).catch(() => {});
+  else if (isNew && i.ref && num(i.waarde) != null) toast('Toegevoegd · waarde ' + eur(num(i.waarde)));
+}
+
+/** Foto maken of kiezen → {klein (om te bewaren), groot (om te lezen)}. */
+function pickFoto(camera) {
+  return new Promise(res => {
+    const inp = $('#file');
+    inp.value = '';
+    if (camera) inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
+    inp.onchange = async () => {
+      const f = inp.files[0];
+      if (!f) return res(null);
+      try { res({ klein: await verklein(f, 1000, .8), groot: await verklein(f, 1800, .9) }); }
+      catch (e) { toast('Deze foto kon niet gelezen worden.'); res(null); }
+    };
+    inp.click();
+  });
+}
+async function verklein(blob, max, q) {
+  const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(blob));
+  const sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', q);
+}
+
+// ---------------------------------------------------------------- alle waardes bijwerken (alleen als je erop tikt)
+async function prijzen() {
+  if (bezigMet) return;
+  const c = col();
+  const todo = items.filter(i => i.col === c.id && i.ref).sort((a, b) => (a.waardeDatum || '').localeCompare(b.waardeDatum || ''));
+  if (!todo.length) return;
+  bezigMet = true;
+  const voor = items.filter(i => i.col === c.id && !i.wens).reduce((s, i) => s + (num(i.waarde) || 0) * (i.aantal || 1), 0);
+  const traag = todo.filter(i => i.ref.bron === 'discogs').length;
+  const s = sheet('Waardes bijwerken', `<div class="prog"><i id="pb"></i></div><p id="pt" style="margin:10px 0 0">0 van ${todo.length}</p>
+    ${traag > 10 ? `<p class="hint">Discogs wil maar een paar vragen per minuut, dus dit duurt ongeveer ${Math.ceil(traag * 2.6 / 60)} minuten. Laat de app openstaan.</p>` : ''}`, [{ label: 'Stoppen', value: 'stop', kind: 'q' }]);
+  let stop = false, ok = 0, geen = 0, fout = 0, laatsteFout = '';
+  s.done.then(() => { stop = true; });
+  for (const [n, i] of todo.entries()) {
+    if (stop) break;
+    try { (await haalWaarde(i, true)) ? ok++ : geen++; }
+    catch (e) { fout++; laatsteFout = e.message; if (/internet|te veel/i.test(e.message)) break; }
+    const pb = $('#pb', s.el), pt = $('#pt', s.el);
+    if (pb) pb.style.width = Math.round((n + 1) / todo.length * 100) + '%';
+    if (pt) pt.textContent = `${n + 1} van ${todo.length} · ${i.naam}`;
+  }
+  s.close('klaar');
+  bezigMet = false;
+  if (ok) { cfg.laatst[c.id] = today(); saveCfg(); }
+  await load();
+  const na = items.filter(i => i.col === c.id && !i.wens).reduce((s, i) => s + (num(i.waarde) || 0) * (i.aantal || 1), 0);
+  const d = na - voor;
+  toast([ok ? `${ok} bijgewerkt` : '', geen ? `${geen} zonder prijs` : '', fout ? `${fout} lukte niet${laatsteFout ? ' (' + laatsteFout + ')' : ''}` : '',
+    ok && Math.abs(d) >= 0.01 ? `totaal ${d > 0 ? '+' : '−'}${eur(Math.abs(d))}` : ''].filter(Boolean).join(' · ') || 'Niets bijgewerkt', 5000);
+}
+
+// ---------------------------------------------------------------- verzamelingen
+async function colForm(c) {
+  const isNew = !c;
+  c = c || { naam: '', soort: 'anders', taal: 'en' };
+  const r = sheet(isNew ? 'Nieuwe verzameling' : c.naam, `<label class="f">Naam<input class="in" name="naam" value="${esc(c.naam)}" placeholder="Bv. Lego, munten, strips"></label>
+    <label class="f">Soort<select class="in" name="soort">${Object.entries(SOORTEN).map(([k, s]) => `<option value="${k}" ${k === c.soort ? 'selected' : ''}>${s.emoji} ${s.naam}</option>`).join('')}</select></label>
+    <label class="f" id="tl" ${c.soort === 'kaarten' ? '' : 'hidden'}>Taal van de kaarten (om op te zoeken)<select class="in" name="taal">${Object.entries(TALEN).map(([k, n]) => `<option value="${k}" ${k === (c.taal || 'en') ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <p class="hint">Kaarten zoekt de app op bij TCGdex (prijzen van Cardmarket), platen bij MusicBrainz (prijzen van Discogs). Dat gebeurt alleen als je toevoegt of op Waardes bijwerken tikt.</p>`,
+  (isNew || cfg.cols.length < 2 ? [{ label: 'Annuleren', value: null, kind: 'q' }] : [{ label: icon('trash'), value: 'del', kind: 'danger' }]).concat([{ label: 'Bewaren', value: 'ok', check: f => !f.naam.trim() ? 'Vul een naam in.' : '' }]), { focus: isNew });
+  r.el.addEventListener('change', e => { if (e.target.name === 'soort') $('#tl', r.el).hidden = e.target.value !== 'kaarten'; });
+  const res = await r.done;
+  if (res.value === 'del') {
+    const n = items.filter(i => i.col === c.id).length;
+    if (!(await confirm(`<b>${esc(c.naam)}</b>${n ? ` en de ${n} dingen erin` : ''} verwijderen? Ook bij je partner.`, 'Verwijderen', true))) return;
+    for (const i of items.filter(i => i.col === c.id)) await weg(i);
+    cfg.cols = cfg.cols.filter(x => x !== c); cfg.col = cfg.cols[0].id; saveCfg(); deel && deel.push(); return load();
+  }
+  if (res.value !== 'ok') return;
+  c.naam = res.form.naam.trim(); c.soort = res.form.soort; c.taal = c.soort === 'kaarten' ? res.form.taal : '';
+  if (isNew) { c.id = D.uid(); cfg.cols.push(c); cfg.col = c.id; }
+  saveCfg(); deel && deel.push(); render();
+}
+
+function setView(v) { view = v; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); render(); }
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
+$('#cols').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; if (b.dataset.c === '+') return colForm(); cfg.col = b.dataset.c; zoek = ''; saveCfg(); render(); };
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-i],[data-act]'); if (!t) return;
+  if (t.dataset.i) return show(items.find(i => i.id === t.dataset.i));
+  if (t.dataset.act === 'new') return nieuw();
+  if (t.dataset.act === 'prijzen') return prijzen();
+});
+app.addEventListener('input', e => { if (e.target.id === 'q') { zoek = e.target.value; clearTimeout(render.t); render.t = setTimeout(() => { render(); const q = $('#q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
+app.addEventListener('change', e => { if (e.target.id === 'sort') { cfg.sort = e.target.value; saveCfg(); render(); } });
+$('#fab').onclick = () => nieuw();
+$('#menu').onclick = () => colForm(col());
+
+// ---------------------------------------------------------------- delen met je partner (Samen)
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'verzameling',
+    // verzamelingen als "c:<id>", dingen als "i:<id>"
+    lees: async () => {
+      const m = {};
+      cfg.cols.forEach((c, n) => { m['c:' + c.id] = { naam: c.naam, soort: c.soort, taal: c.taal || '', n }; });
+      ((await db.all()) || []).forEach(i => { m['i:' + i.id] = i; });
+      return m;
+    },
+    schrijf: async (map, changed) => {
+      for (const k of changed) {
+        if (!k.startsWith('i:')) continue;
+        const id = k.slice(2), oud = items.find(x => x.id === id), nw = map[k];
+        if (nw) await db.put(id, nw); else await db.del(id);
+        if (oud && oud.foto && (!nw || fkey(nw) !== fkey(oud))) await fotos.del(fkey(oud));
+      }
+      if (changed.some(k => k.startsWith('c:'))) {
+        const cols = Object.entries(map).filter(([k, v]) => k.startsWith('c:') && v).map(([k, v]) => ({ id: k.slice(2), naam: v.naam, soort: v.soort, taal: v.taal || '', n: v.n || 0 }))
+          .sort((a, b) => a.n - b.n).map(({ n, ...c }) => c);
+        cfg.cols = cols.length ? cols : START.map(c => ({ ...c }));
+        if (!cfg.cols.some(c => c.id === cfg.col)) cfg.col = cfg.cols[0].id;
+        saveCfg();
+      }
+      await load();
+    },
+    bestanden: i => i && i.id && i.foto ? [{ id: 'vz-' + fkey(i), naam: i.naam, mime: 'image/jpeg', get: async () => (await fotos.get(fkey(i))) || '', put: v => fotos.put(fkey(i), v) }] : [],
+    bestandBinnen: () => hydrate()
+  });
+  W2Deel.badge();
+}
+
+saveCfg();
+load().then(koppelDeel);
+// Streepjescode-lezer alvast laten klaarzetten (Play-services haalt die de eerste keer op), hooguit eens per dag
+if (W2.herken.available() && cfg.cols.some(c => c.soort === 'platen') && D.get('vz-code-klaar', '') !== today()) {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 32, 32);
+  W2.herken.foto(c.toDataURL('image/jpeg'), 'code').then(r => { if (r && !/download/i.test(r.codeFout || '')) D.set('vz-code-klaar', today()); });
+}
+</script>
+</body>
+</html>

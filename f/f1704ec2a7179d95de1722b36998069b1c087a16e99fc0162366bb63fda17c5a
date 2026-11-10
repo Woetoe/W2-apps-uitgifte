@@ -1,0 +1,244 @@
+/* W2 Apps — Verzameling: herkennen en opzoeken.
+
+   - Ruilkaarten (Pokémon): naam en nummer uit de tekst op een foto halen, de kaart opzoeken bij TCGdex
+     (gratis, zonder account) en de Cardmarket-prijs in euro's daarvan gebruiken.
+   - Platen: streepjescode of tekst op de hoes → MusicBrainz (gratis, open), hoesfoto van de Cover Art Archive,
+     prijs = laagste vraagprijs op Discogs.
+
+   Alles via een get(url, binair)-functie (W2.get in de app), zodat dit ook in node te testen is. Per dienst wordt
+   rustig aan gedaan (MusicBrainz 1 vraag per seconde, Discogs ± 25 per minuut). Laden: <script src="zoek.js">. */
+(function (root) {
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  function lev(a, b) {
+    if (a === b) return 0;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  /** Hoe goed lijkt tekst a op naam b (0..1). Ook goed als de naam ín een langere regel staat. */
+  function lijkt(a, b) {
+    a = norm(a); b = norm(b);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if ((' ' + a + ' ').includes(' ' + b + ' ')) return 0.92;
+    let best = 1 - lev(a, b) / Math.max(a.length, b.length);
+    // stukje van de regel ter lengte van de naam
+    const w = a.split(' '), n = b.split(' ').length;
+    for (let i = 0; i + n <= w.length; i++) best = Math.max(best, 1 - lev(w.slice(i, i + n).join(' '), b) / Math.max(b.length, 1) - 0.04);
+    return Math.max(0, best);
+  }
+  const zelfdeNummer = (a, b) => {
+    const x = String(a || '').toUpperCase(), y = String(b || '').toUpperCase();
+    if (x === y) return true;
+    const p = s => s.replace(/^([A-Z]*)0*(\d+)$/, '$1$2');
+    return p(x) === p(y);
+  };
+
+  // ------------------------------------------------------------------ rustig aan per dienst
+  const last = {};
+  const PAUZE = { 'musicbrainz.org': 1100, 'api.discogs.com': 2500 };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function beurt(url) {
+    const h = (url.match(/^https?:\/\/([^/]+)/) || [])[1] || '';
+    const ms = PAUZE[h];
+    if (!ms) return;
+    const wacht = (last[h] || 0) + ms - Date.now();
+    last[h] = Math.max(Date.now(), (last[h] || 0) + ms);
+    if (wacht > 0) await sleep(wacht);
+  }
+  async function json(get, url) {
+    await beurt(url);
+    const r = await get(url, false);
+    if (!r || !r.status) throw new Error(r && r.fout === 'geen internet' ? 'Geen internet.' : 'Kon ' + url.split('/')[2] + ' niet bereiken.');
+    if (r.status === 404) return null;
+    if (r.status === 429 || r.status === 503) throw new Error('Even te veel vragen achter elkaar. Probeer het zo nog eens.');
+    if (r.status >= 400) throw new Error(url.split('/')[2] + ' gaf fout ' + r.status + '.');
+    try { return JSON.parse(r.body); } catch (e) { throw new Error('Onverwacht antwoord van ' + url.split('/')[2] + '.'); }
+  }
+
+  // ------------------------------------------------------------------ kaarten
+  const NIET_NAAM = /^(basic|basis|stage ?\d|stadium|stufe|niveau|trainer|item|supporter|stadion|energy|energie|pokemon tool|tool|evolves|entwickelt|evolution|put .* on|hp|kp|pv|ps|ability|attack|weakness|resistance|retreat|illus|nintendo|creatures|game freak|pokemon$|rule|regel|tera)\b/i;
+  /** Uit herkende tekst ({w,h,lines}) de mogelijke naam en het nummer van een ruilkaart halen. */
+  function leesKaart(scan) {
+    const lines = ((scan && scan.lines) || []).filter(l => l && l.t).map(l => ({ ...l, y: l.y || 0, h: l.h || 0 }));
+    const H = scan && scan.h || Math.max(1, ...lines.map(l => l.y + l.h));
+    let num = '', den = '', best = -1;
+    for (const l of lines) {
+      const t = l.t.replace(/[Oo](?=\d)|(?<=\d)[Oo]/g, '0').replace(/[Il|](?=\d{2})/g, '1');
+      const m = t.match(/(?:^|[^A-Z0-9])([A-Z]{0,3}\d{1,3})\s*\/\s*([A-Z]{0,3}\d{2,3})(?!\d)/i);
+      if (m) {
+        const score = (l.y / H) + (m[2].length === 3 ? 0.2 : 0);   // onderaan en 3 cijfers is waarschijnlijker
+        if (score > best) { best = score; num = m[1].toUpperCase(); den = m[2].toUpperCase(); }
+      }
+    }
+    let promo = '';
+    if (!num) {
+      for (const l of lines) {
+        const m = l.t.match(/\b(SWSH|SVP|SV|SM|XY|BW|HGSS|DP)\s*[- ]?\s*(\d{1,3})\b/i);
+        if (m) { promo = m[1].toUpperCase() + m[2].padStart(3, '0'); num = promo; break; }
+      }
+    }
+    const top = lines.filter(l => l.y < H * 0.32);
+    const namen = [];
+    (top.length ? top : lines).slice().sort((a, b) => b.h - a.h).forEach(l => {
+      let t = l.t.replace(/\b(HP|KP|PV|PS)\s*\d+.*$/i, '').replace(/\b\d+\s*(HP|KP|PV|PS)\b.*$/i, '').replace(/\s\d+$/, '')
+        .replace(/[^A-Za-zÀ-ÿ'’.\- ♀♂]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (t.length < 3 || NIET_NAAM.test(norm(t)) || !/[a-z]{2}/i.test(t)) return;
+      if (!namen.some(n => norm(n) === norm(t))) namen.push(t);
+    });
+    return { namen: namen.slice(0, 4), num, den, promo, tekst: lines.map(l => l.t).join('\n') };
+  }
+
+  const TCG = lang => 'https://api.tcgdex.net/v2/' + (lang || 'en');
+  const kaartPlaatje = (c, q) => c && c.image ? c.image + '/' + (q || 'low') + '.webp' : '';
+
+  /** Kaart opzoeken: {namen, num, den} → [{id, naam, set, nummer, zeld, plaatje, kaart, score}] (beste eerst). */
+  async function zoekKaart(get, q, lang) {
+    const base = TCG(lang) + '/cards';
+    const cands = new Map();
+    const add = (list, bron) => (Array.isArray(list) ? list : []).forEach(c => { if (c && c.id && !cands.has(c.id)) cands.set(c.id, { ...c, bron }); });
+    const namen = (q.namen || []).filter(Boolean);
+    if (q.num) {
+      const n = String(q.num).replace(/^([A-Z]*)0*(\d+)$/, '$1$2');
+      const vormen = [...new Set([q.num, n, /^\d+$/.test(n) ? n.padStart(3, '0') : n])];
+      for (const v of vormen) add(await json(get, base + '?localId=eq:' + encodeURIComponent(v)), 'nummer');
+    }
+    for (const nm of namen.slice(0, 2)) {
+      const kort = nm.replace(/\s+(ex|EX|GX|V|VMAX|VSTAR|δ|☆|LV\.?\s*X)$/, '').trim();
+      add(await json(get, base + '?name=' + encodeURIComponent(kort) + '&pagination:itemsPerPage=250&pagination:page=1'), 'naam');
+    }
+    const list = [...cands.values()].map(c => {
+      const s = namen.length ? Math.max(...namen.map(nm => lijkt(nm, c.name))) : 0;
+      const nr = q.num && zelfdeNummer(c.localId, q.num) ? 1 : 0;
+      return { c, s, nr, score: s * 1.2 + nr };
+    }).filter(x => namen.length ? x.s >= 0.7 || (x.nr && x.s >= 0.45) : x.nr).sort((a, b) => b.score - a.score).slice(0, 10);
+    // details (set, prijs) van de beste paar; het totaal achter de schuine streep wijst de juiste set aan
+    const out = [];
+    for (const [i, x] of list.entries()) {
+      let k = null;
+      if (i < 6) { try { k = await json(get, base + '/' + encodeURIComponent(x.c.id)); } catch (e) { k = null; } }
+      const set = k && k.set || {}, cnt = set.cardCount || {};
+      let score = x.score;
+      if (q.den && cnt.official != null && zelfdeNummer(cnt.official, q.den)) score += 0.6;
+      out.push({
+        id: x.c.id, lang: lang || 'en', naam: (k || x.c).name, set: set.name || '', setId: set.id || '',
+        nummer: (k || x.c).localId + (cnt.official ? '/' + String(cnt.official).padStart(String((k || x.c).localId).length, '0') : ''),
+        zeld: k && k.rarity || '', plaatje: kaartPlaatje(k || x.c), groot: kaartPlaatje(k || x.c, 'high'),
+        varianten: k && k.variants || null, kaart: k, score
+      });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }
+
+  /** Prijs uit de kaartgegevens van TCGdex. variant: 'normal' | 'holo' | 'reverse'. */
+  function kaartPrijs(k, variant) {
+    const p = k && k.pricing || {};
+    const cm = p.cardmarket;
+    const v = k && k.variants || {};
+    const foil = variant === 'reverse' || (variant === 'holo' && v.normal);
+    if (cm) {
+      const sfx = foil ? '-holo' : '';
+      const pick = ['trend', 'avg30', 'avg7', 'avg', 'low'].map(f => cm[f + sfx]).find(x => typeof x === 'number' && x > 0);
+      if (pick) return { waarde: Math.round(pick * 100) / 100, bron: 'Cardmarket-trendprijs' + (foil ? ' (holo/reverse)' : ''), datum: (cm.updated || '').slice(0, 10) };
+    }
+    const tp = p.tcgplayer;
+    if (tp) {
+      const o = tp[variant === 'reverse' ? 'reverse' : variant] || tp.normal || tp.holo || tp.reverse || Object.values(tp).find(x => x && typeof x === 'object');
+      const usd = o && (o.marketPrice || o.midPrice);
+      if (usd) return { waarde: Math.round(usd * 0.92 * 100) / 100, bron: 'TCGplayer (omgerekend uit dollars)', datum: (tp.updated || '').slice(0, 10) };
+    }
+    return null;
+  }
+  async function kaartOpnieuw(get, ref) {
+    const k = await json(get, TCG(ref.lang) + '/cards/' + encodeURIComponent(ref.id));
+    if (!k) throw new Error('Kaart niet meer gevonden.');
+    return kaartPrijs(k, ref.variant);
+  }
+
+  // ------------------------------------------------------------------ platen
+  const MB = 'https://musicbrainz.org/ws/2/';
+  const mbRelease = r => {
+    const li = (r['label-info'] || [])[0] || {};
+    const formaat = [...new Set((r.media || []).map(m => m.format).filter(Boolean))].join(' + ');
+    const n = (r.media || []).length;
+    return {
+      mbid: r.id, titel: r.title || '', artiest: (r['artist-credit'] || []).map(a => (a.name || (a.artist && a.artist.name) || '') + (a.joinphrase || '')).join('').trim(),
+      jaar: (r.date || '').slice(0, 4), land: r.country || '', label: li.label && li.label.name || '', catno: li['catalog-number'] || '',
+      formaat: (n > 1 && formaat ? n + '× ' : '') + formaat, barcode: r.barcode || '', rg: r['release-group'] && r['release-group'].id || '',
+      plaatje: 'https://coverartarchive.org/release/' + r.id + '/front-250', score: r.score || 0
+    };
+  };
+  const vinylEerst = list => list.sort((a, b) => (/vinyl/i.test(b.formaat) - /vinyl/i.test(a.formaat)) || (b.score - a.score));
+  async function zoekBarcode(get, code) {
+    const r = await json(get, MB + 'release?query=barcode:' + encodeURIComponent(code) + '&fmt=json&limit=15');
+    return vinylEerst(((r && r.releases) || []).map(mbRelease));
+  }
+  /** Vrij zoeken (artiest, titel, of herkende tekst van een hoes). */
+  async function zoekPlaat(get, tekst) {
+    const woorden = String(tekst || '').replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 10);
+    if (!woorden.length) return [];
+    const q = woorden.map(w => w.replace(/'/g, '')).join(' ');
+    const r = await json(get, MB + 'release?query=' + encodeURIComponent(q + ' AND format:vinyl') + '&fmt=json&limit=15');
+    let list = ((r && r.releases) || []).map(mbRelease);
+    if (list.length < 3) {
+      const r2 = await json(get, MB + 'release?query=' + encodeURIComponent(q) + '&fmt=json&limit=15');
+      ((r2 && r2.releases) || []).map(mbRelease).forEach(x => { if (!list.some(y => y.mbid === x.mbid)) list.push(x); });
+    }
+    return vinylEerst(list);
+  }
+  /** Tekst van een hoes: de grootste regels eerst, geen kleine lettertjes. */
+  function leesHoes(scan) {
+    const lines = ((scan && scan.lines) || []).filter(l => l && l.t && /\p{L}{2}/u.test(l.t));
+    return lines.slice().sort((a, b) => (b.h || 0) - (a.h || 0)).slice(0, 4).map(l => l.t).join(' ');
+  }
+  /** Discogs-nummer bij een MusicBrainz-uitgave (of anders van het album als geheel). */
+  async function discogsBij(get, p) {
+    const r = await json(get, MB + 'release/' + p.mbid + '?inc=url-rels&fmt=json');
+    const rel = ((r && r.relations) || []).map(x => x.url && x.url.resource || '').find(u => /discogs\.com\/release\/\d+/.test(u));
+    if (rel) return { type: 'release', id: rel.match(/release\/(\d+)/)[1] };
+    if (!p.rg) return null;
+    const g = await json(get, MB + 'release-group/' + p.rg + '?inc=url-rels&fmt=json');
+    const m = ((g && g.relations) || []).map(x => x.url && x.url.resource || '').find(u => /discogs\.com\/master\/\d+/.test(u));
+    return m ? { type: 'master', id: m.match(/master\/(\d+)/)[1] } : null;
+  }
+  /** Discogs-link of -nummer uit wat iemand plakt. */
+  function leesDiscogs(s) {
+    const m = String(s || '').match(/discogs\.com\/(?:[a-z-]+\/)?(release|master)\/(\d+)/i) || String(s || '').match(/^\s*\[?([rm])(\d+)\]?\s*$/i);
+    if (!m) return null;
+    return { type: /^m/i.test(m[1]) ? 'master' : 'release', id: m[2] };
+  }
+  async function plaatPrijs(get, ref) {
+    if (ref.type === 'master') {
+      const m = await json(get, 'https://api.discogs.com/masters/' + ref.id);
+      if (!m) throw new Error('Niet gevonden op Discogs.');
+      if (m.main_release) {
+        const s = await json(get, 'https://api.discogs.com/marketplace/stats/' + m.main_release + '?curr_abbr=EUR');
+        const lp = s && s.lowest_price;
+        if (lp && lp.value) return { waarde: Math.round(lp.value * 100) / 100, bron: 'Discogs, laagste vraagprijs (eerste uitgave)', datum: '', te: s.num_for_sale || 0 };
+      }
+      return null;
+    }
+    const s = await json(get, 'https://api.discogs.com/marketplace/stats/' + ref.id + '?curr_abbr=EUR');
+    if (!s) throw new Error('Niet gevonden op Discogs.');
+    const lp = s.lowest_price;
+    if (!lp || !lp.value) return null;
+    const eur = lp.currency && lp.currency !== 'EUR' ? null : lp.value;
+    return { waarde: Math.round((eur != null ? eur : lp.value) * 100) / 100, bron: 'Discogs, laagste vraagprijs' + (s.num_for_sale ? ' (' + s.num_for_sale + ' te koop)' : ''), datum: '' };
+  }
+
+  /** Nieuwe waarde voor een item met ref ophalen. */
+  async function prijs(get, ref) {
+    if (!ref) return null;
+    if (ref.bron === 'tcgdex') return kaartOpnieuw(get, ref);
+    if (ref.bron === 'discogs') return plaatPrijs(get, ref);
+    return null;
+  }
+
+  const api = { norm, lijkt, zelfdeNummer, leesKaart, zoekKaart, kaartPrijs, kaartPlaatje, zoekBarcode, zoekPlaat, leesHoes, discogsBij, leesDiscogs, plaatPrijs, prijs, _pauze: PAUZE };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.Zoek = api;
+})(typeof window !== 'undefined' ? window : globalThis);

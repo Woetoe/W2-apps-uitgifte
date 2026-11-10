@@ -111,7 +111,46 @@
           native.notifyAsk();
         });
       }
+    },
+    // Foto herkennen op de telefoon (vanaf native 10): tekstregels met plek en streepjescodes.
+    // wat = 'tekst' | 'code' | 'alles'. Geeft {ok, w, h, lines:[{t,x,y,w,h}], codes:[…]} of null (kan niet).
+    herken: {
+      available: () => !!(native && native.scanImage),
+      foto(dataUrl, wat) {
+        if (!native || !native.scanImage) return Promise.resolve(null);
+        return ask('scan', 60000, id => native.scanImage(id, dataUrl, wat || 'alles'));
+      }
+    },
+    // Iets ophalen bij een van de vaste diensten van de Verzameling (TCGdex, MusicBrainz, Discogs…).
+    // In de app via de app zelf (native 10), anders gewoon fetch. Geeft {status, body} of {status, b64, type}; status 0 = mislukt.
+    async get(url, binary) {
+      if (native && native.httpGet) {
+        const r = await ask('http', 45000, id => native.httpGet(id, url, !!binary));
+        return r || { status: 0, fout: 'geen antwoord' };
+      }
+      try {
+        const r = await fetch(url, { headers: { Accept: binary ? 'image/*' : 'application/json' } });
+        if (!binary) return { status: r.status, body: await r.text() };
+        const b = await r.blob();
+        const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(b); });
+        return { status: r.status, b64, type: b.type };
+      } catch (e) { return { status: 0, fout: navigator.onLine === false ? 'geen internet' : String(e.message || e) }; }
     }
   };
-  let awakeLock = null;
+  let awakeLock = null, seq = 0;
+  // Native vraag met antwoord via een gebeurtenis {type, id, json}
+  function ask(type, timeout, start) {
+    return new Promise(res => {
+      const id = type + (++seq) + '-' + Date.now().toString(36);
+      let t = null;
+      const f = ev => {
+        if (ev.type !== type || ev.id !== id) return;
+        listeners.delete(f); clearTimeout(t);
+        try { res(JSON.parse(ev.json)); } catch (e) { res(null); }
+      };
+      listeners.add(f);
+      t = setTimeout(() => { listeners.delete(f); res(null); }, timeout);
+      try { start(id); } catch (e) { listeners.delete(f); clearTimeout(t); res(null); }
+    });
+  }
 })();

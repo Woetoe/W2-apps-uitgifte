@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Instellingen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+.toggle{border-bottom:1px solid var(--line);padding:12px 0}
+.toggle:last-child{border-bottom:0}
+.toggle b{display:block}
+input[type=file]{display:none}
+.prog{color:var(--muted);font-size:14px;min-height:20px}
+ul.why{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:15px;line-height:1.55}
+.ustat{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ustat .tx{flex:1;min-width:0;line-height:1.35}
+.ustat .tx small{display:block;color:var(--muted);font-size:14px}
+.ustat .btn{flex:none}
+.ustat .bar{margin-top:8px}
+.ustat.new .tx b{color:var(--acc)}
+.ubtns{display:flex;flex-direction:column;gap:6px;flex:none}
+.ustat ol.steps{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--text)}
+.ustat:has(ol.steps){flex-direction:column;align-items:stretch}
+.ustat:has(ol.steps) .ubtns{flex-direction:row}
+.ustat:has(ol.steps) .ubtns .btn{flex:1}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html" aria-label="Terug"></a><h1>Instellingen</h1></div>
+<main class="page" id="app">
+  <h2>Updates</h2>
+  <div class="card" id="updcard">
+    <div class="ustat" id="upd" aria-live="polite"></div>
+    <div class="toggle"><div class="grow"><b>Zelf zoeken bij openen</b><span class="muted small">Hooguit eens per dag. Is er iets nieuws, dan komt er een stipje op het tandwiel.</span></div><button type="button" class="sw" id="auto" aria-label="Zelf zoeken bij openen"></button></div>
+  </div>
+
+  <h2>Slot</h2>
+  <div class="card" id="locks"></div>
+
+  <h2 id="backup">Back-up</h2>
+  <div class="card">
+    <p style="margin-top:0">Eén versleuteld bestand met al je gegevens: reizen, kluis, recepten, aftellers, hardlopen én de standen, instellingen en statistieken van je spellen. Bewaar het bijvoorbeeld in een map in je Google Drive.</p>
+    <p class="muted small" id="last"></p>
+    <div class="btns"><button class="btn" id="make" type="button"></button><button class="btn q" id="restore" type="button"></button></div>
+    <div class="prog" id="prog" aria-live="polite"></div>
+  </div>
+  <div class="card" id="autobk" hidden></div>
+
+  <h2>Ontwikkeling</h2>
+  <a class="row" href="../ontwikkeling/index.html" id="ontw"><span class="ico">🛠</span><span class="grow"><b>Te doen en ideeën</b><span class="sub">Wat je na een update zelf moet regelen, ideeën verzamelen, en wat er in de app zit om te delen</span></span></a>
+
+  <h2>Privacy</h2>
+  <div class="card">
+    <ul class="why">
+      <li>Alles staat alleen op deze telefoon. Er is geen account en geen server.</li>
+      <li>Iemand anders die de app installeert, begint met een lege app.</li>
+      <li>Reizen en de kluis worden versleuteld opgeslagen met een sleutel die de beveiligde chip van je telefoon nooit verlaat.</li>
+      <li>Met het slot aan opent een onderdeel pas na je vingerafdruk of pincode. Na 15 minuten, of als de app langer dan een minuut op de achtergrond staat, gaat het weer dicht. Vanaf Android 11 zit dat slot ook in de chip zelf: zonder ontgrendelen kan zelfs de app het niet lezen.</li>
+      <li>Spellen en andere onderdelen kunnen niet bij Reizen en de Kluis; alleen die twee en Instellingen.</li>
+      <li>Updates zijn digitaal ondertekend. De app installeert niets wat niet van W2 Apps komt.</li>
+      <li>Android zet je gegevens niet in de Google-back-up. Daarvoor is de eigen back-up hierboven.</li>
+      <li>De back-up is versleuteld met een wachtwoord dat jij kiest. Zonder dat wachtwoord is hij niet te openen, ook niet door Google.</li>
+    </ul>
+  </div>
+  <p class="muted small" id="ver" style="text-align:center"></p>
+</main>
+<input type="file" id="pick" accept=".w2backup,application/octet-stream,application/json">
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D;
+$('#back').innerHTML = icon('back');
+$('#make').innerHTML = icon('download') + 'Maken';
+$('#restore').innerHTML = icon('upload') + 'Terugzetten';
+try { const i = JSON.parse(W2Native.updateInfo()); $('#ver').textContent = 'W2 Apps 1.0.' + (i.build || '?'); } catch (e) { $('#ver').textContent = 'W2 Apps · browserversie'; }
+
+/* ------------------------------------------------------------ updates */
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
+(function updates() {
+  const U = window.W2 && W2.update, box = $('#upd'), auto = $('#auto');
+  const setAuto = () => { const on = ls('w2-upd-auto') !== '0'; auto.classList.toggle('on', on); auto.setAttribute('aria-pressed', String(on)); };
+  setAuto();
+  auto.onclick = () => { ls('w2-upd-auto', ls('w2-upd-auto') === '0' ? '1' : '0'); setAuto(); };
+  if (!U || !U.available()) { box.innerHTML = '<div class="tx muted">Bijwerken kan alleen in de app op je telefoon.</div>'; return; }
+  const build = (U.info() || {}).build;
+  const mb = b => (b / 1048576).toFixed(b > 1048576 ? 1 : 2).replace('.', ',') + ' MB';
+  const show = (html, cls) => { box.className = 'ustat ' + (cls || ''); box.innerHTML = html; };
+  const idle = msg => show(`<div class="tx">${msg ? '<b>' + msg + '</b>' : 'Nieuwe spellen of verbeteringen?'}<small>Je hebt versie 1.0.${build || '?'}</small></div><button class="btn q" type="button" data-u="check">Zoeken</button>`);
+  const retry = '<div class="ubtns"><button class="btn q" type="button" data-u="check">Opnieuw</button><button class="btn q" type="button" data-u="web">Downloaden</button></div>';
+  // Foutcode van de app omzetten in gewone taal
+  function why(ev) {
+    const c = String(ev.code || '');
+    if (navigator.onLine === false || c === 'offline') return 'Geen internet. Probeer het straks opnieuw.';
+    if (c === '404') return 'De updatebron is niet te vinden (404). Staat W2-apps-uitgifte op GitHub op openbaar? Je kunt de app ook zelf downloaden.';
+    if (c === 'signature' || c === 'hash') return 'Deze update is niet echt ondertekend door W2 Apps en is daarom niet geïnstalleerd. Probeer het later opnieuw; blijft dit, meld het.';
+    if (c === 'apk-hash') return 'De gedownloade app klopt niet met de ondertekende lijst en is weggegooid. Probeer het later opnieuw.';
+    if (c === 'timeout') return 'De server reageert niet op tijd. Probeer het straks opnieuw.';
+    if (c === 'ssl') return 'Beveiligde verbinding mislukt. Staan datum en tijd van je telefoon goed?';
+    if (/^5\d\d$/.test(c) || c === '429') return 'GitHub heeft even een storing (' + c + '). Probeer het straks opnieuw.';
+    if (c) return 'Er ging iets mis (' + c + '). Probeer opnieuw of download de app zelf.';
+    return 'Check je internet en probeer opnieuw. ' + (ev.message ? '(' + esc(ev.message) + ')' : '');
+  }
+  let dog = 0;
+  U.on(ev => {
+    const s = ev.state, v = esc(ev.version || '');
+    clearTimeout(dog);
+    if (s === 'checking') {
+      show('<div class="tx">Zoeken naar updates…</div>');
+      dog = setTimeout(() => show(`<div class="tx"><b>Geen antwoord</b><small>Het zoeken duurt te lang. Check je internet en probeer opnieuw.</small></div><button class="btn q" type="button" data-u="check">Opnieuw</button>`), 45000);
+    }
+    else if (s === 'none') { ls('w2-upd-new', null); idle('Je hebt de nieuwste versie.'); }
+    else if (s === 'available') { ls('w2-upd-new', ev.version || '?'); show(`<div class="tx"><b>Nieuwe versie ${v}</b><small>${esc(ev.files)} bestand${ev.files === '1' ? '' : 'en'}, ${mb(+ev.bytes)} · je gegevens blijven bewaard</small></div><button class="btn" type="button" data-u="apply">Bijwerken</button>`, 'new'); }
+    else if (s === 'downloading') show(`<div class="tx">Bijwerken… ${esc(ev.pct)}%<div class="bar"><i style="width:${+ev.pct || 0}%"></i></div></div>`, 'new');
+    else if (s === 'ready') { ls('w2-upd-new', null); show(`<div class="tx"><b>Bijgewerkt naar ${v}</b><small>De app start opnieuw…</small></div>`, 'new'); setTimeout(() => U.reload(), 900); }
+    else if (s === 'apk' && (U.info().native || 0) < 7) {
+      // Vanaf native 7 is de app met een nieuwe sleutel ondertekend: eenmalig verwijderen en opnieuw installeren.
+      ls('w2-upd-new', ev.version || '?');
+      show(`<div class="tx"><b>Nieuwe app-versie ${v}: eenmalig opnieuw installeren</b><small>Deze versie heeft een nieuwe, veiligere handtekening. Android laat hem daarom niet over de oude heen installeren.</small>
+        <ol class="steps"><li>Maak hieronder een <b>back-up</b> en bewaar hem in je Drive.</li><li>Tik op <b>Downloaden</b> en download <i>W2-Apps.apk</i>.</li><li>Verwijder de app W2 Apps (lang drukken op het icoon › Verwijderen).</li><li>Open de download en installeer.</li><li>Instellingen › Back-up › <b>Terugzetten</b>.</li></ol></div>
+        <div class="ubtns"><button class="btn" type="button" data-u="backup">Back-up maken</button><button class="btn q" type="button" data-u="web">Downloaden</button></div>`, 'new');
+    }
+    else if (s === 'apk') { ls('w2-upd-new', ev.version || '?'); show(`<div class="tx"><b>Nieuwe app-versie ${v}</b><small>Deze keer wordt de hele app bijgewerkt: gewoon over de oude heen installeren, je hoeft niets te verwijderen. Je gegevens blijven bewaard.</small></div><button class="btn" type="button" data-u="apk">Installeren</button>`, 'new'); }
+    else if (s === 'apk-downloading') show(`<div class="tx">Downloaden… ${esc(ev.pct)}%<div class="bar"><i style="width:${+ev.pct || 0}%"></i></div></div>`, 'new');
+    else if (s === 'apk-permission') show(`<div class="tx"><b>Eenmalig toestaan</b><small>Zet in het scherm dat opent "Toestaan van deze bron" aan, kom terug en tik nog eens op Installeren.</small></div><button class="btn" type="button" data-u="apk">Installeren</button>`, 'new');
+    else if (s === 'apk-ready') show('<div class="tx"><b>Tik op Installeren</b><small>Android vraagt nog één keer of je wilt bijwerken.</small></div>', 'new');
+    else if (s === 'error') show(`<div class="tx"><b>Bijwerken lukte niet</b><small>${why(ev)}</small></div>${retry}`);
+  });
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-u]'); if (!b) return;
+    const u = b.dataset.u;
+    if (u === 'check') { ls('w2-upd-last', String(Date.now())); U.check(); }
+    else if (u === 'apply') { b.disabled = true; U.apply(); }
+    else if (u === 'apk') { b.disabled = true; U.installApk(); }
+    else if (u === 'web') U.openReleases();
+    else if (u === 'backup') $('#make').click();
+  });
+  // Stipje op het tandwiel gezien: meteen de verse stand ophalen. Anders gewoon de knop.
+  if (ls('w2-upd-new')) U.check(); else idle();
+})();
+
+const AREAS = [['reizen', 'Reizen', 'Tickets, boekingscodes en paklijsten'], ['kluis', 'Kluis', 'Je belangrijke documenten']];
+function locks() {
+  const host = $('#locks');
+  if (D.outdated) { UI.outdated(host); return; }
+  if (!D.lock.available()) { host.innerHTML = '<span class="muted">Het slot werkt alleen in de app op je telefoon.</span>'; return; }
+  const st = D.lock.status();
+  host.innerHTML = (st.can === 'none' ? '<div class="notice" style="margin-bottom:8px">Je telefoon heeft geen schermvergrendeling. Stel eerst een pincode, patroon of vingerafdruk in via de instellingen van je telefoon; daarna kun je het slot aanzetten.</div>' : '') +
+    AREAS.map(([k, n, sub]) => `<div class="toggle"><div class="grow"><b>${n}</b><span class="muted small">${sub}</span></div><button type="button" class="sw ${st.areas[k] ? 'on' : ''}" data-area="${k}" aria-label="Slot ${n}" ${st.can !== 'ok' ? 'disabled' : ''}></button></div>`).join('') +
+    (Object.keys(st.areas).length ? `<button class="btn q wide" id="now" type="button" style="margin-top:10px">${icon('lock')}Nu op slot doen</button>
+      <p class="muted small" style="margin:10px 0 0">Haal je de schermvergrendeling van je telefoon weg terwijl een slot aan staat, dan is wat op slot zit alleen nog terug te halen uit je back-up.</p>` : '');
+  $$('[data-area]', host).forEach(b => b.onclick = async () => {
+    const on = !st.areas[b.dataset.area];
+    const r = await D.lock.set(b.dataset.area, on);
+    if (!r.ok && r.state !== 'cancel') toast('Niet gelukt');
+    locks();
+  });
+  const now = $('#now'); if (now) now.onclick = () => { D.lock.lockNow(); toast('Op slot'); };
+}
+locks();
+
+function last() {
+  const t = D.get('backup-last', 0);
+  $('#last').textContent = t ? 'Laatste back-up: ' + new Date(t).toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nog geen back-up gemaakt.';
+}
+last();
+
+// ---------------------------------------------------------------- automatische back-up (vanaf native 9)
+function renderAuto() {
+  const el = $('#autobk'), st = D.backup.autoStatus();
+  if (!st) { el.hidden = true; return; }
+  el.hidden = false;
+  const ready = st.hasFile && st.hasPass;
+  const when = st.last ? new Date(st.last).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+  el.innerHTML = `<div class="toggle"><div class="grow"><b>Automatisch bewaren</b><div class="muted small">Bij het openen van de app, als het weer tijd is, overschrijft de app hetzelfde back-upbestand (bv. in je Drive).</div></div><button type="button" class="sw${st.on ? ' on' : ''}" id="a-on" aria-label="Automatisch bewaren"></button></div>
+    ${st.on ? `<div class="list" style="margin-top:10px">
+      <button class="row" id="a-file" type="button"><span class="ico">📁</span><span class="grow"><b>${st.hasFile ? esc(st.name || 'Bestand gekozen') : 'Kies waar hij komt'}</b><span class="sub">${st.hasFile ? 'Tik om een ander bestand te kiezen' : 'Bijvoorbeeld een map in Google Drive'}</span></span></button>
+      <button class="row" id="a-pass" type="button"><span class="ico">🔑</span><span class="grow"><b>${st.hasPass ? 'Wachtwoord ingesteld' : 'Wachtwoord kiezen'}</b><span class="sub">Nodig om terug te zetten; bewaar het goed</span></span></button>
+      <label class="f">Hoe vaak<select class="in" id="a-days">${[[1, 'Elke dag'], [3, 'Om de drie dagen'], [7, 'Elke week'], [14, 'Om de twee weken']].map(([d, l]) => `<option value="${d}" ${st.dagen === d ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <p class="muted small" style="margin:0">${st.running ? 'Bezig met bewaren…' : st.err ? `<b style="color:var(--danger)">Laatste poging mislukt: ${esc(st.err)}</b>` : when ? 'Laatst automatisch bewaard: ' + esc(when) : ready ? 'Nog niet automatisch bewaard.' : 'Kies een bestand en een wachtwoord.'}${st.note ? '<br>' + esc(st.note) : ''}</p>
+      ${ready ? `<button class="btn q" id="a-now" type="button">${icon('upload')}Nu bewaren</button>` : ''}</div>` : ''}`;
+  $('#a-on').onclick = () => { D.native && W2Native.autoBackupConfig(JSON.stringify({ on: !st.on })); renderAuto(); };
+  const f = $('#a-file'); if (f) f.onclick = () => W2Native.autoBackupChoose();
+  const d = $('#a-days'); if (d) d.onchange = () => { W2Native.autoBackupConfig(JSON.stringify({ dagen: +d.value })); renderAuto(); };
+  const n = $('#a-now'); if (n) n.onclick = async () => { await D.backup.auto(true); toast('Bezig met bewaren…'); setTimeout(renderAuto, 300); };
+  const pw = $('#a-pass'); if (pw) pw.onclick = async () => {
+    const r = await sheet('Wachtwoord automatische back-up', `<p style="margin:0">Minstens ${D.backup.MIN_PASS} tekens, bijvoorbeeld een korte zin. Je hebt het nodig om terug te zetten op een nieuwe telefoon; de app bewaart het versleuteld, maar laat het nooit meer zien.</p>
+      <label class="f">Wachtwoord<input class="in" type="password" name="p1" autocomplete="new-password"></label><label class="f">Nog een keer<input class="in" type="password" name="p2" autocomplete="new-password"></label>`,
+      [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.p1.length < D.backup.MIN_PASS ? 'Minstens ' + D.backup.MIN_PASS + ' tekens.' : f.p1 !== f.p2 ? 'De wachtwoorden zijn niet gelijk.' : '' }], { focus: true }).done;
+    if (r.value !== 'ok') return;
+    toast(W2Native.autoBackupPassword(r.form.p1) === 'ok' ? 'Wachtwoord bewaard' : 'Bewaren lukte niet');
+    renderAuto();
+  };
+}
+renderAuto();
+if (window.W2 && W2.net) W2.net.on(ev => {
+  if (ev.type !== 'autobackup') return;
+  if (ev.state === 'ok') toast('Automatische back-up bewaard');
+  if (ev.state === 'error') toast('Automatische back-up mislukt: ' + (ev.message || ''), 5000);
+  renderAuto();
+});
+
+const prog = t => { $('#prog').textContent = t || ''; };
+$('#make').onclick = async () => {
+  if (D.outdated) return toast('Werk eerst de app bij.');
+  const r = await sheet('Back-up maken', `
+    <p style="margin:0">Kies een wachtwoord van minstens 10 tekens, bijvoorbeeld een korte zin. Dat heb je nodig om de back-up terug te zetten; het staat nergens anders.</p>
+    <label class="f">Wachtwoord<input class="in" name="p1" type="password" autocomplete="new-password"></label>
+    <label class="f">Nog een keer<input class="in" name="p2" type="password" autocomplete="new-password"></label>
+    <span class="muted small">Daarna kies je waar je hem bewaart: kies Drive in het menu om hem in je Google Drive te zetten.</span>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Maken', value: 'ok', check: f => f.p1.length < D.backup.MIN_PASS ? 'Minstens ' + D.backup.MIN_PASS + ' tekens. Een zin van een paar woorden werkt goed.' : f.p1 !== f.p2 ? 'De wachtwoorden zijn niet gelijk.' : '' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  $('#make').disabled = true;
+  try {
+    const st = await D.backup.make(r.form.p1, prog);
+    toast(st === 'ok' ? 'Back-up bewaard' : st === 'cancel' ? 'Geannuleerd' : 'Bewaren lukte niet');
+  } catch (e) { toast('Back-up mislukt: ' + e.message); }
+  $('#make').disabled = false; prog(''); last();
+};
+$('#restore').onclick = () => { if (D.outdated) return toast('Werk eerst de app bij.'); $('#pick').click(); };
+$('#pick').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const r = await sheet('Back-up terugzetten', `
+    <p style="margin:0"><b>${esc(f.name)}</b><br><span class="muted small">Wat in de back-up staat, komt erbij of vervangt wat hier staat met dezelfde naam.</span></p>
+    <label class="f">Wachtwoord<input class="in" name="p" type="password" autocomplete="current-password"></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Terugzetten', value: 'ok', check: f2 => f2.p ? '' : 'Vul het wachtwoord in.' }], { focus: true }).done;
+  if (r.value !== 'ok') return;
+  try {
+    const st = await D.backup.restore(f, r.form.p, prog);
+    toast(st === 'ok' ? 'Teruggezet' : 'Geannuleerd');
+  } catch (err) { toast(err.message); }
+  prog(''); locks();
+};
+</script>
+</body>
+</html>

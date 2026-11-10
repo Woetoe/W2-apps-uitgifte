@@ -81,6 +81,29 @@
     return JSON.parse(dec.decode(pt));
   }
 
+  // ---------------------------------------------------------------- meldingen (app met native 8)
+  // De app kijkt zelf af en toe (± elk kwartier) of de ander iets toevoegde. Daarvoor krijgt hij de ruimte-id en
+  // dezelfde sleutel (afgeleid uit de code, nooit de code zelf); ontsleutelen gebeurt op de telefoon.
+  const N = window.W2Native || null;
+  const canWatch = () => !!(N && N.samenWatch);
+  async function rawKey(code) {
+    const base = await crypto.subtle.importKey('raw', enc.encode('w2-samen:' + code), 'HKDF', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: enc.encode('w2-samen-v1'), info: enc.encode('sleutel') }, base, 256);
+    return b64(bits);
+  }
+  async function syncWatch() {
+    if (!canWatch() || !cfg) return 'n/a';
+    const on = !!cfg.meldingen;
+    if (!on) return N.samenWatch(JSON.stringify({ on: false }));
+    const k = keys || await derive(cfg.code);
+    return N.samenWatch(JSON.stringify({ on: true, url: cfg.url, room: k.room, key: await rawKey(cfg.code), me: cfg.me ? cfg.me.id : '' }));
+  }
+  async function setWatch(on) {
+    cfg.meldingen = !!on;
+    D.set('samen-cfg', cfg);
+    return syncWatch();
+  }
+
   // ---------------------------------------------------------------- toestand
   const listeners = new Set();
   const emptyData = () => Object.fromEntries(KINDS.map(k => [k, {}]));
@@ -380,6 +403,7 @@
     if (!cfg || started) return !!cfg;
     started = true;
     keys = await derive(cfg.code);
+    syncWatch().catch(() => {});
     if (wired) { startStream(); flush(); return true; }
     wired = true;
     addEventListener('online', () => { esFails = 0; backoff = 2000; startStream(); flush(); });
@@ -466,6 +490,7 @@
 
   function leave() {
     stop();
+    try { if (canWatch()) N.samenWatch(JSON.stringify({ on: false })); } catch (e) {}
     cfg = null; keys = null; started = false; synced = false;
     data = emptyData(); queue = []; raw = emptyData();
     ['samen-cfg', 'samen-data', 'samen-queue', 'dash-samen', 'samen-seen', 'samen-last'].forEach(k => { try { localStorage.removeItem('w2d-' + k); } catch (e) {} });
@@ -493,6 +518,9 @@
     on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     start, stop, peek, preview, setup, uploadFile, downloadFile, deleteFile, KINDS, leave, setMe, invite, put, del, update, summary,
     newCode, prettyCode, parseInvite, urlOk, cleanUrl, flush,
+    canWatch, setWatch, get watching() { return !!(cfg && cfg.meldingen); },
+    watchStatus() { try { return JSON.parse(N.samenWatchStatus()); } catch (e) { return {}; } },
+    seen() { try { N && N.samenSeen && N.samenSeen(); } catch (e) {} },
     _derive: derive, _seal: seal, _open: open
   };
 })();

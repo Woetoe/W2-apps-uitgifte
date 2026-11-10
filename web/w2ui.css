@@ -26,7 +26,7 @@ h2 small{font:500 14px var(--f-body);color:var(--muted);margin-left:6px}
 .row:active{transform:scale(.99)}
 .row .grow{flex:1;min-width:0}
 .row b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .sub{color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sub{display:block;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--panel2);flex:none;font-size:20px}
 .row .ico svg{width:22px;height:22px}
 .row .end{color:var(--muted);font-size:14px;text-align:right;flex:none}
@@ -60,6 +60,8 @@ textarea.in{min-height:96px;resize:vertical;line-height:1.4}
 .check.on .box{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .check.on .t{color:var(--muted);text-decoration:line-through}
 .check .t{flex:1}
+.check.pick.on .t{color:var(--text);text-decoration:none}
+.check.pick:not(.on) .t{color:var(--muted)}
 .check .x{border:0;background:transparent;color:var(--muted);width:36px;height:36px;border-radius:10px;cursor:pointer}
 .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--acc);border-radius:4px}

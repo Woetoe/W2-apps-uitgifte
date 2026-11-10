@@ -96,6 +96,7 @@
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
 <script src="sync.js"></script>
+<script src="boodschappen.js"></script>
 <script>
 const { esc, $, $$, icon, sheet, confirm, toast } = UI;
 const D = W2D, S = Samen, app = $('#app');
@@ -110,49 +111,12 @@ const KLEUREN = ['#5ee07a', '#4d8dff', '#ff7eb6', '#ffc83d', '#ff8a3d', '#a76bdc
 const EMOJI = ['🛒', '✅', '🏠', '🎁', '🧳', '🍽️', '🎉', '📝', '🧹', '🐾', '🌱', '💡'];
 const SOORTEN = { boodschappen: 'Boodschappen', todo: 'To-do', lijst: 'Gewone lijst' };
 
-// ---------------------------------------------------------------- boodschappen: categorieën
-const CATS = [
-  ['groente', '🥦', 'Groente & fruit', 'groente|fruit|appel|appels|peer|peren|banaan|bananen|sinaasappel|sinaasappels|mandarijn|mandarijnen|citroen|citroenen|limoen|druif|druiven|aardbei|aardbeien|framboos|frambozen|bessen|blauwe bessen|kiwi|mango|ananas|meloen|watermeloen|avocado|tomaat|tomaten|cherrytomaten|komkommer|paprika|paprika\'s|ui|uien|rode ui|knoflook|prei|wortel|wortels|winterpeen|courgette|aubergine|broccoli|bloemkool|spinazie|sla|ijsbergsla|rucola|andijvie|boerenkool|spruitjes|champignon|champignons|paddenstoelen|aardappel|aardappels|aardappelen|krieltjes|zoete aardappel|sperziebonen|peultjes|maïs|mais|gember|peterselie|basilicum|koriander|bieslook|munt|verse kruiden|lente-ui|bosui|radijs|selderij|bleekselderij|venkel|pompoen|bietjes|rabarber|granaatappel|vijgen|pruimen|perzik|nectarine|kersen|salade|roerbakgroente|soepgroente'],
-  ['brood', '🍞', 'Brood & bakkerij', 'brood|bruinbrood|witbrood|volkoren|stokbrood|baguette|croissant|croissants|beschuit|crackers|knäckebröd|krentenbollen|bolletjes|broodjes|pistolets|wraps|wrap|tortilla|tortilla\'s|pita|naan|ontbijtkoek|tijgerbrood|afbakbroodjes'],
-  ['zuivel', '🧀', 'Zuivel & eieren', 'melk|halfvolle melk|karnemelk|yoghurt|kwark|vla|room|slagroom|kookroom|crème fraîche|creme fraiche|zure room|boter|roomboter|margarine|halvarine|kaas|geraspte kaas|mozzarella|feta|parmezaan|brie|camembert|geitenkaas|roomkaas|philadelphia|cottage cheese|ei|eieren|skyr|havermelk|sojamelk|amandelmelk|mascarpone|ricotta|griekse yoghurt'],
-  ['vlees', '🥩', 'Vlees, vis & vega', 'vlees|gehakt|kip|kipfilet|kippendijen|drumsticks|rundvlees|biefstuk|steak|varkensvlees|speklapjes|spekjes|bacon|ham|rookvlees|salami|chorizo|worst|worstjes|rookworst|braadworst|hamburger|hamburgers|shoarma|gyros|schnitzel|karbonade|spareribs|vis|zalm|tonijn|kabeljauw|pangasius|garnalen|mosselen|haring|makreel|vegaburger|tofu|tempeh|falafel|kipstukjes|vegetarische|filet americain|beleg'],
-  ['voorraad', '🥫', 'Voorraad', 'pasta|spaghetti|macaroni|penne|fusilli|lasagne|lasagnebladen|tagliatelle|noedels|mie|rijst|basmati|zilvervliesrijst|couscous|quinoa|bulgur|bloem|meel|zelfrijzend bakmeel|suiker|basterdsuiker|poedersuiker|zout|peper|kruiden|paprikapoeder|kerrie|olie|olijfolie|zonnebloemolie|azijn|ketchup|mayonaise|mayo|mosterd|sambal|sojasaus|ketjap|pesto|tomatenpuree|passata|gepelde tomaten|tomatenblokjes|saus|pastasaus|soep|bouillon|bouillonblokjes|kikkererwten|linzen|kidneybonen|bonen|pindakaas|jam|hagelslag|chocopasta|nutella|honing|stroop|muesli|cornflakes|havermout|cruesli|granola|noten|pinda\'s|rozijnen|koffie|koffiebonen|koffiepads|koffiecups|thee|bakpoeder|gist|vanillesuiker|cacao|kokosmelk|tacos|taco\'s|kruidenmix|boemboe|blikje|blik'],
-  ['snacks', '🍪', 'Snacks & snoep', 'chips|borrelnootjes|nootjes|koek|koekjes|snoep|drop|chocola|chocolade|reep|popcorn|toastjes|zoutjes|stroopwafels|mueslirepen|kauwgom|dipsaus|tortillachips|nacho\'s'],
-  ['diepvries', '🧊', 'Diepvries', 'diepvries|ijs|ijsjes|ijsblokjes|pizza|pizza\'s|patat|friet|frites|kroketten|bitterballen|frikandellen|loempia|loempia\'s|diepvriesgroente'],
-  ['drinken', '🥤', 'Drinken', 'water|spa|bruiswater|frisdrank|cola|fanta|sprite|sinas|ice tea|icetea|sap|jus|jus d\'orange|appelsap|sinaasappelsap|limonade|siroop|ranja|bier|biertjes|wijn|rode wijn|witte wijn|rosé|prosecco|champagne|radler|energiedrank|tonic'],
-  ['huishouden', '🧻', 'Huishouden', 'wc-papier|wcpapier|toiletpapier|keukenpapier|keukenrol|tissues|zakdoekjes|afwasmiddel|vaatwastabletten|vaatwasblokjes|wasmiddel|wasverzachter|allesreiniger|schoonmaakmiddel|bleek|sponsjes|spons|vuilniszakken|afvalzakken|pedaalemmerzakken|aluminiumfolie|vershoudfolie|bakpapier|diepvrieszakjes|batterijen|lampje|kaarsen|lucifers|ontkalker|wc-blokjes|vaatdoekje|theedoek|glorix'],
-  ['verzorging', '🧴', 'Verzorging', 'tandpasta|tandenborstel|shampoo|conditioner|douchegel|zeep|handzeep|deodorant|deo|scheermesjes|scheerschuim|maandverband|tampons|inlegkruisjes|wattenschijfjes|wattenstaafjes|bodylotion|zonnebrand|pleisters|paracetamol|ibuprofen|vitamines|lenzenvloeistof|mondwater|flosdraad']
-].map(([id, emoji, naam, kw]) => ({ id, emoji, naam, kw: kw.split('|') }));
-CATS.push({ id: 'overig', emoji: '📦', naam: 'Overig', kw: [] });
-const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
-
-function guessCat(text) {
-  const t = text.toLowerCase();
-  const hist = (D.get('samen-hist', {}) || {})[t];
-  if (hist && hist.cat) return hist.cat;
-  const words = t.split(/[^a-zà-ÿ'-]+/).filter(Boolean);
-  let best = 'overig', score = 0;
-  for (const c of CATS) for (const k of c.kw) {
-    let hit = false;
-    if (k.includes(' ')) hit = t.includes(k);
-    else hit = words.some(w => w === k || (k.length >= 4 && (w.startsWith(k) || w.endsWith(k))));
-    if (hit && k.length > score) { best = c.id; score = k.length; }
-  }
-  return best;
-}
-/** "2 melk", "2x melk", "500 g gehakt", "eieren 2x" → {tekst, aantal} */
-function parseQty(s) {
-  s = s.trim().replace(/\s+/g, ' ');
-  let m = /^(\d+(?:[.,]\d+)?)\s*(x|st|stuks?|g|gr|gram|kg|kilo|l|liter|ml|cl|pak|pakken|zak|zakken|blik|blikken|fles|flessen|bos|bossen|doos|dozen|pot|potten|rol|rollen|stuk)?\.?\s+(.+)$/i.exec(s);
-  if (m) return { tekst: m[3], aantal: m[1] + (m[2] && m[2].toLowerCase() !== 'x' ? ' ' + m[2].toLowerCase() : '') };
-  m = /^(.+?)\s+(?:(\d+)\s*x|x\s*(\d+))$/i.exec(s);
-  if (m) return { tekst: m[1], aantal: m[2] || m[3] };
-  return { tekst: s, aantal: '' };
-}
-const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+// ---------------------------------------------------------------- boodschappen (gedeeld met Recepten: boodschappen.js)
+const { CATS, CAT, guessCat, parseQty, cap, remember } = Boodschappen;
 
 // ---------------------------------------------------------------- hulpjes
 const me = () => S.cfg && S.cfg.me;
+const anderen = () => { const n = leden().filter(x => x.id !== me().id).map(x => x.naam); return n.length === 1 ? n[0] : 'iemand anders'; };
 const leden = () => Object.entries(S.data.leden).map(([id, m]) => Object.assign({ id }, m)).sort((a, b) => (b.id === me().id) - (a.id === me().id) || (a.sinds || 0) - (b.sinds || 0));
 const lid = id => S.data.leden[id];
 const naamVan = id => id === me().id ? 'jij' : (lid(id) ? lid(id).naam : 'iemand');
@@ -202,6 +166,7 @@ function route() {
   const next = !S.cfg ? { kind: 'setup' } : m && S.data.lijsten[m[1]] ? { kind: 'lijst', id: m[1] } : { kind: 'home' };
   if (view && view.kind === 'lijst' && (next.kind !== 'lijst' || next.id !== view.id)) markSeen(view.id);
   view = next;
+  if (view.kind !== 'setup') S.seen();
   $('#fab').hidden = view.kind !== 'home';
   $('#menu').hidden = view.kind === 'setup';
   $('#back').setAttribute('href', view.kind === 'lijst' ? '#' : '../index.html#samen');
@@ -216,6 +181,7 @@ window.UIback = () => { if (view && view.kind === 'lijst') { location.hash = '';
 
 S.on(what => {
   renderStatus();
+  if (what === 'data' && !document.hidden && view && view.kind !== 'setup') S.seen();   // live gezien: geen melding meer nodig
   if (what === 'status' || !view) return;
   if (view.kind === 'home') renderHome();
   else if (view.kind === 'lijst') { if (!S.data.lijsten[view.id]) { location.hash = ''; return; } renderLijst(false); }
@@ -427,14 +393,6 @@ function addItem(l, raw) {
   renderChips(l);
 }
 
-function remember(tekst, cat) {
-  const h = D.get('samen-hist', {}) || {};
-  const k = tekst.toLowerCase();
-  h[k] = { tekst, cat, n: ((h[k] && h[k].n) || 0) + 1, t: Date.now() };
-  const keys = Object.keys(h);
-  if (keys.length > 400) keys.sort((a, b) => h[a].t - h[b].t).slice(0, keys.length - 400).forEach(x => delete h[x]);
-  D.set('samen-hist', h);
-}
 
 function renderChips(l) {
   const host = $('#chips'); if (!host) return;
@@ -629,10 +587,23 @@ function settingsSheet() {
     <div class="card" style="padding:4px 14px">${m.map(x => `<div class="mrow">${av(x.id)}<b>${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</b></div>`).join('')}</div>
     <label class="f">Jouw naam<input class="in" name="naam" value="${esc(me().naam)}" maxlength="24"></label>
     <div class="colors" id="mycol">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === me().kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>
+    ${S.canWatch() ? `<div class="toggle"><div class="grow"><b>Meldingen</b><span class="muted small">Als ${esc(anderen())} iets op een lijst zet. De app kijkt ongeveer elk kwartier; ligt je telefoon lang stil, dan soms later.</span></div><button type="button" class="sw ${S.watching ? 'on' : ''}" id="s-notif" aria-label="Meldingen"></button></div>`
+      : W2.inApp ? `<div class="muted small">Meldingen als de ander iets toevoegt: werkt vanaf de nieuwe app-versie (Instellingen › Updates).</div>` : ''}
     <div class="muted small">Database: ${esc(S.cfg.url.replace('https://', ''))}</div>
     <button class="btn danger wide" type="button" id="s-leave">Ontkoppelen op deze telefoon</button>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
   let kleur = me().kleur;
+  const nt = sh.el.querySelector('#s-notif');
+  if (nt) nt.addEventListener('click', async () => {
+    const want = !nt.classList.contains('on');
+    if (want) {
+      const st = await W2.notify.ask();
+      if (st !== 'ok') { toast(st === 'blocked' || st === 'off' ? 'Meldingen staan uit voor W2 Apps. Zet ze aan in het scherm dat net openging en probeer opnieuw.' : 'Zonder toestemming voor meldingen kan het niet.', 5000); return; }
+    }
+    const r = await S.setWatch(want);
+    nt.classList.toggle('on', want && r === 'ok');
+    if (want) toast(r === 'ok' ? 'Je krijgt een melding als ' + anderen() + ' iets toevoegt.' : 'Aanzetten lukte niet (' + r + ').', 4000);
+  });
   sh.el.addEventListener('click', async e => {
     const c = e.target.closest('#mycol [data-c]');
     if (c) { kleur = c.dataset.c; $$('#mycol button', sh.el).forEach(b => b.classList.toggle('on', b === c)); }

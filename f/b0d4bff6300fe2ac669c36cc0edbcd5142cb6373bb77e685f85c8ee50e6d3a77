@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Backgammon</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Reisbackgammon: een leren koffertje met groen vilt, bot- en bloedrode punten, messing en ivoor schijven. */
+:root{
+  --room:#1c1310; --room-2:#271a15; --leather:#3b2419; --leather-2:#4a2e20; --stitch:#c99a5b;
+  --felt:#143d30; --felt-2:#1a4a3b; --bone:#e6d8b8; --blood:#8f2d2b;
+  --brass:#e3b04b; --brass-deep:#a97a22; --ivory:#f4ecda; --ivory-deep:#b9ad93;
+  --text:#f4ecda; --muted:#b9a68c; --line:#5b3d2c; --good:#7fd19b; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(14px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.small{font-size:14px}
+/* knoppen */
+.btn{border:0;border-radius:14px;padding:15px 18px;font-weight:700;font-size:17px;background:var(--brass);color:#2a1a08;
+  box-shadow:0 4px 0 var(--brass-deep);transition:transform .07s,box-shadow .07s;min-height:52px}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--brass-deep)}
+.btn:disabled{opacity:.4;box-shadow:none}
+.btn.quiet{background:var(--leather-2);color:var(--text);box-shadow:0 4px 0 #2a1912}
+.btn.quiet:active{box-shadow:0 2px 0 #2a1912}
+.btn.ivory{background:var(--ivory);color:#2a1a08;box-shadow:0 4px 0 var(--ivory-deep)}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+/* ---------- startscherm ---------- */
+.home{gap:22px}
+.home-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hero{display:flex;flex-direction:column;gap:10px;padding-top:6px}
+.hero h1{font-size:46px;line-height:.95}
+.rules-line{color:var(--muted)}
+.case-mini{height:110px;border-radius:16px;background:var(--leather);padding:9px;position:relative;
+  box-shadow:inset 0 0 0 1px #00000040}
+.case-mini::before{content:"";position:absolute;inset:4px;border-radius:12px;border:1.5px dashed var(--stitch);opacity:.55;pointer-events:none}
+.case-mini svg{width:100%;height:100%;display:block;border-radius:8px}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:76px}
+.choice .ic{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--leather-2)}
+.choice .ic svg{width:24px;height:24px}
+.resume{display:flex;gap:8px;margin-top:-2px}
+.resume .btn{flex:1;padding:11px;min-height:44px;font-size:15px}
+/* ---------- lobby ---------- */
+.lobby{gap:18px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:700}
+.input{background:var(--room-2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:17px;-webkit-user-select:text;user-select:text}
+.input:focus{outline:none;border-color:var(--brass)}
+.tip{background:var(--room-2);border-left:3px solid var(--stitch);border-radius:6px 12px 12px 6px;padding:12px 14px;color:var(--muted);font-size:15px}
+.tip b{color:var(--text)}
+.found{display:flex;flex-direction:column;gap:8px}
+.waiting{display:flex;align-items:center;gap:12px;padding:14px 0}
+.pulse{width:14px;height:14px;border-radius:50%;background:var(--brass);animation:pulse 1.2s ease-in-out infinite;flex:none}
+@keyframes pulse{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+.err{color:var(--warn);font-weight:600}
+/* ---------- spel ---------- */
+.game{gap:8px}
+.bar-top{display:flex;align-items:center;gap:8px}
+.bar-top .info{flex:1;text-align:center;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.player{display:flex;align-items:center;gap:10px;padding:6px 4px;font-variant-numeric:tabular-nums}
+.chk{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 3px #0000002a}
+.chk.me{background:var(--brass)}
+.chk.op{background:var(--ivory)}
+.player .nm{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .pip{color:var(--muted);font-size:14px}
+.player .sc{font-family:var(--f-display);font-weight:800;font-size:22px;min-width:1.4ch;text-align:right}
+.player.turn .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-left:8px;vertical-align:middle}
+.cube{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 5px;border-radius:7px;background:var(--ivory);color:#2a1a08;font-weight:800;font-size:14px;box-shadow:0 2px 0 var(--ivory-deep)}
+.case{background:var(--leather);border-radius:18px;padding:8px;position:relative;box-shadow:0 10px 30px #00000066, inset 0 0 0 1px #00000040}
+.case::before{content:"";position:absolute;inset:4px;border-radius:14px;border:1.5px dashed var(--stitch);opacity:.5;pointer-events:none}
+#board{display:block;width:100%;height:auto;touch-action:manipulation}
+.controls{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.status{text-align:center;min-height:24px;font-weight:600}
+.status.wait{color:var(--muted);font-weight:500}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.netlost{background:#5a1f1a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost button{border:0;background:var(--ivory);color:#2a1a08;border-radius:10px;padding:9px 12px;font-weight:700}
+/* bord-svg */
+.pt-hit{fill:transparent}
+.target{fill:var(--brass);opacity:.38}
+.target-dot{fill:var(--brass)}
+.src-ring{fill:none;stroke:var(--good);stroke-width:2.5}
+.sel-ring{fill:none;stroke:#fff;stroke-width:3}
+.last-ring{fill:none;stroke:#ffffff;stroke-width:1.5;stroke-dasharray:3 3;opacity:.55}
+/* ---------- vellen ---------- */
+.scrim{position:fixed;inset:0;background:#0a0605b3;z-index:20;display:flex;align-items:flex-end;justify-content:center;
+  padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;
+  -webkit-user-select:none;user-select:none}
+.group{display:flex;flex-direction:column;gap:8px}
+.group > .t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--brass);color:#2a1a08}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--ivory);transition:transform .15s}
+.menu-list{display:flex;flex-direction:column;gap:8px}
+.menu-list .btn{width:100%}
+.result{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:6px 0}
+.result h2{font-size:34px;line-height:1}
+.result .pts{font-family:var(--f-display);font-weight:800;font-size:56px;color:var(--brass);line-height:1}
+.scoreline{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.rules-help ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:15px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../w2.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const E = window.BGE, BAR = E.BAR, OFF = E.OFF;
+const app = document.getElementById('app');
+const NET = window.W2 && W2.net;
+
+/* ================= instellingen ================= */
+const SKEY = 'bg-settings';
+const defaults = { variant: 'cube', matchLen: 5, gammons: true, crawford: true, level: 'normal', sound: true, vibrate: true, hints: true, name: '' };
+let S = Object.assign({}, defaults);
+try { Object.assign(S, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) {}
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+function rulesNow() {
+  return { cube: S.variant !== 'simple', gammons: !!S.gammons, match: S.variant === 'match' ? S.matchLen : 0, crawford: !!S.crawford };
+}
+function rulesText(r) {
+  if (r.match) return `Wedstrijd tot ${r.match} punten${r.crawford ? ', Crawford-regel' : ''}`;
+  if (r.cube) return `Losse spellen met verdubbelkubus${r.gammons ? '' : ', gammon telt niet'}`;
+  return `Losse spellen zonder kubus${r.gammons ? ', gammon telt dubbel' : ''}`;
+}
+
+/* ================= opslag per spelvorm ================= */
+const GKEY = m => 'bg-game-' + m;
+function loadGame(mode) { try { const g = JSON.parse(localStorage.getItem(GKEY(mode)) || 'null'); return g && g.board ? g : null; } catch (e) { return null; } }
+function saveGame(g) { try { localStorage.setItem(GKEY(g.mode), JSON.stringify(g)); } catch (e) {} }
+function dropGame(mode) { try { localStorage.removeItem(GKEY(mode)); } catch (e) {} }
+const inProgress = g => g && g.phase !== 'matchover';
+
+/* ================= toestand ================= */
+let G = null;               // huidig spel
+let view = 'home';          // home | lobby | game
+const ui = { sel: null, sheet: null, cpuToken: 0, err: '' };
+const net = {
+  role: localStorage.getItem('w2-net-role') || localStorage.getItem('bg-net-role') || null, // host | join
+  status: 'idle',           // idle | hosting | searching | connecting | connected | lost
+  found: new Map(), peer: '', error: ''
+};
+const me = () => (G && G.mode === 'net' ? (net.role === 'join' ? 1 : 0) : 0);
+
+/* ================= geluid en trillen ================= */
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sClack = () => { tone(180, 0.06, 'triangle', 0.25); tone(90, 0.08, 'sine', 0.2, 0.01); };
+const sDice = () => { for (let i = 0; i < 5; i++) tone(260 + Math.random() * 300, 0.04, 'square', 0.04, i * 0.05); };
+const sHit = () => { tone(140, 0.15, 'sawtooth', 0.12); };
+const sWin = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+const sTurn = () => tone(740, 0.12, 'sine', 0.08);
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+/* ================= spelverloop ================= */
+function uid() { return Date.now().toString(36) + E.rnd(1e6).toString(36); }
+
+function newMatch(mode, names) {
+  G = { v: 1, gid: uid(), mode, rules: rulesNow(), names, score: [0, 0], gameNo: 0, crawUsed: false, seq: 0 };
+  newGame();
+  return G;
+}
+function newGame() {
+  const r = G.rules;
+  G.board = E.newBoard();
+  G.cube = { value: 1, owner: -1 };
+  G.result = null; G.last = null; G.played = [];
+  G.crawford = false;
+  if (r.match && r.crawford && !G.crawUsed && (G.score[0] === r.match - 1 || G.score[1] === r.match - 1)) {
+    G.crawford = true; G.crawUsed = true;
+  }
+  let a, b; do { a = E.rollDie(); b = E.rollDie(); } while (a === b);
+  G.opening = [a, b];       // a = speler 0, b = speler 1
+  G.turn = a > b ? 0 : 1;
+  G.dice = [a, b];
+  G.start = E.clone(G.board);
+  G.phase = 'move';
+  G.gameNo++;
+  ui.sel = null;
+}
+function actor() { return G.phase === 'double' ? 1 - G.turn : G.turn; }
+function isCpu(pl) { return G.mode === 'cpu' && pl === 1; }
+function isMine(pl) {
+  if (G.mode === 'local') return true;
+  if (G.mode === 'cpu') return pl === 0;
+  return pl === me() && net.status === 'connected';
+}
+function canDouble(pl) {
+  const r = G.rules;
+  if (!r.cube || G.crawford || G.phase !== 'roll' || G.turn !== pl) return false;
+  if (G.cube.owner !== -1 && G.cube.owner !== pl) return false;
+  if (G.cube.value >= 64) return false;
+  if (r.match && G.score[pl] + G.cube.value >= r.match) return false; // heeft geen zin meer
+  return true;
+}
+
+let legalCache = { key: '', val: null };
+function legal() {
+  if (!G || !G.dice || G.phase !== 'move') return { seqs: [], maxLen: 0 };
+  const key = G.gid + '|' + G.start.p.join(',') + G.start.bar + G.start.off + '|' + G.turn + '|' + G.dice.join(',');
+  if (legalCache.key !== key) legalCache = { key, val: E.legalSequences(G.start, G.turn, G.dice) };
+  return legalCache.val;
+}
+function rem() { return E.remaining(legal().seqs, G.played); }
+function turnDone() { return G.played.length >= legal().maxLen; }
+
+function commit(opts) {
+  G.seq++;
+  saveGame(G);
+  if (G.mode === 'net' && net.status === 'connected' && !(opts && opts.silent)) NET.send({ t: 'state', s: G });
+  render();
+  schedule();
+}
+
+function doRoll() {
+  if (G.phase !== 'roll') return;
+  G.dice = [E.rollDie(), E.rollDie()];
+  G.start = E.clone(G.board); G.played = []; G.phase = 'move'; ui.sel = null;
+  sDice(); buzz(20);
+  commit();
+}
+function doPath(path) {
+  const pl = G.turn;
+  let hit = false;
+  for (const m of path) { G.board = E.applyMove(G.board, pl, m); G.played.push(m); if (m.hit) hit = true; }
+  ui.sel = null;
+  if (hit) { sHit(); buzz([30, 30, 30]); } else { sClack(); buzz(12); }
+  if (G.board.off[pl] === 15) return finish(pl, false);
+  // nog een schijf op de bar? dan meteen die weer selecteren
+  commit();
+}
+function undo() {
+  if (!G.played.length) return;
+  G.played.pop();
+  let b = E.clone(G.start);
+  for (const m of G.played) b = E.applyMove(b, G.turn, m);
+  G.board = b; ui.sel = null; sClack();
+  commit();
+}
+function endTurn() {
+  G.last = { pl: G.turn, moves: G.played.slice(), dice: G.dice };
+  G.turn = 1 - G.turn; G.dice = null; G.played = []; G.phase = 'roll'; ui.sel = null;
+  commit();
+  if (isMine(G.turn) && G.mode !== 'local') { sTurn(); buzz(25); }
+}
+function offerDouble() { if (!canDouble(G.turn)) return; G.phase = 'double'; tone(500, 0.2, 'triangle', 0.1); commit(); }
+function take() { G.cube = { value: G.cube.value * 2, owner: 1 - G.turn }; G.phase = 'roll'; commit(); }
+function drop() { finish(G.turn, true); }
+function finish(winner, dropped) {
+  const kind = dropped ? 1 : (G.rules.gammons ? E.winKind(G.board, winner) : 1);
+  const pts = kind * G.cube.value;
+  G.score[winner] += pts;
+  G.result = { winner, kind, pts, dropped };
+  G.phase = G.rules.match && G.score[winner] >= G.rules.match ? 'matchover' : 'gameover';
+  G.last = { pl: G.turn, moves: G.played.slice(), dice: G.dice };
+  if (isMine(winner) || G.mode === 'local') { sWin(); buzz([60, 40, 60, 40, 160]); } else { tone(200, 0.4, 'triangle', 0.1); }
+  ui.sheet = 'result';
+  commit();
+}
+function nextGame() { ui.sheet = null; newGame(); commit(); }
+function rematch() {
+  ui.sheet = null;
+  const mode = G.mode, names = G.names.slice();
+  newMatch(mode, names);
+  commit();
+}
+
+/* ================= computer ================= */
+function schedule() {
+  if (!G || view !== 'game' || G.mode !== 'cpu') return;
+  const a = actor();
+  if (!isCpu(a) || G.phase === 'gameover' || G.phase === 'matchover') return;
+  const token = ++ui.cpuToken, gid = G.gid;
+  const still = () => token === ui.cpuToken && G && G.gid === gid && view === 'game';
+  const lvl = S.level;
+  if (G.phase === 'roll') {
+    setTimeout(() => {
+      if (!still()) return;
+      if (canDouble(1) && E.aiShouldDouble(G.board, 1, lvl)) offerDouble(); else doRoll();
+    }, 700);
+  } else if (G.phase === 'double') {
+    setTimeout(() => { if (still()) (E.aiShouldTake(G.board, 1, lvl) ? take() : drop()); }, 1100);
+  } else if (G.phase === 'move') {
+    // computer speelt zijn zetten één voor één, zodat je ze kunt volgen
+    if (G.played.length) { G.played = []; G.board = E.clone(G.start); }
+    const seq = E.chooseMove(G.start, 1, G.dice, lvl);
+    let k = 0;
+    const step = () => {
+      if (!still()) return;
+      if (k < seq.length) {
+        const m = seq[k++];
+        G.board = E.applyMove(G.board, 1, m); G.played.push(m);
+        if (m.hit) { sHit(); buzz([30, 30, 30]); } else sClack();
+        if (G.board.off[1] === 15) { finish(1, false); return; }
+        G.seq++; saveGame(G); render();
+        setTimeout(step, 520);
+      } else {
+        setTimeout(() => { if (still()) endTurn(); }, seq.length ? 450 : 1300);
+      }
+    };
+    setTimeout(step, 650);
+  }
+}
+
+/* ================= twee telefoons ================= */
+let unlisten = null;
+function netListen() {
+  if (!NET || unlisten) return;
+  unlisten = NET.on(ev => {
+    switch (ev.type) {
+      case 'hosting': net.status = 'hosting'; net.error = ''; break;
+      case 'searching': net.status = 'searching'; net.error = ''; break;
+      case 'found': net.found.set(ev.id, ev.name); break;
+      case 'lost': net.found.delete(ev.id); break;
+      case 'connecting': net.status = 'connecting'; net.peer = ev.name || net.peer; break;
+      case 'connected':
+        net.status = 'connected'; net.peer = ev.name || net.peer; net.error = ''; net.found.clear();
+        onNetConnected(); return;
+      case 'disconnected':
+        net.status = 'lost'; buzz([80, 60, 80]); break;
+      case 'stopped': net.status = 'idle'; break;
+      case 'error':
+        net.error = NET.explain(ev);
+        if (net.status !== 'connected') net.status = 'idle';
+        break;
+      case 'message': {
+        let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+        onNetMessage(msg); return;
+      }
+    }
+    render();
+  });
+}
+function myName() { return (S.name || '').trim() || (localStorage.getItem('w2-name') || '').trim() || 'Speler'; }
+function startHost() { net.role = 'host'; localStorage.setItem('bg-net-role', 'host'); localStorage.setItem('w2-net-role', 'host'); net.error = ''; net.status = 'hosting'; NET.host(myName()); render(); }
+function startJoin() { net.role = 'join'; localStorage.setItem('bg-net-role', 'join'); localStorage.setItem('w2-net-role', 'join'); net.error = ''; net.found.clear(); net.status = 'searching'; NET.join(myName()); render(); }
+function onNetConnected() {
+  NET.send({ t: 'here', game: 'backgammon', name: myName() });
+  if (net.role === 'host') {
+    const saved = loadGame('net');
+    if (inProgress(saved) && saved.names[1] === net.peer) G = saved;  // verder waar we waren
+    else newMatch('net', [myName(), net.peer || 'Tegenstander']);
+    view = 'game';
+    G.seq++; saveGame(G);
+    NET.send({ t: 'state', s: G });
+  }
+  // wie meedoet wacht op de stand van de host
+  render();
+}
+function onNetMessage(msg) {
+  if (msg.t === 'here') {
+    if (msg.game === 'backgammon') {
+      if (!msg.ack) NET.send({ t: 'here', game: 'backgammon', ack: true, name: myName() });
+      if (net.role === 'host') {
+        const saved = G && G.mode === 'net' ? G : loadGame('net');
+        if (inProgress(saved)) { G = saved; view = 'game'; NET.send({ t: 'state', s: G }); }
+        else { newMatch('net', [myName(), msg.name || net.peer || 'Tegenstander']); view = 'game'; G.seq++; saveGame(G); NET.send({ t: 'state', s: G }); }
+        render();
+      }
+    }
+    return;
+  }
+  if (msg.t === 'state' && msg.s) {
+    const inc = msg.s;
+    const local = G && G.mode === 'net' ? G : loadGame('net');
+    if (local && local.gid === inc.gid && local.seq > inc.seq) {
+      // wij zijn verder in hetzelfde spel (bv. na wegvallen verbinding): stuur onze stand terug
+      G = local; view = 'game'; saveGame(G);
+      NET.send({ t: 'state', s: G });
+      render();
+      return;
+    }
+    const prevTurn = G && G.mode === 'net' ? actor() : -1;
+    G = inc; saveGame(G);
+    if (view === 'lobby') view = 'game';
+    if (G.phase === 'gameover' || G.phase === 'matchover') ui.sheet = 'result';
+    else if (ui.sheet === 'result') ui.sheet = null;
+    const a = actor();
+    if (a === me() && prevTurn !== a && G.phase !== 'gameover' && G.phase !== 'matchover') { sTurn(); buzz(25); }
+    else if (G.played.length) sClack();
+    render();
+  }
+}
+
+/* ================= tekenen: bord ================= */
+const VW = 360, VH = 470, M = 8, RH = 30, BAND = 44, COLW = 164, TRI = 150;
+const YB = M + 6 * RH;                // begin band
+const YB2 = YB + BAND;                // begin onderste helft
+const TRAY_Y = YB2 + 6 * RH + 8;
+function nOf(i) { return me() === 0 ? i + 1 : 24 - i; }
+function iOf(n) { return me() === 0 ? n - 1 : 24 - n; }
+function geo(n) {
+  const right = n <= 12;
+  let r, top;
+  if (n <= 6) { r = 6 - n; top = false; }
+  else if (n <= 12) { r = 12 - n; top = true; }
+  else if (n <= 18) { r = n - 13; top = true; }
+  else { r = n - 19; top = false; }
+  const y = top ? M + r * RH : YB2 + r * RH;
+  return { right, y };
+}
+function checkerXY(n, k) {
+  const g = geo(n);
+  const cx = g.right ? VW - M - 15 - k * 29 : M + 15 + k * 29;
+  return { cx, cy: g.y + 15 };
+}
+function chk(cx, cy, mine, label, extra) {
+  const fill = mine ? 'var(--brass)' : 'var(--ivory)';
+  const rim = mine ? 'var(--brass-deep)' : 'var(--ivory-deep)';
+  return `<g ${extra || ''}><circle cx="${cx}" cy="${cy + 1.5}" r="13.5" fill="#00000055"/>
+    <circle cx="${cx}" cy="${cy}" r="13.5" fill="${fill}" stroke="${rim}" stroke-width="1.5"/>
+    <circle cx="${cx}" cy="${cy}" r="8.5" fill="none" stroke="${rim}" stroke-width="1" opacity=".7"/>
+    ${label ? `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-family="Figtree" font-weight="800" font-size="14" fill="#2a1a08">${label}</text>` : ''}</g>`;
+}
+function dieSVG(x, y, s, v, mine, used) {
+  const fill = mine ? 'var(--brass)' : 'var(--ivory)';
+  const P = { 1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]], 4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]],
+    5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]], 6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]] }[v];
+  return `<g opacity="${used ? 0.28 : 1}"><rect x="${x}" y="${y + 2}" width="${s}" height="${s}" rx="${s * .2}" fill="#00000055"/>
+    <rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * .2}" fill="${fill}"/>
+    ${P.map(([a, b]) => `<circle cx="${x + a * s}" cy="${y + b * s}" r="${s * .095}" fill="#2a1a08"/>`).join('')}</g>`;
+}
+
+function boardSVG() {
+  const b = G.board, mine = me(), opp = 1 - mine;
+  const moving = G.phase === 'move' && isMine(G.turn);
+  const r = moving ? rem() : [];
+  const srcs = moving ? E.sources(r, G.played.length) : new Set();
+  // staat er een eigen schijf op de bar, dan is die automatisch gekozen
+  if (moving && srcs.has(BAR)) ui.sel = BAR;
+  const targets = moving && ui.sel !== null ? E.targetsFrom(r, G.played.length, ui.sel) : new Map();
+
+  let s = `<svg id="board" viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backgammonbord">`;
+  // vilt
+  s += `<rect x="${M}" y="${M}" width="${COLW}" height="${6 * RH}" rx="6" fill="var(--felt)"/>
+        <rect x="${VW - M - COLW}" y="${M}" width="${COLW}" height="${6 * RH}" rx="6" fill="var(--felt)"/>
+        <rect x="${M}" y="${YB2}" width="${COLW}" height="${6 * RH}" rx="6" fill="var(--felt)"/>
+        <rect x="${VW - M - COLW}" y="${YB2}" width="${COLW}" height="${6 * RH}" rx="6" fill="var(--felt)"/>
+        <rect x="${M}" y="${YB + 4}" width="${VW - 2 * M}" height="${BAND - 8}" rx="8" fill="var(--leather-2)"/>`;
+  // punten
+  for (let n = 1; n <= 24; n++) {
+    const g = geo(n), y = g.y;
+    const col = n % 2 ? 'var(--blood)' : 'var(--bone)';
+    const pts = g.right ? `${VW - M},${y + 1.5} ${VW - M},${y + RH - 1.5} ${VW - M - TRI},${y + RH / 2}`
+                        : `${M},${y + 1.5} ${M},${y + RH - 1.5} ${M + TRI},${y + RH / 2}`;
+    s += `<polygon points="${pts}" fill="${col}" opacity="${n % 2 ? .9 : .85}"/>`;
+    const i = iOf(n);
+    if (targets.has(i)) s += `<polygon points="${pts}" class="target" data-tgt="${i}"/>`;
+  }
+  // puntnummers voor de speler (klein, langs de rug)
+  for (let n = 1; n <= 24; n++) {
+    const g = geo(n);
+    const x = g.right ? VW - M - COLW + 3 : M + COLW - 3;
+    s += `<text x="${x}" y="${g.y + 19}" text-anchor="${g.right ? 'start' : 'end'}" font-family="Figtree" font-size="9" fill="#ffffff" opacity=".35">${n}</text>`;
+  }
+  // laatste zet van de tegenstander zichtbaar maken
+  const lastTo = new Set();
+  if (G.last && G.last.pl !== G.turn && (G.mode === 'local' || G.last.pl !== mine)) {
+    for (const m of G.last.moves) if (m.to >= 0) lastTo.add(m.to);
+  }
+  // schijven
+  for (let i = 0; i < 24; i++) {
+    const v = b.p[i]; if (!v) continue;
+    const owner = v > 0 ? 0 : 1, cnt = Math.abs(v), n = nOf(i);
+    const shown = Math.min(cnt, 5);
+    for (let k = 0; k < shown; k++) {
+      const { cx, cy } = checkerXY(n, k);
+      const lbl = k === 4 && cnt > 5 ? cnt : '';
+      s += chk(cx, cy, owner === mine, lbl);
+    }
+    const top = checkerXY(n, shown - 1);
+    if (srcs.has(i) && S.hints && ui.sel !== i) s += `<circle cx="${top.cx}" cy="${top.cy}" r="15.5" class="src-ring"/>`;
+    if (ui.sel === i) s += `<circle cx="${top.cx}" cy="${top.cy}" r="16" class="sel-ring"/>`;
+    if (lastTo.has(i)) s += `<circle cx="${top.cx}" cy="${top.cy}" r="16.5" class="last-ring"/>`;
+  }
+  // doel-stippen op lege punten
+  for (const [t] of targets) {
+    if (t < 0) continue;
+    const n = nOf(t), ownCnt = E.own(b, G.turn, t);
+    // op een losse schijf van de ander: stip op die schijf; anders op de eerstvolgende vrije plek
+    const pos = checkerXY(n, ownCnt ? Math.min(ownCnt, 4) : 0);
+    s += `<circle cx="${pos.cx}" cy="${pos.cy}" r="6" class="target-dot"/>`;
+  }
+  // bar: eigen schijven links (daar kom je binnen), tegenstander rechts
+  const cy = YB + BAND / 2;
+  for (let k = 0; k < Math.min(b.bar[mine], 3); k++) s += chk(M + 24 + k * 26, cy, true, k === 2 && b.bar[mine] > 3 ? b.bar[mine] : '');
+  for (let k = 0; k < Math.min(b.bar[opp], 3); k++) s += chk(VW - M - 24 - k * 26, cy, false, k === 2 && b.bar[opp] > 3 ? b.bar[opp] : '');
+  if (ui.sel === BAR && b.bar[G.turn]) {
+    const x = G.turn === mine ? M + 24 + (Math.min(b.bar[mine], 3) - 1) * 26 : VW - M - 24 - (Math.min(b.bar[opp], 3) - 1) * 26;
+    s += `<circle cx="${x}" cy="${cy}" r="16" class="sel-ring"/>`;
+  }
+  // dobbelstenen of kubus in het midden
+  if (G.dice && (G.phase === 'move')) {
+    const dm = G.turn === mine;
+    const isD = G.dice[0] === G.dice[1];
+    if (isD) {
+      const usedN = G.played.length;
+      for (let k = 0; k < 4; k++) s += dieSVG(VW / 2 - 58 + k * 30, YB + 10, 24, G.dice[0], dm, k < usedN);
+    } else {
+      const used = G.played.map(m => m.die);
+      const u0 = used.includes(G.dice[0]), u1 = used.includes(G.dice[1]);
+      s += dieSVG(VW / 2 - 40, YB + 6, 32, G.dice[0], dm, u0) + dieSVG(VW / 2 + 8, YB + 6, 32, G.dice[1], dm, u1);
+    }
+  } else if (G.phase === 'roll' && isMine(G.turn) && !isCpu(G.turn)) {
+    s += `<g data-act="roll" style="cursor:pointer"><rect x="${VW / 2 - 52}" y="${YB + 7}" width="104" height="30" rx="15" fill="var(--brass)"/>
+      <text x="${VW / 2}" y="${YB + 27}" text-anchor="middle" font-family="Figtree" font-weight="800" font-size="15" fill="#2a1a08">Gooien</text></g>`;
+  }
+  // eraf-bakjes
+  const trayW = COLW;
+  const tray = (x, cnt, isMineTray, highlight) => {
+    let t = `<rect x="${x}" y="${TRAY_Y}" width="${trayW}" height="34" rx="8" fill="var(--leather-2)" ${highlight ? 'stroke="var(--brass)" stroke-width="3"' : ''}/>`;
+    for (let k = 0; k < cnt; k++) t += `<rect x="${x + 6 + k * 10.1}" y="${TRAY_Y + 6}" width="8" height="22" rx="2" fill="${isMineTray ? 'var(--brass)' : 'var(--ivory)'}"/>`;
+    if (!cnt) t += `<text x="${x + trayW / 2}" y="${TRAY_Y + 22}" text-anchor="middle" font-family="Figtree" font-size="12" fill="var(--muted)">eraf</text>`;
+    return t;
+  };
+  s += tray(VW - M - trayW, b.off[mine], true, targets.has(OFF) && G.turn === mine);
+  s += tray(M, b.off[opp], false, targets.has(OFF) && G.turn === opp);
+  // tikvlakken
+  for (let n = 1; n <= 24; n++) {
+    const g = geo(n);
+    s += `<rect class="pt-hit" data-pt="${iOf(n)}" x="${g.right ? VW - M - COLW : M}" y="${g.y}" width="${COLW}" height="${RH}"/>`;
+  }
+  s += `<rect class="pt-hit" data-pt="bar" x="${M}" y="${YB}" width="${VW / 2 - 60}" height="${BAND}"/>`;
+  s += `<rect class="pt-hit" data-pt="bar" x="${VW / 2 + 60}" y="${YB}" width="${VW / 2 - 68}" height="${BAND}"/>`;
+  s += `<rect class="pt-hit" data-pt="off" x="${M}" y="${TRAY_Y - 4}" width="${VW - 2 * M}" height="42"/>`;
+  if (G.phase === 'roll' && isMine(G.turn) && !isCpu(G.turn)) s += `<rect class="pt-hit" data-act="roll" x="${VW / 2 - 60}" y="${YB}" width="120" height="${BAND}"/>`;
+  s += `</svg>`;
+  return s;
+}
+
+/* ================= tekenen: schermen ================= */
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>'
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function miniBoard() {
+  // decoratief bordje op het startscherm
+  let s = '<svg viewBox="0 0 320 92" preserveAspectRatio="none"><rect width="320" height="92" fill="var(--felt)"/>';
+  for (let k = 0; k < 12; k++) {
+    const x = 6 + k * 25.6 + (k >= 6 ? 4 : 0);
+    s += `<polygon points="${x},0 ${x + 22},0 ${x + 11},38" fill="${k % 2 ? 'var(--bone)' : 'var(--blood)'}" opacity=".9"/>`;
+    s += `<polygon points="${x},92 ${x + 22},92 ${x + 11},54" fill="${k % 2 ? 'var(--blood)' : 'var(--bone)'}" opacity=".9"/>`;
+  }
+  const c = (x, y, m) => `<circle cx="${x}" cy="${y}" r="9.5" fill="${m ? 'var(--brass)' : 'var(--ivory)'}" stroke="${m ? 'var(--brass-deep)' : 'var(--ivory-deep)'}" stroke-width="1.2"/>`;
+  s += c(17, 10, 1) + c(17, 29, 1) + c(119, 82, 0) + c(119, 63, 0) + c(170, 82, 1) + c(170, 63, 1) + c(170, 44, 1) + c(273, 10, 0) + c(273, 29, 0) + c(298, 82, 1);
+  s += '</svg>';
+  return s;
+}
+
+function vHome() {
+  const cpu = loadGame('cpu'), loc = loadGame('local'), ng = loadGame('net');
+  const resume = (g, mode) => inProgress(g)
+    ? `<div class="resume"><button class="btn quiet" data-a="resume" data-m="${mode}">Doorgaan · ${g.score[0]}–${g.score[1]}</button><button class="btn quiet" data-a="new" data-m="${mode}">Nieuw spel</button></div>` : '';
+  const inApp = NET && NET.available();
+  return `<div class="wrap home">
+    <div class="home-top"><button class="back" data-a="exit">${IC.back} Spellen</button>
+      <button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><h1>Backgammon</h1><p class="rules-line">${esc(rulesText(rulesNow()))}</p></div>
+    <div class="case-mini">${miniBoard()}</div>
+    <div class="choices">
+      <button class="choice" data-a="${inProgress(cpu) ? 'resume' : 'new'}" data-m="cpu"><span class="ic">${IC.cpu}</span><span><b>Tegen de computer</b><span>${S.level === 'easy' ? 'Makkelijk' : 'Normaal'} niveau</span></span></button>
+      ${resume(cpu, 'cpu')}
+      <button class="choice" data-a="lobby" ${inApp ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${inApp ? 'Via Bluetooth en wifi, internet niet nodig' : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && inApp ? `<p class="note">Er loopt nog een spel tegen ${esc(ng.names[net.role === 'join' ? 0 : 1])} (${ng.score[0]}–${ng.score[1]}). Verbind opnieuw om verder te spelen.</p>` : ''}
+      <button class="choice" data-a="${inProgress(loc) ? 'resume' : 'new'}" data-m="local"><span class="ic">${IC.one}</span><span><b>Samen op één telefoon</b><span>Om de beurt, telefoon tussen jullie in</span></span></button>
+      ${resume(loc, 'local')}
+    </div>
+  </div>`;
+}
+
+function vLobby() {
+  let body = '';
+  const st = net.status;
+  if (st === 'idle' || st === 'lost') {
+    body = `<div class="field"><label for="nm">Jouw naam</label><input class="input" id="nm" data-in="name" value="${esc(S.name)}" maxlength="18" placeholder="bijv. Wouter" autocomplete="off"></div>
+      <div class="btnrow"><button class="btn" data-a="host">Spel maken</button><button class="btn ivory" data-a="join">Meedoen</button></div>
+      <p class="note">Eén van jullie tikt op <b>Spel maken</b>, de ander op <b>Meedoen</b>. De app vindt de andere telefoon vanzelf.</p>`;
+  } else if (st === 'hosting') {
+    body = `<div class="waiting"><span class="pulse"></span><div><b>Wachten op een tegenstander…</b><p class="muted small">Laat de ander in deze app op Meedoen tikken.</p></div></div>
+      <button class="btn quiet" data-a="cancel">Stoppen</button>`;
+  } else if (st === 'searching') {
+    const list = [...net.found.entries()];
+    body = `<div class="waiting"><span class="pulse"></span><div><b>Zoeken naar telefoons in de buurt…</b><p class="muted small">De ander moet op Spel maken hebben getikt.</p></div></div>
+      <div class="found">${list.map(([id, n]) => `<button class="btn" data-a="connect" data-id="${esc(id)}">Spelen tegen ${esc(n)}</button>`).join('')}</div>
+      <button class="btn quiet" data-a="cancel">Stoppen</button>`;
+  } else if (st === 'connecting') {
+    body = `<div class="waiting"><span class="pulse"></span><b>Verbinden met ${esc(net.peer || 'de andere telefoon')}…</b></div>`;
+  } else if (st === 'connected') {
+    body = `<div class="waiting"><span class="pulse"></span><b>Verbonden met ${esc(net.peer)}. Spel wordt geladen…</b></div>`;
+  }
+  return `<div class="wrap lobby">
+    <div class="home-top"><button class="back" data-a="home">${IC.back} Backgammon</button></div>
+    <h1 style="font-size:36px">Twee telefoons</h1>
+    ${net.error ? `<p class="err">${esc(net.error)}</p>` : ''}
+    ${body}
+    <div class="tip"><b>In het vliegtuig?</b> Zet vliegtuigmodus aan en daarna Bluetooth en wifi weer aan. Internet is niet nodig. Beide telefoons hebben deze app nodig.</div>
+    ${net.role !== 'join' ? `<p class="note">Wie het spel maakt, bepaalt de regels: ${esc(rulesText(rulesNow()))}.</p>` : ''}
+  </div>`;
+}
+
+function playerRow(pl, top) {
+  const b = G.board, name = G.names[pl];
+  const cubeHere = G.rules.cube && G.cube.owner === pl ? `<span class="cube">${G.cube.value}</span>` : '';
+  const isTurn = G.turn === pl && G.phase !== 'gameover' && G.phase !== 'matchover';
+  return `<div class="player ${isTurn ? 'turn' : ''}"><span class="chk ${pl === me() ? 'me' : 'op'}"></span>
+    <span class="nm">${esc(name)}</span>${cubeHere}<span class="pip">${E.pips(b, pl)} pips</span><span class="sc" aria-label="Score">${G.score[pl]}</span></div>`;
+}
+
+function statusAndButtons() {
+  const a = actor(), mineA = isMine(a) && !isCpu(a);
+  const name = G.names[a];
+  let status = '', btns = '', wait = false;
+  if (G.phase === 'roll') {
+    if (mineA) {
+      status = G.mode === 'local' ? `${esc(name)} is aan zet` : 'Jij bent aan zet';
+      btns = `<button class="btn" data-a="roll">Gooien</button>` + (canDouble(a) ? `<button class="btn ivory" data-a="double">Verdubbel naar ${G.cube.value * 2}</button>` : '');
+    } else { status = `${esc(name)} gooit…`; wait = true; }
+  } else if (G.phase === 'move') {
+    const L = legal();
+    if (mineA) {
+      if (L.maxLen === 0) {
+        status = 'Geen zet mogelijk met deze worp';
+        btns = `<button class="btn" data-a="end">Beurt doorgeven</button>`;
+      } else if (turnDone()) {
+        status = 'Klaar? Bevestig je zet';
+        btns = `<button class="btn quiet" data-a="undo">Terug</button><button class="btn" data-a="end">Klaar</button>`;
+      } else {
+        const left = L.maxLen - G.played.length;
+        status = ui.sel === null ? (G.played.length ? `Nog ${left} ${left === 1 ? 'zet' : 'zetten'}` : 'Tik op een schijf om te zetten') : 'Tik waar de schijf heen moet';
+        btns = G.played.length ? `<button class="btn quiet" data-a="undo">Terug</button>` : '';
+      }
+      if (G.mode === 'local') status = `${esc(G.names[G.turn])}: ${status.charAt(0).toLowerCase() + status.slice(1)}`;
+    } else { status = `${esc(name)} zet…`; wait = true; }
+  } else if (G.phase === 'double') {
+    const doubler = G.names[G.turn];
+    if (mineA) {
+      status = `${esc(doubler)} verdubbelt naar ${G.cube.value * 2}. Neem je aan?`;
+      btns = `<button class="btn quiet" data-a="drop">Opgeven (−${G.cube.value})</button><button class="btn" data-a="take">Aannemen</button>`;
+    } else { status = `Wachten of ${esc(name)} de verdubbeling aanneemt…`; wait = true; }
+  } else if (G.phase === 'gameover' || G.phase === 'matchover') {
+    status = 'Spel afgelopen';
+    btns = `<button class="btn" data-a="showresult">Uitslag bekijken</button>`;
+  }
+  if (!G.last && G.opening && G.phase === 'move' && !G.played.length) {
+    status = `<div class="note">Openingsworp: ${esc(G.names[0])} ${G.opening[0]}, ${esc(G.names[1])} ${G.opening[1]}. ${esc(G.names[G.turn])} begint.</div>` + status;
+  }
+  if (G.crawford && (G.phase === 'roll' || G.phase === 'move')) status +=`<div class="note">Crawford-spel: verdubbelen kan nu niet</div>`;
+  return `<div class="status ${wait ? 'wait' : ''}">${status}</div>${btns ? `<div class="btnrow">${btns}</div>` : ''}`;
+}
+
+function vGame() {
+  const top = 1 - me(), bottom = me();
+  const r = G.rules;
+  const info = r.match ? `Tot ${r.match} punten` : `Spel ${G.gameNo}`;
+  let netBar = '';
+  if (G.mode === 'net' && net.status !== 'connected') {
+    netBar = `<div class="netlost"><span>Verbinding met ${esc(G.names[1 - me()])} is weg. Je stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>`;
+  }
+  return `<div class="wrap game">
+    <div class="bar-top"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button>
+      <span class="info">${info}${r.cube && G.cube.owner === -1 && !G.crawford ? ` · kubus ${G.cube.value}` : ''}</span>
+      <button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${netBar}
+    ${playerRow(top, true)}
+    <div class="case">${boardSVG()}</div>
+    ${playerRow(bottom, false)}
+    <div class="controls">${statusAndButtons()}</div>
+  </div>`;
+}
+
+/* ================= vellen ================= */
+function segBtns(key, opts) {
+  return `<div class="seg">${opts.map(([v, l]) => `<button data-a="set" data-k="${key}" data-v="${v}" aria-pressed="${String(S[key]) === String(v)}">${l}</button>`).join('')}</div>`;
+}
+function tog(key, title, desc) {
+  return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`;
+}
+function sheetSettings() {
+  const running = G && view === 'game' && inProgress(G);
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Klaar</button></div>
+    <div class="group"><span class="t">Spelvorm</span>${segBtns('variant', [['simple', 'Simpel'], ['cube', 'Met kubus'], ['match', 'Wedstrijd']])}
+      <p class="note">${S.variant === 'simple' ? 'Gewone potjes zonder verdubbelkubus.' : S.variant === 'cube' ? 'Losse potjes. Voor je gooit mag je de inzet verdubbelen.' : 'Spelen tot een aantal punten, met verdubbelkubus.'}</p></div>
+    ${S.variant === 'match' ? `<div class="group"><span class="t">Wedstrijd tot</span>${segBtns('matchLen', [[3, '3'], [5, '5'], [7, '7'], [9, '9']])}</div>` : ''}
+    <div class="group">
+      ${tog('gammons', 'Gammon en backgammon', 'Telt 2× of 3× als de verliezer nog niets eraf heeft')}
+      ${S.variant === 'match' ? tog('crawford', 'Crawford-regel', 'Geen verdubbeling in het spel nadat iemand op 1 punt van winst staat') : ''}
+    </div>
+    ${running ? `<p class="note">Regels gelden vanaf een nieuw spel.</p>` : ''}
+    <div class="group"><span class="t">Computer</span>${segBtns('level', [['easy', 'Makkelijk'], ['normal', 'Normaal']])}</div>
+    <div class="group">
+      ${tog('hints', 'Hulp bij zetten', 'Laat zien welke schijven kunnen bewegen')}
+      ${tog('sound', 'Geluid')}
+      ${tog('vibrate', 'Trillen')}
+    </div>
+    <details class="rules-help"><summary><b>Spelregels kort</b></summary><ul style="margin-top:8px">
+      <li>Breng al je 15 schijven rond naar je thuisvak (rechtsonder) en speel ze eraf. Wie dat eerst doet, wint.</li>
+      <li>Je mag niet landen op een punt met 2 of meer schijven van de ander. Land je op een losse schijf, dan sla je die naar de bar.</li>
+      <li>Een geslagen schijf moet eerst terug het bord op, links onder, voor je iets anders mag zetten.</li>
+      <li>Je moet altijd beide dobbelstenen gebruiken als dat kan. Dubbel gegooid? Dan zet je vier keer.</li>
+      <li>Verdubbelen: vóór je gooit kun je de inzet verdubbelen. De ander neemt aan of geeft op.</li>
+    </ul></details>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Sluiten</button></div>
+    <div class="menu-list">
+      <button class="btn quiet" data-a="settings">Instellingen</button>
+      ${G.mode !== 'net' || net.role === 'host' ? `<button class="btn quiet" data-a="restart">Opnieuw beginnen</button>` : ''}
+      ${G.mode === 'net' ? `<button class="btn quiet" data-a="leave">Verbinding verbreken</button>` : ''}
+    </div>
+    <p class="note">${esc(rulesText(G.rules))}</p>`;
+}
+function sheetResult() {
+  const R = G.result; if (!R) return '';
+  const w = R.winner, iWon = G.mode === 'local' ? null : isMine(w);
+  const kindTxt = R.dropped ? 'opgegeven' : ['', 'gewonnen', 'gammon', 'backgammon'][R.kind];
+  const title = iWon === null ? `${esc(G.names[w])} wint` : iWon ? 'Je wint!' : `${esc(G.names[w])} wint`;
+  const matchDone = G.phase === 'matchover';
+  const canNext = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${matchDone ? (iWon === false ? `${esc(G.names[w])} wint de wedstrijd` : iWon ? 'Wedstrijd gewonnen!' : `${esc(G.names[w])} wint de wedstrijd`) : title}</h2>
+      <span class="pts">+${R.pts}</span>
+      <p class="muted">${R.pts === 1 ? '1 punt' : R.pts + ' punten'} · ${kindTxt}${G.cube.value > 1 ? ` · kubus ${G.cube.value}` : ''}</p>
+      <div class="scoreline">${esc(G.names[me()])} ${G.score[me()]} – ${G.score[1 - me()]} ${esc(G.names[1 - me()])}</div>
+      ${G.rules.match ? `<p class="note">Wedstrijd tot ${G.rules.match}</p>` : ''}
+    </div>
+    <div class="menu-list">
+      ${matchDone ? `<button class="btn" data-a="rematch" ${canNext ? '' : 'disabled'}>Nieuwe wedstrijd</button>` : `<button class="btn" data-a="next" ${canNext ? '' : 'disabled'}>Volgend spel</button>`}
+      <button class="btn quiet" data-a="close">Bord bekijken</button>
+    </div>`;
+}
+
+/* ================= render ================= */
+function render() {
+  let html = view === 'home' ? vHome() : view === 'lobby' ? vLobby() : (G ? vGame() : vHome());
+  if (ui.sheet) {
+    const inner = ui.sheet === 'settings' ? sheetSettings() : ui.sheet === 'menu' ? sheetMenu() : ui.sheet === 'result' && G ? sheetResult() : '';
+    if (inner) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner}</div></div>`;
+  }
+  // focus en waarde van het naamveld bewaren tijdens hertekenen
+  const f = document.activeElement && document.activeElement.id === 'nm' ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  if (f !== null) { const el = document.getElementById('nm'); if (el) { el.focus(); try { el.setSelectionRange(f, f); } catch (e) {} } }
+}
+
+/* ================= invoer ================= */
+function tapPoint(raw) {
+  if (!G || G.phase !== 'move' || !isMine(G.turn) || isCpu(G.turn)) return;
+  const r = rem();
+  const srcs = E.sources(r, G.played.length);
+  const pt = raw === 'bar' ? BAR : raw === 'off' ? OFF : +raw;
+  if (ui.sel !== null) {
+    const t = E.targetsFrom(r, G.played.length, ui.sel);
+    if (t.has(pt)) { doPath(t.get(pt)); return; }
+  }
+  if (srcs.has(pt) && pt !== OFF) {
+    ui.sel = ui.sel === pt && !srcs.has(BAR) ? null : pt;
+    // maar één mogelijke bestemming? dan meteen zetten scheelt een tik — alleen als hulp aanstaat
+    render(); return;
+  }
+  if (!srcs.has(BAR)) ui.sel = null;
+  render();
+}
+
+function startMode(mode) {
+  if (mode === 'cpu') newMatch('cpu', [S.name.trim() || 'Jij', 'Computer']);
+  else if (mode === 'local') newMatch('local', ['Messing', 'Ivoor']);
+  view = 'game'; ui.sheet = null;
+  commit();
+}
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-pt],[data-act]');
+  if (!el) return;
+  if (el.dataset.pt !== undefined && !el.dataset.act) { tapPoint(el.dataset.pt); return; }
+  const a = el.dataset.a || el.dataset.act;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; if (ui.sheet !== 'result') { ui.sheet = null; render(); } return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.cpuToken++; if (net.status === 'hosting' || net.status === 'searching') { NET.stopSearching(); net.status = 'idle'; } break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; break;
+    case 'set': S[el.dataset.k] = isNaN(+el.dataset.v) ? el.dataset.v : +el.dataset.v; saveS(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'sound' && S.sound) sClack(); if (el.dataset.k === 'vibrate') buzz(30); break;
+    case 'new': startMode(el.dataset.m); return;
+    case 'resume': G = loadGame(el.dataset.m); view = 'game'; ui.sel = null; if (G.phase === 'gameover' || G.phase === 'matchover') ui.sheet = 'result'; render(); schedule(); return;
+    case 'lobby': netListen(); view = 'lobby'; net.error = ''; if (net.status === 'lost') net.status = 'idle'; break;
+    case 'host': if (!(S.name || '').trim()) { net.error = 'Vul eerst je naam in, dan ziet de ander wie je bent.'; break; } startHost(); return;
+    case 'join': if (!(S.name || '').trim()) { net.error = 'Vul eerst je naam in, dan ziet de ander wie je bent.'; break; } startJoin(); return;
+    case 'connect': net.status = 'connecting'; net.peer = net.found.get(el.dataset.id) || ''; NET.connect(el.dataset.id); break;
+    case 'cancel': NET.stop(); net.status = 'idle'; break;
+    case 'reconnect': netListen(); NET.stop(); net.status = 'idle'; view = 'lobby'; setTimeout(() => (net.role === 'join' ? startJoin() : startHost()), 300); break;
+    case 'leave': ui.sheet = null; NET.stop(); net.status = 'idle'; view = 'home'; break;
+    case 'roll': if (G && G.phase === 'roll' && isMine(G.turn) && !isCpu(G.turn)) doRoll(); return;
+    case 'double': offerDouble(); return;
+    case 'take': take(); return;
+    case 'drop': drop(); return;
+    case 'undo': undo(); return;
+    case 'end': endTurn(); return;
+    case 'showresult': ui.sheet = 'result'; break;
+    case 'next': nextGame(); return;
+    case 'rematch': rematch(); return;
+    case 'restart': ui.sheet = null; if (G.mode === 'net') { newMatch('net', G.names.slice()); } else { newMatch(G.mode, G.names.slice()); } commit(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => {
+  if (e.target.dataset.in === 'name') { S.name = e.target.value; saveS(); try { localStorage.setItem('w2-name', S.name); } catch (err) {} }
+});
+
+// Terugknop van Android: eerst vellen sluiten, dan naar het backgammon-startscherm
+window.__w2back = function () {
+  if (ui.sheet && ui.sheet !== 'result') { ui.sheet = null; render(); return true; }
+  if (ui.sheet === 'result') { ui.sheet = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.cpuToken++; if (net.status === 'hosting' || net.status === 'searching') { NET.stopSearching(); net.status = 'idle'; } render(); return true; }
+  return false;
+};
+
+if (NET && NET.available()) { netListen(); if (NET.isConnected()) { net.status = 'connected'; setTimeout(() => NET.send({ t: 'here', game: 'backgammon', name: myName() }), 50); } }
+render();
+})();
+</script>
+</body>
+</html>

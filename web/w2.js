@@ -77,6 +77,37 @@
       installApk() { native && native.installApk && native.installApk(); },
       openReleases() { native && native.openReleases && native.openReleases(); },
       reload() { if (native && native.reloadApp) native.reloadApp(); else location.reload(); }
+    },
+    // Scherm aan houden zolang deze pagina het nodig heeft (hardlooptrainer, kookmodus). Vanaf native 8;
+    // in de browser via de Wake Lock-API. Spellen houden het scherm vanzelf aan.
+    awake(on) {
+      if (native && native.keepAwake) { try { native.keepAwake(!!on); } catch (e) {} return; }
+      try {
+        if (on && navigator.wakeLock && !awakeLock) navigator.wakeLock.request('screen').then(l => { awakeLock = l; }).catch(() => {});
+        else if (!on && awakeLock) { awakeLock.release(); awakeLock = null; }
+      } catch (e) {}
+    },
+    // Meldingen (vanaf native 8): toestemming vragen. Geeft 'ok', 'blocked', 'off', 'ask' of 'n/a'.
+    notify: {
+      available: () => !!(native && native.notifyStatus),
+      status() { try { return native.notifyStatus(); } catch (e) { return 'n/a'; } },
+      ask() {
+        if (!native || !native.notifyAsk) return Promise.resolve('n/a');
+        const now = W2.notify.status();
+        if (now === 'ok') return Promise.resolve('ok');
+        return new Promise(res => {
+          let done = false;
+          const finish = st => { if (done) return; done = true; listeners.delete(f); document.removeEventListener('visibilitychange', vis); res(st); };
+          const f = ev => { if (ev.type === 'notify' && ev.state !== 'blocked' && ev.state !== 'off') finish(ev.state); };
+          // naar de instellingen gestuurd: bij terugkomen opnieuw kijken
+          const vis = () => { if (!document.hidden) setTimeout(() => finish(W2.notify.status()), 300); };
+          listeners.add(f);
+          document.addEventListener('visibilitychange', vis);
+          setTimeout(() => finish(W2.notify.status()), 120000);
+          native.notifyAsk();
+        });
+      }
     }
   };
+  let awakeLock = null;
 })();

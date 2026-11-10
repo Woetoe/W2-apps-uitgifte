@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kronkel</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Lichtgevende lijnen op een zwart veld; alles daaromheen blijft rustig zodat het veld spreekt. */
+:root{
+  --bg:#0c0c11; --bg2:#14141c; --panel:#1b1b25; --line:#2c2c3b; --field:#050508;
+  --text:#f4f1ea; --muted:#9d9bb0; --accent:#ffd23f; --accent-ink:#1d1600; --good:#3ddc84; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#app{height:100%}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:16px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 20px) max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:52px;font-weight:700;font-size:17px;background:var(--accent);color:var(--accent-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btn.small{min-height:40px;padding:8px 14px;font-size:15px}
+.hero h1{font-size:52px;line-height:.9;letter-spacing:-.03em}
+.hero p{margin-top:8px;color:var(--muted)}
+.hero svg{width:100%;height:auto;display:block;margin-top:14px;border-radius:18px}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:76px}
+.choice .ic{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.label{font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.label small{font-weight:500;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:8px}
+.input{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:17px;-webkit-user-select:text;user-select:text;width:100%}
+.input:focus{outline:none;border-color:var(--accent)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.players{display:flex;flex-direction:column;gap:8px}
+.pl{display:grid;grid-template-columns:18px 1fr auto;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:8px 8px 8px 14px;min-height:56px}
+.pl .dot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 10px currentColor}
+.pl .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .nm small{display:block;font-weight:500;color:var(--muted);font-size:13px}
+.pl .acts{display:flex;gap:6px;align-items:center}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 11px;font-size:14px;font-weight:600;min-height:40px}
+.xbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center}
+.xbtn svg{width:16px;height:16px}
+.status{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.status b{display:block}
+.pulse{width:14px;height:14px;border-radius:50%;background:var(--accent);animation:pu 1.2s ease-in-out infinite;flex:none}
+.pulse.off{animation:none;background:var(--line)}
+@keyframes pu{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+.tip{background:var(--bg2);border-left:3px solid var(--accent);border-radius:6px 12px 12px 6px;padding:12px 14px;font-size:15px;color:var(--muted)}
+.tip b{color:var(--text)}
+.err{color:var(--warn);font-weight:600}
+.summary{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 10px 10px 14px}
+.summary .tx{flex:1}
+.summary .tx small{display:block;color:var(--muted);font-size:14px}
+.minis{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.minis svg{width:22px;height:22px;border-radius:50%}
+.sticky{position:sticky;bottom:0;padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 4px);background:linear-gradient(transparent,var(--bg) 30%);margin-top:auto}
+.sticky .btn{width:100%}
+/* spel */
+.game{height:100%;display:grid;grid-template-rows:auto 1fr auto auto;gap:6px;max-width:640px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 6px) max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 8px) max(8px,env(safe-area-inset-left,0px));touch-action:none}
+.hud{display:flex;align-items:center;gap:8px;min-height:44px}
+.chips{flex:1;display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.chip{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1.5px solid transparent;border-radius:999px;padding:3px 10px 3px 4px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;transition:opacity .2s}
+.chip i{width:16px;height:16px;border-radius:50%;display:block;flex:none}
+.chip.me{border-color:var(--text)}
+.chip.out{opacity:.38}
+.chip em{font-style:normal;font-weight:500;color:var(--muted);max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.goal{font-size:13px;color:var(--muted);text-align:right;line-height:1.15;flex:none;min-width:40px}
+.goal b{display:block;font:800 17px/1 var(--f-display);color:var(--text)}
+.stage{position:relative;min-height:0;display:grid;place-items:center}
+.fieldbox{position:relative;background:var(--field);border-radius:6px;box-shadow:0 0 0 1px #1d1d29,0 10px 40px #000a}
+.fieldbox canvas{position:absolute;inset:0;display:block}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.banner>div{background:#0c0c11e6;border:1px solid var(--line);border-radius:18px;padding:16px 20px;text-align:center;min-width:220px;max-width:88%;animation:pop .25s ease-out}
+.banner h2{font-size:28px;line-height:1.05}
+.banner p{color:var(--muted);margin-top:4px;font-size:15px}
+@keyframes pop{from{transform:scale(.9);opacity:0}}
+.fxrow{display:flex;gap:8px;justify-content:center;align-items:center;min-height:30px;font-size:14px;color:var(--muted)}
+.fx{display:flex;align-items:center;gap:5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.fx svg{width:24px;height:24px;border-radius:50%}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;height:clamp(112px,23vh,210px)}
+.ctl button{border:0;border-radius:22px;background:var(--bg2);border:1.5px solid var(--line);display:grid;place-items:center;touch-action:none;transition:background .06s}
+.ctl button svg{width:56px;height:56px;opacity:.85}
+.ctl button.on{background:color-mix(in srgb,var(--me,#ffd23f) 28%,var(--bg2));border-color:var(--me,#ffd23f)}
+.ctl .hint{grid-column:1/-1;text-align:center;font-size:13px;color:var(--muted);margin-top:-4px}
+/* vellen */
+.scrim{position:fixed;inset:0;background:#05050ac2;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.sheet h3{font-size:17px;margin-top:4px}
+.row .ig{display:flex;align-items:center;gap:12px}
+.row .ig svg{width:34px;height:34px;border-radius:50%;flex:none}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.rank{display:flex;flex-direction:column;gap:6px;width:100%}
+.rank div{display:grid;grid-template-columns:22px 16px 1fr auto;gap:10px;align-items:center;background:var(--panel);border-radius:10px;padding:10px 12px;text-align:left;font-variant-numeric:tabular-nums}
+.rank i{width:16px;height:16px;border-radius:50%;display:block}
+.rank b:last-child{font-size:18px}
+.result{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.result h2{font-size:36px;line-height:1}
+.tiltmeter{position:relative;height:30px;background:var(--panel);border-radius:15px;overflow:hidden}
+.tiltmeter i{position:absolute;top:5px;width:20px;height:20px;border-radius:50%;background:var(--accent);left:calc(50% - 10px);transition:left .08s}
+.tiltmeter::before,.tiltmeter::after{content:"";position:absolute;top:0;bottom:0;width:2px;background:var(--line)}
+.tiltmeter::before{left:var(--th1)}.tiltmeter::after{left:var(--th2)}
+.rules ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:15px}
+.rules summary{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../w2.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+'use strict';
+const K = window.KRONKEL;
+const NET = window.W2 && W2.net;
+const GAME = 'kronkel';
+const app = document.getElementById('app');
+
+const COLORS = ['#ff4d4d', '#ffd23f', '#3ddc84', '#3d9bff', '#ff5fc8', '#ff9a2e', '#2fe0d9', '#a77bff'];
+const CNAMES = ['Rood', 'Geel', 'Groen', 'Blauw', 'Roze', 'Oranje', 'Turkoois', 'Paars'];
+const KIND_COL = { self: '#2fb862', others: '#e5484d', all: '#3b82f6' };
+const KIND_NAME = { self: 'Voor jezelf', others: 'Voor de anderen', all: 'Voor iedereen' };
+const LEVEL_NAME = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+const MAXP = 8, STEP_MS = 1000 / 60, FRAME_EVERY = 3, FRAME_MS = FRAME_EVERY * STEP_MS, COUNT_MS = 2400, ROUND_PAUSE = 2900;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const r1 = v => Math.round(v * 10) / 10;
+
+/* ---------------- tekeningetjes van de power-ups (24×24, lijnen) ---------------- */
+const GLYPH = {
+  fast: { d: 'M5 6l6 6-6 6M12 6l6 6-6 6' },
+  slow: { d: 'M12 6l6 6-6 6M4.5 12h.01M8.5 12h.01', w: 2.8 },
+  thin: { d: 'M6 18L18 6', w: 1.4 },
+  thick: { d: 'M7.5 16.5l9-9', w: 6.5 },
+  square: { d: 'M7 19V8h11M15 5l3 3-3 3' },
+  ghost: { d: 'M6.5 19.5V11a5.5 5.5 0 0 1 11 0v8.5l-2.2-1.6-2.2 1.6-2.2-1.6-2.2 1.6-2.2-1.6zM10 11h.01M14 11h.01' },
+  wrap: { d: 'M5 4v16M9 12h11M17 9l3 3-3 3' },
+  walls: { d: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5' },
+  reverse: { d: 'M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3' },
+  clear: { d: 'M18.5 9.5A7 7 0 1 0 19 14M19 4.5v5h-5' }
+};
+const PATHS = {};
+function glyphSVG(id) {
+  const pw = K.PBY[id], g = GLYPH[pw.glyph];
+  return `<svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="${KIND_COL[pw.kind]}"/><g transform="translate(5 5)" fill="none" stroke="#fff" stroke-width="${g.w || 2.4}" stroke-linecap="round" stroke-linejoin="round"><path d="${g.d}"/></g></svg>`;
+}
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  host: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="6" width="8" height="14" rx="2"/><path d="M5 9.5a8 8 0 0 0 0 7M19 9.5a8 8 0 0 1 0 7M2.5 7.5a12 12 0 0 0 0 11M21.5 7.5a12 12 0 0 1 0 11"/></svg>',
+  join: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="2.5" y="6" width="7" height="13" rx="2"/><rect x="14.5" y="6" width="7" height="13" rx="2"/><path d="M10.5 12.5h3M12 11l1.5 1.5L12 14"/></svg>',
+  left: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M34 38V27c0-7-5-12-12-12h-9"/><path d="M19 8l-7 7 7 7"/></svg>',
+  right: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 38V27c0-7 5-12 12-12h9"/><path d="M29 8l7 7-7 7"/></svg>'
+};
+
+function heroArt() {
+  return `<svg viewBox="0 0 360 200" aria-hidden="true">
+    <rect width="360" height="200" fill="#050508"/>
+    <g fill="none" stroke-linecap="round" stroke-width="5">
+      <path d="M20 160c40-10 50-80 100-80s50 60 90 60 40-90 90-90" stroke="#ff4d4d"/>
+      <path d="M40 30c30 40 90 40 110 10s70-20 80 20 20 70 70 70" stroke="#ffd23f" stroke-dasharray="120 14 400"/>
+      <path d="M340 180c-40 0-60-40-100-40s-50 30-90 20-30-50-60-50" stroke="#3d9bff"/>
+      <path d="M200 190c0-30 30-40 40-70" stroke="#3ddc84"/>
+    </g>
+    <g fill="#ffe14d"><circle cx="300" cy="50" r="5"/><circle cx="300" cy="110" r="5"/><circle cx="90" cy="90" r="5"/><circle cx="240" cy="120" r="5"/></g>
+    <circle cx="140" cy="150" r="13" fill="#2fb862"/><path d="M135 144l6 6-6 6M141 144l6 6-6 6" transform="translate(-3 0)" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ---------------- instellingen ---------------- */
+const SKEY = 'kronkel-settings';
+const S = Object.assign({
+  control: 'buttons', tilt: 'mid', tiltFlip: false, sound: true, vibrate: true,
+  walls: 'deadly', powers: K.POWERS.map(p => p.id), bots: [{ level: 'normal' }], botLevel: 'normal'
+}, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+S.powers = S.powers.filter(id => K.PBY[id]);
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const myName = () => { try { return localStorage.getItem('w2-name') || ''; } catch (e) { return ''; } };
+const setName = n => { try { localStorage.setItem('w2-name', n); } catch (e) {} };
+const TOK = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+/* ---------------- toestand ---------------- */
+let view = 'home';          // home | host | join | game
+let role = null;            // host | join
+const ui = { sheet: null };
+const net = { status: 'idle', found: new Map(), hostName: '', peers: new Map(), err: '', lobby: null, busy: false };
+let L = null;               // lobby (alleen bij de host)
+let G = null;               // lopend spel
+let sim = null;             // simulatie (alleen bij de host)
+let pending = [], wrappedAcc = [], scoresDirty = false, roundTimer = 0, countTimer = 0;
+
+const multiOK = () => !!(NET && NET.multiAvailable && NET.multiAvailable());
+const send = m => { if (NET && role) { m.game = GAME; NET.send(m); } };
+const sendTo = (id, m) => { if (NET) { m.game = GAME; NET.sendTo(id, m); } };
+
+/* ---------------- geluid en trillen ---------------- */
+let ac = null;
+function tone(f, d, type, vol, delay, f2) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const buzz = p => { if (S.vibrate) try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+const sBeep = hi => tone(hi ? 990 : 620, hi ? 0.22 : 0.09, 'square', 0.05);
+const sTake = () => tone(700, 0.14, 'triangle', 0.09, 0, 1400);
+const sDie = () => tone(180, 0.35, 'sawtooth', 0.07, 0, 50);
+const sWin = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.08, i * 0.09));
+
+/* ================================================================ netwerk */
+if (NET) NET.on(ev => {
+  if (!role) return;
+  switch (ev.type) {
+    case 'hosting': if (role === 'host') net.status = 'hosting'; break;
+    case 'searching': if (role === 'join') net.status = 'searching'; break;
+    case 'found': net.found.set(ev.id, ev.name); break;
+    case 'lost': net.found.delete(ev.id); break;
+    case 'connecting': if (role === 'join') { net.status = 'connecting'; net.hostName = ev.name || net.hostName; } break;
+    case 'connected':
+      if (role === 'host') net.peers.set(ev.id, { name: ev.name || 'Speler', tok: null });
+      else { net.status = 'connected'; net.hostName = ev.name || net.hostName; net.found.clear(); net.err = ''; send({ t: 'hi', name: myName() || 'Speler', tok: TOK }); }
+      break;
+    case 'disconnected':
+      if (role === 'host') peerGone(ev.id); else hostGone();
+      break;
+    case 'error':
+      net.err = NET.explain(ev);
+      if (role === 'join' && net.status !== 'connected') net.status = 'idle';
+      if (role === 'host' && net.status === 'hosting' && ev.where === 'host') net.status = 'idle';
+      break;
+    case 'stopped': net.status = 'idle'; break;
+    case 'message': {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.game !== GAME) return;
+      if (role === 'host') hostMsg(ev.id, m); else clientMsg(m);
+      return;
+    }
+    default: return;
+  }
+  refresh();
+});
+
+/* ---------- host ---------- */
+function openHost() {
+  role = 'host'; view = 'host'; net.err = ''; net.peers.clear();
+  advertise();
+  const me = { name: myName() || 'Jij', kind: 'human', tok: TOK, ep: null };
+  L = { players: [me, ...S.bots.slice(0, MAXP - 1).map((b, i) => ({ name: 'Computer ' + (i + 1), kind: 'cpu', level: b.level }))], walls: S.walls, powers: S.powers.slice() };
+}
+function advertise() {
+  if (!multiOK()) return;
+  if (!myName().trim()) setName('Speler');
+  net.status = 'hosting'; NET.hostMulti(myName());
+}
+function lobbyMsg() {
+  return { t: 'lobby', host: myName() || 'Host', players: L.players.map(p => ({ name: p.name, kind: p.kind, level: p.level, tok: p.tok })), walls: L.walls, powers: L.powers };
+}
+function lobbyChanged() {
+  if (!L) return;
+  S.bots = L.players.filter(p => p.kind === 'cpu').map(p => ({ level: p.level })); S.walls = L.walls; S.powers = L.powers.slice(); saveS();
+  if (!G) send(lobbyMsg());
+  refresh();
+}
+function hostMsg(id, m) {
+  if (m.t === 'hi') {
+    const peer = net.peers.get(id) || {};
+    peer.name = String(m.name || peer.name || 'Speler').slice(0, 16); peer.tok = m.tok; net.peers.set(id, peer);
+    if (!L) return;
+    let p = L.players.find(q => q.tok === m.tok);
+    if (p) { p.ep = id; p.name = peer.name; }
+    else {
+      if (L.players.length >= MAXP) {
+        const bi = L.players.map(q => q.kind).lastIndexOf('cpu');
+        if (bi >= 0 && !G) L.players.splice(bi, 1);
+        else { sendTo(id, { t: 'full' }); setTimeout(() => NET.disconnect(id), 400); return; }
+      }
+      const at = L.players.findIndex(q => q.kind === 'cpu');
+      p = { name: peer.name, kind: 'human', tok: m.tok, ep: id };
+      L.players.splice(at < 0 ? L.players.length : at, 0, p);
+    }
+    if (G) {
+      const i = G.players.findIndex(q => q.tok === m.tok);
+      if (i >= 0) {           // terug na verbinding kwijt: weer zelf sturen
+        const gp = G.players[i];
+        gp.ep = id; gp.kind = 'human'; gp.away = false; gp.name = peer.name;
+        sim.players[i].kind = 'human'; sim.players[i].inp = 0;
+        sendTo(id, startMsg());
+        send({ t: 'away', p: i, on: false });
+        if (!G.players.some(q => q.away)) NET.stopSearching();
+      } else sendTo(id, { t: 'busy', host: myName() });
+      sendTo(id, lobbyMsg());
+    }
+    lobbyChanged();
+  } else if (m.t === 'ki') {
+    if (!G || !sim) return;
+    const i = G.players.findIndex(q => q.ep === id);
+    if (i >= 0 && G.players[i].kind === 'human') sim.setInput(i, m.d);
+  } else if (m.t === 'bye') {
+    peerGone(id); NET.disconnect(id);
+  } else if (m.t === 'name') {
+    const p = L && L.players.find(q => q.ep === id);
+    if (p) { p.name = String(m.name || 'Speler').slice(0, 16); lobbyChanged(); }
+  }
+}
+function peerGone(id) {
+  net.peers.delete(id);
+  if (L) L.players = L.players.filter(p => p.ep !== id);
+  if (G) {
+    const i = G.players.findIndex(p => p.ep === id);
+    if (i >= 0) {
+      const gp = G.players[i];
+      gp.ep = null;
+      if (gp.kind === 'human') {   // de computer neemt het over tot die terug is
+        gp.kind = 'cpu'; gp.level = 'normal'; gp.away = true;
+        sim.players[i].kind = 'cpu'; sim.players[i].level = 'normal';
+        send({ t: 'away', p: i, on: true });
+        advertise();               // zichtbaar blijven zodat die opnieuw kan meedoen
+      }
+    }
+  }
+  lobbyChanged();
+}
+function startMsg() {
+  return { t: 'start', players: G.players.map(p => ({ name: p.name, kind: p.kind, level: p.level, tok: p.tok, color: p.color, away: !!p.away })), walls: G.walls, powers: G.powers, target: G.target, scores: G.scores, round: G.round };
+}
+function startGame() {
+  if (!L || L.players.length < 2) return;
+  const players = L.players.map((p, i) => ({ name: p.name, kind: p.kind, level: p.level || 'normal', tok: p.tok || null, ep: p.ep || null, color: i, away: false }));
+  G = newG({ players, walls: L.walls, powers: L.powers.slice(), target: 10 * (players.length - 1), scores: players.map(() => 0) });
+  sim = K.createSim({ players: players.map(p => ({ kind: p.kind === 'cpu' ? 'cpu' : 'human', level: p.level })), walls: G.walls, powers: G.powers });
+  if (multiOK()) NET.stopSearching();
+  send(startMsg());
+  ui.sheet = null; view = 'game'; buildGame(); nextRound();
+}
+function newG(o) {
+  return Object.assign({ round: 0, phase: 'wait', winner: -1, paused: false, t: 0, wallsEnd: 0, alive: o.players.map(() => true), fx: o.players.map(() => []), me: o.players.findIndex(p => p.tok === TOK), countStart: 0, banner: null }, o);
+}
+function nextRound() {
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  const pos = sim.newRound();
+  pending = []; wrappedAcc = sim.players.map(() => false);
+  const msg = { t: 'round', n: sim.round, pos: pos.map(q => [r1(q[0]), r1(q[1]), Math.round(q[2] * 1000) / 1000]), scores: G.scores };
+  send(msg); beginRound(msg);
+  countTimer = setTimeout(() => { if (G && G.phase === 'count') { goPlay(); acc = 0; } }, COUNT_MS);
+}
+function hostStep() {
+  const ev = sim.step();
+  G.t = sim.t;
+  R.hostStep(sim);
+  sim.players.forEach((p, i) => { if (p.wrapped) wrappedAcc[i] = true; });
+  let roundEv = null;
+  for (const e of ev) {
+    if (e.k === 'die') scoresDirty = true;
+    if (e.k === 'round') roundEv = e; else pending.push(e);
+    handleEvent(e);
+  }
+  if (scoresDirty) G.scores = sim.players.map(p => p.score);
+  if (sim.t % FRAME_EVERY === 0 || sim.over) {
+    const f = { t: 'f', s: sim.t, p: sim.players.map((p, i) => [r1(p.x), r1(p.y), r1(p.r), (p.painted ? 1 : 0) | (wrappedAcc[i] ? 2 : 0) | (p.alive ? 4 : 0) | (p.ghost ? 8 : 0)]) };
+    if (pending.length) f.e = pending;
+    if (scoresDirty) f.sc = G.scores;
+    send(f);
+    pending = []; scoresDirty = false; wrappedAcc = sim.players.map(() => false);
+  }
+  if (roundEv) {
+    const gw = sim.winner();
+    const m = { t: 'rend', winner: roundEv.winner, scores: G.scores, gw };
+    send(m); roundEnd(m);
+    if (gw < 0) roundTimer = setTimeout(() => { if (G && G.phase === 'roundover') nextRound(); }, ROUND_PAUSE);
+  }
+}
+function stopGameToLobby() {
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  send({ t: 'end' });
+  G = null; sim = null; ui.sheet = null; view = 'host';
+  advertise(); lobbyChanged();
+}
+function setPause(on) {
+  if (!G || role !== 'host') return;
+  G.paused = on; send({ t: 'pause', on }); acc = 0; updateHud();
+}
+
+/* ---------- meedoen ---------- */
+function openJoin() { role = 'join'; view = 'join'; net.err = ''; net.lobby = null; net.busy = false; net.status = 'idle'; net.found.clear(); }
+function search() {
+  if (!multiOK()) return;
+  if (!myName().trim()) { net.err = 'Vul eerst je naam in, dan ziet de host wie je bent.'; render(); return; }
+  net.err = ''; net.status = 'searching'; net.found.clear(); NET.joinMulti(myName());
+}
+function hostGone() {
+  net.status = 'lost'; net.lobby = null; buzz([80, 60, 80]);
+  if (view === 'game') { G = null; ui.sheet = null; view = 'join'; }
+}
+function clientMsg(m) {
+  switch (m.t) {
+    case 'lobby': net.lobby = m; net.hostName = m.host || net.hostName; break;
+    case 'busy': net.busy = true; break;
+    case 'full': net.err = 'Dit spel zit al vol (8 spelers).'; break;
+    case 'start': {
+      G = newG({ players: m.players, walls: m.walls, powers: m.powers, target: m.target, scores: m.scores });
+      G.round = m.round;
+      if (G.me < 0) { net.busy = true; G = null; break; }
+      net.busy = false; ui.sheet = null; view = 'game'; buildGame();
+      return;
+    }
+    case 'round': if (G) beginRound(m); return;
+    case 'f': if (G) clientFrame(m); return;
+    case 'rend': if (G) roundEnd(m); return;
+    case 'pause': if (G) { G.paused = m.on; updateHud(); } return;
+    case 'away': if (G && G.players[m.p]) { G.players[m.p].away = m.on; updateHud(); } return;
+    case 'end': G = null; ui.sheet = null; view = 'join'; net.busy = false; break;
+    default: return;
+  }
+  refresh();
+}
+function clientFrame(m) {
+  if (G.phase === 'count') goPlay();
+  G.t = m.s;
+  if (m.e) m.e.forEach(handleEvent);
+  if (m.sc) G.scores = m.sc;
+  R.frame(m.p, performance.now());
+  if (m.sc || m.e) updateHud();
+}
+function leaveNet() {
+  if (role === 'join' && net.status === 'connected') send({ t: 'bye' });
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  if (NET && role) NET.stop();
+  role = null; L = null; G = null; sim = null; net.status = 'idle'; net.lobby = null; net.peers.clear(); net.found.clear();
+}
+
+/* ================================================================ gedeeld spelverloop */
+function beginRound(m) {
+  G.round = m.n; G.phase = 'count'; G.paused = false; G.t = 0; G.wallsEnd = 0; G.winner = -1; G.banner = null;
+  if (m.scores) G.scores = m.scores;
+  G.alive = G.players.map(() => true); G.fx = G.players.map(() => []);
+  G.countStart = performance.now(); lastBeep = -1;
+  input.zero = input.ax;
+  R.reset(m.pos);
+  updateHud();
+}
+function goPlay() { G.phase = 'play'; G.banner = null; sBeep(true); updateHud(); }
+function roundEnd(m) {
+  G.scores = m.scores; G.phase = 'roundover';
+  const w = m.winner;
+  if (m.gw >= 0) {
+    G.phase = 'over'; G.winner = m.gw; G.banner = null; ui.sheet = 'result';
+    if (m.gw === G.me) { sWin(); buzz([40, 50, 40, 50, 120]); } else tone(300, 0.4, 'triangle', 0.07, 0, 200);
+    renderSheet();
+  } else {
+    G.banner = w >= 0 ? { title: w === G.me ? 'Jij wint de ronde!' : `${esc(G.players[w].name)} wint de ronde`, color: COLORS[G.players[w].color], sub: 'Volgende ronde begint zo' } : { title: 'Gelijkspel', sub: 'Iedereen tegelijk eruit' };
+    if (w === G.me) sWin();
+  }
+  updateHud();
+}
+function handleEvent(e) {
+  const now = performance.now();
+  switch (e.k) {
+    case 'die':
+      G.alive[e.p] = false;
+      R.bursts.push({ x: e.x, y: e.y, c: COLORS[G.players[e.p].color], t0: now });
+      if (e.p === G.me) { sDie(); buzz(140); } else tone(240, 0.12, 'triangle', 0.04);
+      if (view === 'game') updateHud();
+      break;
+    case 'spawn': R.pus.set(e.id, { type: e.type, x: e.x, y: e.y, t0: now }); break;
+    case 'take': {
+      const pu = R.pus.get(e.id); R.pus.delete(e.id);
+      const pw = K.PBY[e.type];
+      if (pu) R.labels.push({ x: pu.x, y: pu.y, text: pw.name + (pw.kind === 'others' ? ' (anderen)' : ''), c: KIND_COL[pw.kind], t0: now });
+      const hitsMe = (pw.kind === 'self' && e.p === G.me) || (pw.kind === 'others' && e.p !== G.me) || pw.kind === 'all';
+      if (hitsMe) { sTake(); buzz(25); }
+      break;
+    }
+    case 'fx': G.fx[e.p] = e.l; if (e.p === G.me) updateFx(); break;
+    case 'clear': R.clearTrail(); break;
+    case 'walls': G.wallsEnd = e.end; break;
+  }
+}
+
+/* ================================================================ tekenen */
+const R = {
+  trail: null, top: null, tctx: null, octx: null, cssW: 0, cssH: 0, ps: [], pus: new Map(), bursts: [], labels: [],
+  attach(fieldbox) {
+    this.trail = fieldbox.querySelector('#trail'); this.top = fieldbox.querySelector('#top');
+    this.tctx = this.trail.getContext('2d'); this.octx = this.top.getContext('2d');
+  },
+  fit(w, h) {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (this.trail.width === pw && this.trail.height === ph) return;
+    let copy = null;
+    if (this.trail.width > 1) { copy = document.createElement('canvas'); copy.width = this.trail.width; copy.height = this.trail.height; copy.getContext('2d').drawImage(this.trail, 0, 0); }
+    [this.trail, this.top].forEach(c => { c.width = pw; c.height = ph; c.style.width = w + 'px'; c.style.height = h + 'px'; });
+    this.cssW = w; this.cssH = h;
+    if (copy) this.tctx.drawImage(copy, 0, 0, pw, ph);
+    const k = pw / K.W;
+    [this.tctx, this.octx].forEach(c => { c.setTransform(k, 0, 0, k, 0, 0); c.lineCap = 'round'; c.lineJoin = 'round'; });
+  },
+  clearTrail() { this.tctx.save(); this.tctx.setTransform(1, 0, 0, 1, 0, 0); this.tctx.clearRect(0, 0, this.trail.width, this.trail.height); this.tctx.restore(); },
+  reset(pos) {
+    this.clearTrail(); this.pus.clear(); this.bursts = []; this.labels = [];
+    this.ps = pos.map(([x, y, a]) => ({ x, y, a, from: { x, y }, to: { x, y }, drawn: { x, y }, painted: false, alive: true, r: 2.6, ghost: false, t0: 0 }));
+  },
+  seg(i, x0, y0, x1, y1, r) {
+    const c = this.tctx;
+    c.strokeStyle = COLORS[G.players[i].color]; c.lineWidth = r * 2;
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+  },
+  hostStep(s) {
+    s.players.forEach((p, i) => {
+      const q = this.ps[i]; if (!q) return;
+      if (p.painted) { if (p.wrapped) this.seg(i, p.x, p.y, p.x, p.y, p.r); else this.seg(i, q.x, q.y, p.x, p.y, p.r); }
+      q.x = p.x; q.y = p.y; q.a = p.a; q.alive = p.alive; q.r = p.r; q.ghost = p.ghost;
+    });
+  },
+  // andere telefoons: posities komen 20× per seconde binnen; lijnen worden vloeiend bijgetekend
+  frame(arr, now) {
+    arr.forEach((f, i) => {
+      const q = this.ps[i]; if (!q) return;
+      if (q.painted) { this.seg(i, q.drawn.x, q.drawn.y, q.to.x, q.to.y, q.r); }
+      const pt = { x: f[0], y: f[1] };
+      if (f[3] & 2) { q.from = pt; q.drawn = pt; } else { q.from = q.to; q.drawn = q.to; }
+      q.to = pt; q.painted = !!(f[3] & 1); q.alive = !!(f[3] & 4); q.ghost = !!(f[3] & 8); q.r = f[2]; q.t0 = now;
+      if (q.from.x !== pt.x || q.from.y !== pt.y) q.a = Math.atan2(pt.y - q.from.y, pt.x - q.from.x);
+    });
+  },
+  tickClient(now) {
+    this.ps.forEach((q, i) => {
+      const k = Math.min(1, (now - q.t0) / FRAME_MS);
+      const x = q.from.x + (q.to.x - q.from.x) * k, y = q.from.y + (q.to.y - q.from.y) * k;
+      if (q.painted && (x !== q.drawn.x || y !== q.drawn.y)) this.seg(i, q.drawn.x, q.drawn.y, x, y, q.r);
+      q.drawn = { x, y }; q.x = x; q.y = y;
+    });
+  },
+  drawTop(now) {
+    const c = this.octx, W = K.W, H = K.H;
+    c.clearRect(0, 0, W, H);
+    // rand: doorgetrokken = dodelijk, gestippeld = je kunt erdoor
+    const open = G.walls === 'wrap' || G.t < G.wallsEnd;
+    c.save(); c.lineWidth = 3; c.strokeStyle = open ? '#3b82f6' : '#4a4860';
+    if (open) c.setLineDash([10, 10]);
+    c.strokeRect(1.5, 1.5, W - 3, H - 3); c.restore();
+    // power-ups
+    for (const pu of this.pus.values()) {
+      const pw = K.PBY[pu.type], g = GLYPH[pw.glyph];
+      const sc = Math.min(1, (now - pu.t0) / 220);
+      c.save(); c.translate(pu.x, pu.y); c.scale(sc, sc);
+      c.fillStyle = KIND_COL[pw.kind]; c.beginPath(); c.arc(0, 0, K.PU_R, 0, Math.PI * 2); c.fill();
+      c.translate(-12 * 0.95, -12 * 0.95); c.scale(0.95, 0.95);
+      c.strokeStyle = '#fff'; c.lineWidth = g.w || 2.4; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.stroke(PATHS[pw.glyph] || (PATHS[pw.glyph] = new Path2D(g.d)));
+      c.restore();
+    }
+    // koppen
+    const counting = G.phase === 'count';
+    this.ps.forEach((q, i) => {
+      const col = COLORS[G.players[i].color];
+      if (counting) {
+        const len = 30;
+        c.strokeStyle = col; c.lineWidth = 3; c.globalAlpha = 0.8;
+        c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x + Math.cos(q.a) * len, q.y + Math.sin(q.a) * len); c.stroke();
+        const ax = q.x + Math.cos(q.a) * (len + 2), ay = q.y + Math.sin(q.a) * (len + 2);
+        c.beginPath(); c.moveTo(ax, ay);
+        c.lineTo(ax - Math.cos(q.a - 0.5) * 10, ay - Math.sin(q.a - 0.5) * 10);
+        c.lineTo(ax - Math.cos(q.a + 0.5) * 10, ay - Math.sin(q.a + 0.5) * 10); c.closePath(); c.fillStyle = col; c.fill();
+        c.globalAlpha = 1;
+        if (i === G.me) {
+          const pr = 14 + 6 * Math.sin(now / 130);
+          c.strokeStyle = col; c.lineWidth = 2.5; c.beginPath(); c.arc(q.x, q.y, pr, 0, Math.PI * 2); c.stroke();
+          c.fillStyle = col; c.font = '800 22px "Bricolage Grotesque",system-ui,sans-serif'; c.textAlign = 'center';
+          c.fillText('JIJ', q.x, q.y - 26);
+        }
+      }
+      if (!q.alive) return;
+      const hr = Math.max(q.r, 2.6) + 0.9;
+      if (q.ghost) { c.strokeStyle = '#ffffffb0'; c.lineWidth = 1.8; c.beginPath(); c.arc(q.x, q.y, hr + 2, 0, Math.PI * 2); c.stroke(); }
+      else { c.fillStyle = '#ffe14d'; c.beginPath(); c.arc(q.x, q.y, hr, 0, Math.PI * 2); c.fill(); }
+    });
+    // botsingen en labels
+    this.bursts = this.bursts.filter(b => now - b.t0 < 650);
+    this.bursts.forEach(b => {
+      const k = (now - b.t0) / 650;
+      c.strokeStyle = b.c; c.globalAlpha = 1 - k; c.lineWidth = 4 * (1 - k) + 1;
+      c.beginPath(); c.arc(b.x, b.y, 6 + 34 * k, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1;
+    });
+    this.labels = this.labels.filter(l => now - l.t0 < 900);
+    this.labels.forEach(l => {
+      const k = (now - l.t0) / 900;
+      c.globalAlpha = 1 - k * k; c.fillStyle = l.c; c.font = '800 24px "Bricolage Grotesque",system-ui,sans-serif'; c.textAlign = 'center';
+      c.fillText(l.text, Math.min(W - 90, Math.max(90, l.x)), l.y - 26 - 30 * k); c.globalAlpha = 1;
+    });
+    // aftellen / pauze
+    if (counting) {
+      const left = COUNT_MS - (now - G.countStart), n = Math.max(1, Math.ceil(left / (COUNT_MS / 3)));
+      c.fillStyle = '#ffffffd8'; c.font = '800 120px "Bricolage Grotesque",system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(String(n), W / 2, H / 2); c.textBaseline = 'alphabetic';
+    } else if (G.paused) {
+      c.fillStyle = '#000a'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#fff'; c.font = '800 64px "Bricolage Grotesque",system-ui,sans-serif'; c.textAlign = 'center'; c.fillText('Pauze', W / 2, H / 2);
+    }
+  }
+};
+
+/* ================================================================ besturing */
+const input = { left: false, right: false, keys: 0, tiltDir: 0, ax: 0, zero: 0, sent: 0, hasMotion: false };
+const TILT_TH = { low: 3.4, mid: 2.4, high: 1.5 };
+window.addEventListener('devicemotion', e => {
+  const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+  input.hasMotion = true;
+  input.ax = input.ax * 0.6 + g.x * 0.4;
+  if (S.control !== 'tilt' && ui.sheet !== 'settings') return;
+  // rechterkant omlaag geeft een negatieve x; omdraaien kan in de instellingen
+  const v = (input.ax - input.zero) * (S.tiltFlip ? 1 : -1), th = TILT_TH[S.tilt] || 2.4;
+  const d = input.tiltDir;
+  input.tiltDir = v > th || (d === 1 && v > th * 0.6) ? 1 : v < -th || (d === -1 && v < -th * 0.6) ? -1 : 0;
+  if (ui.sheet === 'settings') updateTiltMeter(v, th);
+  if (S.control === 'tilt') pushInput();
+});
+function currentDir() {
+  const b = (input.left ? -1 : 0) + (input.right ? 1 : 0) + input.keys;
+  if (input.left || input.right || input.keys) return Math.max(-1, Math.min(1, b));
+  return S.control === 'tilt' ? input.tiltDir : 0;
+}
+function pushInput() {
+  if (!G || view !== 'game') return;
+  const d = currentDir();
+  const ctl = document.querySelector('.ctl');
+  if (ctl) { ctl.children[0].classList.toggle('on', d === -1); ctl.children[1].classList.toggle('on', d === 1); }
+  if (d === input.sent) return;
+  input.sent = d;
+  if (G.me < 0) return;
+  if (role === 'host') { if (sim) sim.setInput(G.me, d); }
+  else send({ t: 'ki', d });
+}
+const pointers = new Map();
+function ptrUpdate() {
+  input.left = [...pointers.values()].includes(-1); input.right = [...pointers.values()].includes(1);
+  pushInput();
+}
+app.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-dir]'); if (!b) return;
+  e.preventDefault();
+  try { b.setPointerCapture(e.pointerId); } catch (er) {}
+  pointers.set(e.pointerId, +b.dataset.dir); ptrUpdate();
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => app.addEventListener(t, e => { if (pointers.delete(e.pointerId)) ptrUpdate(); }));
+app.addEventListener('contextmenu', e => { if (e.target.closest('[data-dir]')) e.preventDefault(); });
+const keyDirs = { ArrowLeft: -1, ArrowRight: 1, a: -1, d: 1, A: -1, D: 1 };
+const keysDown = new Set();
+window.addEventListener('keydown', e => {
+  if (!(e.key in keyDirs) || view !== 'game' || e.target.tagName === 'INPUT') return;
+  keysDown.add(e.key); input.keys = [...keysDown].reduce((a, k) => a + keyDirs[k], 0); pushInput(); e.preventDefault();
+});
+window.addEventListener('keyup', e => {
+  if (!keysDown.delete(e.key)) return;
+  input.keys = [...keysDown].reduce((a, k) => a + keyDirs[k], 0); pushInput();
+});
+function updateTiltMeter(v, th) {
+  const el = document.getElementById('tiltdot'); if (!el) return;
+  const max = th * 2.6, k = Math.max(-1, Math.min(1, v / max));
+  el.style.left = `calc(${50 + k * 46}% - 10px)`;
+  el.style.background = input.tiltDir ? 'var(--good)' : 'var(--accent)';
+}
+
+/* ================================================================ lus */
+let acc = 0, lastTs = 0, lastBeep = -1;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(100, ts - (lastTs || ts)); lastTs = ts;
+  if (view !== 'game' || !G || !R.trail) return;
+  fitField();
+  if (G.phase === 'count') {
+    const n = Math.max(0, Math.ceil((COUNT_MS - (ts - G.countStart)) / (COUNT_MS / 3)));
+    if (n !== lastBeep && n >= 1) { sBeep(false); lastBeep = n; }
+  }
+  if (role === 'host' && sim && G.phase === 'play' && !G.paused) {
+    acc += dt; let n = 0;
+    while (acc >= STEP_MS && n < 6) { acc -= STEP_MS; n++; hostStep(); if (G.phase !== 'play') break; }
+    if (n >= 6) acc = 0;
+  } else if (role !== 'host') R.tickClient(ts);
+  R.drawTop(ts);
+  if (G.phase === 'play' && ts - fxTick > 250) { fxTick = ts; updateFx(); }
+}
+let fxTick = 0;
+requestAnimationFrame(loop);
+
+/* ================================================================ schermen */
+function refresh() { if (view === 'game' && G) { updateHud(); renderSheet(); } else render(); }
+
+function vHome() {
+  const canJoin = multiOK();
+  const why = !NET || !NET.available() ? 'Werkt alleen in de geïnstalleerde app' : !canJoin ? 'Werk eerst de app bij (nieuwe installatie nodig)' : 'Bij iemand die een spel heeft gemaakt';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><h1>Kronkel</h1><p>Stuur je lijn, laat de anderen botsen. Wie het langst overleeft, scoort.</p>${heroArt()}</div>
+    <div class="choices">
+      <button class="choice" data-a="host"><span class="ic">${IC.host}</span><span><b>Spel maken</b><span>Anderen doen mee op hun eigen telefoon, of speel tegen de computer</span></span></button>
+      <button class="choice" data-a="join" ${canJoin ? '' : 'disabled'}><span class="ic">${IC.join}</span><span><b>Meedoen</b><span>${why}</span></span></button>
+    </div>
+    <details class="rules"><summary><b>Zo werkt het</b></summary><ul>
+      <li>Iedereen stuurt een lijn die steeds langer wordt. Links en rechts, meer niet.</li>
+      <li>Bots je tegen een lijn (ook je eigen) of tegen een dichte rand, dan lig je eruit.</li>
+      <li>Af en toe zit er een gat in een lijn. Daar kun je doorheen glippen.</li>
+      <li>Ligt er iemand uit, dan krijgt iedereen die nog rijdt een punt.</li>
+      <li>Wie als eerste 10 × (spelers − 1) punten heeft met minstens 2 voorsprong, wint.</li>
+      <li>Groene power-ups helpen jou, rode pesten de anderen, blauwe gelden voor iedereen.</li>
+    </ul></details>
+  </div>`;
+}
+function nameField() {
+  return `<div class="field"><label class="label" for="nm">Jouw naam</label><input class="input" id="nm" data-in="name" value="${esc(myName())}" maxlength="16" placeholder="bijv. Wouter" autocomplete="off"></div>`;
+}
+function plRow(p, i, editable) {
+  const col = COLORS[i % 8];
+  const tag = p.tok === TOK ? 'Jij' : p.kind === 'cpu' ? 'Computer' : i === 0 ? 'Maakt het spel' : 'Telefoon';
+  let acts = '';
+  if (editable && p.kind === 'cpu') acts = `<button class="pill" data-a="botlevel" data-i="${i}">${LEVEL_NAME[p.level]}</button><button class="xbtn" data-a="botdel" data-i="${i}" aria-label="Computer weghalen">${IC.x}</button>`;
+  else if (p.kind === 'cpu') acts = `<span class="note">${LEVEL_NAME[p.level]}</span>`;
+  return `<div class="pl"><span class="dot" style="background:${col};color:${col}"></span><span class="nm">${esc(p.name)}<small>${CNAMES[i % 8]} · ${tag}</small></span><span class="acts">${acts}</span></div>`;
+}
+function powersSummary(list, button) {
+  const n = list.length;
+  return `<div class="summary"><div class="tx"><b>Power-ups</b><small>${n === 0 ? 'Uit: alleen lijnen en gaten' : n === K.POWERS.length ? 'Allemaal aan' : `${n} van de ${K.POWERS.length} aan`}</small>
+    ${n ? `<div class="minis">${list.map(glyphSVG).join('')}</div>` : ''}</div>${button ? '<button class="btn quiet small" data-a="powers">Kiezen</button>' : ''}</div>`;
+}
+function vHost() {
+  const n = L.players.length, phones = L.players.filter(p => p.kind === 'human' && p.tok !== TOK).length;
+  let status;
+  if (!NET || !NET.available()) status = `<div class="status"><span class="pulse off"></span><div><b>Alleen tegen de computer</b><span class="note">Andere telefoons kunnen meedoen in de geïnstalleerde app.</span></div></div>`;
+  else if (!multiOK()) status = `<div class="status"><span class="pulse off"></span><div><b>Alleen tegen de computer</b><span class="note">Voor meer telefoons is een nieuwe versie van de app nodig. Zoek naar updates via Instellingen (tandwiel op het startscherm).</span></div></div>`;
+  else if (net.status === 'hosting') status = `<div class="status"><span class="pulse"></span><div><b>Anderen kunnen nu meedoen</b><span class="note">Laat ze Kronkel openen en op Meedoen tikken. ${phones ? `${phones} telefoon${phones > 1 ? 's' : ''} verbonden.` : ''}</span></div></div>`;
+  else status = `<div class="status"><span class="pulse off"></span><div><b>Niet zichtbaar voor anderen</b><span class="note">Zet Bluetooth en wifi aan.</span></div><button class="btn quiet small" data-a="readvertise">Opnieuw</button></div>`;
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Kronkel</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <h1 style="font-size:36px">Spel maken</h1>
+    ${net.err ? `<p class="err">${esc(net.err)}</p>` : ''}
+    ${status}
+    ${nameField()}
+    <div class="field"><div class="label">Spelers <small>${n} van ${MAXP}</small></div>
+      <div class="players">${L.players.map((p, i) => plRow(p, i, true)).join('')}</div>
+      ${n < MAXP ? `<button class="btn quiet" data-a="botadd">+ Computer</button>` : ''}
+    </div>
+    <div class="field"><div class="label">Rand van het veld</div>
+      <div class="seg"><button data-a="walls" data-v="deadly" aria-pressed="${L.walls === 'deadly'}">Dodelijk</button><button data-a="walls" data-v="wrap" aria-pressed="${L.walls === 'wrap'}">Doorlopen</button></div>
+      <p class="note">${L.walls === 'deadly' ? 'Wie de rand raakt, ligt eruit.' : 'Rij je eruit, dan kom je er aan de overkant weer in.'}</p>
+    </div>
+    ${powersSummary(L.powers, true)}
+    <p class="note">Winnen: als eerste ${10 * (Math.max(2, n) - 1)} punten, met minstens 2 voorsprong.</p>
+    <div class="sticky"><button class="btn" data-a="start" ${n < 2 ? 'disabled' : ''}>${n < 2 ? 'Voeg een computer toe of wacht op iemand' : `Start met ${n} spelers`}</button></div>
+  </div>`;
+}
+function vJoin() {
+  const st = net.status;
+  let body = '';
+  if (st === 'idle' || st === 'lost') {
+    body = `${nameField()}
+      ${st === 'lost' ? '<p class="err">De verbinding met de host is weg.</p>' : ''}
+      <button class="btn" data-a="search">Zoeken naar een spel</button>
+      <p class="note">Iemand anders moet in Kronkel op Spel maken hebben getikt.</p>`;
+  } else if (st === 'searching') {
+    const list = [...net.found.entries()];
+    body = `<div class="status"><span class="pulse"></span><div><b>Zoeken naar spellen in de buurt…</b><span class="note">Houd de telefoons bij elkaar.</span></div></div>
+      <div class="list">${list.map(([id, nm]) => `<button class="btn" data-a="connect" data-id="${esc(id)}">Meedoen met ${esc(nm)}</button>`).join('')}</div>
+      <button class="btn quiet" data-a="stopsearch">Stoppen</button>`;
+  } else if (st === 'connecting') {
+    body = `<div class="status"><span class="pulse"></span><b>Verbinden met ${esc(net.hostName || 'de host')}…</b></div>`;
+  } else if (st === 'connected') {
+    const lb = net.lobby;
+    body = `<div class="status"><span class="pulse"></span><div><b>${lb ? `Wachten tot ${esc(lb.host)} start…` : 'Verbonden'}</b><span class="note">${net.busy ? 'Er loopt nog een spel. Je doet mee vanaf het volgende.' : 'Het spel begint vanzelf op jouw telefoon.'}</span></div></div>
+      ${nameField()}
+      ${lb ? `<div class="field"><div class="label">Spelers <small>${lb.players.length} van ${MAXP}</small></div><div class="players">${lb.players.map((p, i) => plRow(p, i, false)).join('')}</div></div>
+      <div class="summary"><div class="tx"><b>Rand</b><small>${lb.walls === 'wrap' ? 'Doorlopen: je komt er aan de overkant weer in' : 'Dodelijk: wie de rand raakt, ligt eruit'}</small></div></div>
+      ${powersSummary(lb.powers, false)}` : ''}
+      <button class="btn quiet" data-a="leave">Weggaan</button>`;
+  }
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Kronkel</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <h1 style="font-size:36px">Meedoen</h1>
+    ${net.err ? `<p class="err">${esc(net.err)}</p>` : ''}
+    ${body}
+    <div class="tip"><b>In het vliegtuig?</b> Zet vliegtuigmodus aan en daarna Bluetooth en wifi weer aan. Internet is niet nodig.</div>
+  </div>`;
+}
+
+/* ---------- spelscherm: één keer opbouwen, daarna alleen bijwerken ---------- */
+function buildGame() {
+  const me = G.me >= 0 ? COLORS[G.players[G.me].color] : '#ffd23f';
+  app.innerHTML = `<div class="game" style="--me:${me}">
+    <div class="hud"><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button><div class="chips" id="chips"></div><div class="goal" id="goal"></div></div>
+    <div class="stage" id="stage"><div class="fieldbox" id="fieldbox"><canvas id="trail"></canvas><canvas id="top"></canvas><div class="banner" id="banner"></div></div></div>
+    <div class="fxrow" id="fxrow"></div>
+    <div class="ctl" style="color:${me}">
+      <button data-dir="-1" aria-label="Links">${IC.left}</button><button data-dir="1" aria-label="Rechts">${IC.right}</button>
+      ${S.control === 'tilt' ? `<div class="hint">Kantel je telefoon om te sturen${input.hasMotion ? '' : ' (geen bewegingssensor gevonden)'}. De knoppen werken ook.</div>` : ''}
+    </div>
+  </div><div id="sheethost"></div>`;
+  const old = R.trail && R.trail.width > 1 && R.trail.isConnected === false ? R.trail : null;
+  R.attach(document.getElementById('fieldbox'));
+  R.trail.width = 1; R.trail.height = 1;
+  fitKey = ''; fitField(true);
+  if (old) R.tctx.drawImage(old, 0, 0, K.W, K.H);
+  input.sent = 0; pointers.clear(); input.left = input.right = false;
+  updateHud(); renderSheet();
+}
+let fitKey = '';
+function fitField(force) {
+  const st = document.getElementById('stage'); if (!st) return;
+  const w = st.clientWidth, h = st.clientHeight, key = w + 'x' + h;
+  if (!force && key === fitKey) return;
+  fitKey = key;
+  const fw = Math.max(60, Math.floor(Math.min(w, h * K.W / K.H))), fh = Math.floor(fw * K.H / K.W);
+  const fb = document.getElementById('fieldbox'); fb.style.width = fw + 'px'; fb.style.height = fh + 'px';
+  R.fit(fw, fh);
+}
+function updateHud() {
+  if (view !== 'game' || !G) return;
+  const chips = document.getElementById('chips'); if (!chips) return;
+  const few = G.players.length <= 4;
+  chips.innerHTML = G.players.map((p, i) => `<span class="chip ${i === G.me ? 'me' : ''} ${G.alive[i] || G.phase !== 'play' ? '' : 'out'}"><i style="background:${COLORS[p.color]}"></i>${few ? `<em>${esc(p.name.replace(/^Computer /, 'PC '))}</em>` : ''}${G.scores[i]}${p.away ? ' <em>(pc)</em>' : ''}</span>`).join('');
+  document.getElementById('goal').innerHTML = `<b>${G.target}</b>doel`;
+  const bn = document.getElementById('banner');
+  const b = G.banner;
+  const want = b ? `<div style="${b.color ? `border-color:${b.color}` : ''}"><h2 style="${b.color ? `color:${b.color}` : ''}">${b.title}</h2>${b.sub ? `<p>${b.sub}</p>` : ''}</div>` : '';
+  if (bn.dataset.k !== want) { bn.innerHTML = want; bn.dataset.k = want; }
+  updateFx();
+}
+function updateFx() {
+  const row = document.getElementById('fxrow'); if (!row || !G) return;
+  const mine = (G.me >= 0 && G.fx[G.me]) || [];
+  const items = mine.map(([type, end]) => [type, Math.max(0, Math.ceil((end - G.t) / 60))]).filter(x => x[1] > 0);
+  if (G.t < G.wallsEnd) items.push(['walls_all', Math.ceil((G.wallsEnd - G.t) / 60)]);
+  let html;
+  if (items.length) html = items.map(([type, s]) => `<span class="fx">${glyphSVG(type)}${s}</span>`).join('');
+  else if (G.phase === 'play' && G.me >= 0 && !G.alive[G.me] && G.players.length > 1) html = 'Je ligt eruit. Kijk wie het langst blijft rijden.';
+  else html = `Ronde ${G.round || 1}`;
+  if (row.dataset.k !== html) { row.innerHTML = html; row.dataset.k = html; }
+}
+
+/* ---------- vellen ---------- */
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+function sheetSettings() {
+  const th = TILT_TH[S.tilt], max = th * 2.6;
+  const p1 = 50 - (th / max) * 46, p2 = 50 + (th / max) * 46;
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="btn quiet small" data-a="close">Klaar</button></div>
+    <h3>Sturen</h3>
+    <div class="seg"><button data-a="control" data-v="buttons" aria-pressed="${S.control === 'buttons'}">Knoppen</button><button data-a="control" data-v="tilt" aria-pressed="${S.control === 'tilt'}">Kantelen</button></div>
+    ${S.control === 'tilt' ? `<p class="note">Kantel je telefoon naar links of rechts, of draai hem als een stuur. Recht houden is rechtdoor; bij elke ronde telt hoe je hem op dat moment vasthoudt als rechtdoor.</p>
+      <div class="seg">${[['low', 'Rustig'], ['mid', 'Normaal'], ['high', 'Gevoelig']].map(([v, l]) => `<button data-a="tilt" data-v="${v}" aria-pressed="${S.tilt === v}">${l}</button>`).join('')}</div>
+      <div class="tiltmeter" style="--th1:${p1}%;--th2:${p2}%"><i id="tiltdot"></i></div>
+      ${tog('tiltFlip', 'Links en rechts omdraaien', 'Als de bol de verkeerde kant op gaat')}` : ''}
+    <h3>Overig</h3>
+    ${tog('sound', 'Geluid')}
+    ${tog('vibrate', 'Trillen')}`;
+}
+function sheetPowers() {
+  const on = new Set(L.powers);
+  const group = kind => `<h3>${KIND_NAME[kind]}</h3>` + K.POWERS.filter(p => p.kind === kind).map(p => `<div class="row"><div class="ig">${glyphSVG(p.id)}<div><b>${p.name}</b><div class="d">${p.desc}</div></div></div><button class="toggle" data-a="pw" data-id="${p.id}" aria-pressed="${on.has(p.id)}" aria-label="${p.name} ${KIND_NAME[kind]}"></button></div>`).join('');
+  return `<div class="sheet-head"><h2>Power-ups</h2><button class="btn quiet small" data-a="close">Klaar</button></div>
+    <div class="seg"><button data-a="pwall" data-v="1">Alles aan</button><button data-a="pwall" data-v="0">Alles uit</button></div>
+    ${group('self')}${group('others')}${group('all')}
+    <p class="note">Een power-up werkt ruim 5 seconden. Rij er doorheen om hem te pakken.</p>`;
+}
+function sheetMenu() {
+  const host = role === 'host';
+  return `<div class="sheet-head"><h2>Menu</h2><button class="btn quiet small" data-a="close">Sluiten</button></div>
+    <div class="list">
+      ${host && G.phase === 'play' ? `<button class="btn" data-a="pause">${G.paused ? 'Doorgaan' : 'Pauze'}</button>` : ''}
+      <button class="btn quiet" data-a="settings">Instellingen</button>
+      ${host ? `<button class="btn quiet" data-a="tolobby">Stoppen, terug naar spelers</button>` : `<button class="btn quiet" data-a="leave">Spel verlaten</button>`}
+    </div>`;
+}
+function sheetResult() {
+  if (!G || G.winner < 0) return '';
+  const w = G.winner, host = role === 'host';
+  const order = G.players.map((p, i) => ({ p, i, s: G.scores[i] })).sort((a, b) => b.s - a.s);
+  return `<div class="result"><h2 style="color:${COLORS[G.players[w].color]}">${w === G.me ? 'Je wint!' : `${esc(G.players[w].name)} wint!`}</h2>
+    <div class="rank">${order.map((o, k) => `<div><b>${k + 1}</b><i style="background:${COLORS[o.p.color]}"></i><span>${esc(o.p.name)}${o.i === G.me ? ' (jij)' : ''}</span><b>${o.s}</b></div>`).join('')}</div></div>
+    <div class="list">${host ? `<button class="btn" data-a="again">Nog een spel</button><button class="btn quiet" data-a="tolobby">Terug naar spelers</button>`
+      : `<p class="note" style="text-align:center">Wachten tot ${esc(net.hostName || 'de host')} een nieuw spel start…</p><button class="btn quiet" data-a="leave">Spel verlaten</button>`}</div>`;
+}
+function sheetHTML() {
+  if (!ui.sheet) return '';
+  const fn = { settings: sheetSettings, powers: sheetPowers, menu: sheetMenu, result: sheetResult }[ui.sheet];
+  if (!fn || (ui.sheet === 'powers' && !L) || ((ui.sheet === 'menu' || ui.sheet === 'result') && !G)) return '';
+  return `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${fn()}</div></div>`;
+}
+function renderSheet() {
+  const host = document.getElementById('sheethost'); if (!host) return;
+  const html = sheetHTML();
+  if (host.dataset.k === html) return;
+  const sc = host.querySelector('.sheet'), top = sc ? sc.scrollTop : 0;
+  host.innerHTML = html; host.dataset.k = html;
+  const ns = host.querySelector('.sheet'); if (ns) ns.scrollTop = top;
+}
+function render() {
+  if (view === 'game' && G) { renderSheet(); return; }
+  const html = (view === 'host' && L ? vHost() : view === 'join' ? vJoin() : vHome()) + '<div id="sheethost"></div>';
+  const act = document.activeElement, focusName = act && act.id === 'nm', pos = focusName ? act.selectionStart : 0;
+  const scroller = document.scrollingElement, sy = scroller ? scroller.scrollTop : 0;
+  app.innerHTML = html;
+  if (scroller) scroller.scrollTop = sy;
+  if (focusName) { const el = document.getElementById('nm'); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
+  renderSheet();
+}
+
+/* ================================================================ kliks */
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; if (ui.sheet === 'result') return; ui.sheet = null; refresh(); return; }
+  switch (a) {
+    case 'exit': leaveNet(); location.href = '../index.html'; return;
+    case 'home': leaveNet(); view = 'home'; ui.sheet = null; break;
+    case 'host': openHost(); break;
+    case 'join': openJoin(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'powers': ui.sheet = 'powers'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = (ui.sheet === 'settings' && G && G.phase === 'over') ? 'result' : null; if (view === 'game' && S.control === 'tilt') input.zero = input.ax; break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'vibrate') buzz(30); if (el.dataset.k === 'sound') sTake(); break;
+    case 'control': S.control = el.dataset.v; saveS(); input.zero = input.ax; if (view === 'game' && G) { const keep = ui.sheet; buildGame(); ui.sheet = keep; } break;
+    case 'tilt': S.tilt = el.dataset.v; saveS(); break;
+    case 'botadd': if (L.players.length < MAXP) { const c = L.players.filter(p => p.kind === 'cpu').length; L.players.push({ name: 'Computer ' + (c + 1), kind: 'cpu', level: S.botLevel }); renumberBots(); lobbyChanged(); } return;
+    case 'botdel': L.players.splice(+el.dataset.i, 1); renumberBots(); lobbyChanged(); return;
+    case 'botlevel': { const p = L.players[+el.dataset.i]; const lv = ['easy', 'normal', 'strong']; p.level = lv[(lv.indexOf(p.level) + 1) % 3]; S.botLevel = p.level; lobbyChanged(); return; }
+    case 'walls': L.walls = el.dataset.v; lobbyChanged(); return;
+    case 'pw': { const id = el.dataset.id, i = L.powers.indexOf(id); if (i >= 0) L.powers.splice(i, 1); else L.powers.push(id); L.powers.sort((x, y) => K.POWERS.findIndex(p => p.id === x) - K.POWERS.findIndex(p => p.id === y)); lobbyChanged(); return; }
+    case 'pwall': L.powers = el.dataset.v === '1' ? K.POWERS.map(p => p.id) : []; lobbyChanged(); return;
+    case 'readvertise': net.err = ''; advertise(); break;
+    case 'start': startGame(); return;
+    case 'again': ui.sheet = null; startGame(); return;
+    case 'tolobby': stopGameToLobby(); return;
+    case 'pause': setPause(!G.paused); ui.sheet = null; break;
+    case 'search': search(); break;
+    case 'stopsearch': NET.stop(); net.status = 'idle'; break;
+    case 'connect': net.status = 'connecting'; net.hostName = net.found.get(el.dataset.id) || ''; NET.connect(el.dataset.id); break;
+    case 'leave': leaveNet(); openJoin(); ui.sheet = null; break;
+  }
+  refresh();
+});
+function renumberBots() { let c = 0; L.players.forEach(p => { if (p.kind === 'cpu') p.name = 'Computer ' + (++c); }); }
+app.addEventListener('input', e => {
+  if (e.target.dataset.in !== 'name') return;
+  const v = e.target.value; setName(v);
+  if (role === 'host' && L) { const me = L.players.find(p => p.tok === TOK); if (me) me.name = v.trim() || 'Jij'; clearTimeout(nameT); nameT = setTimeout(() => { lobbyChanged(); }, 400); }
+  if (role === 'join' && net.status === 'connected') { clearTimeout(nameT); nameT = setTimeout(() => send({ t: 'name', name: v.trim() || 'Speler' }), 500); }
+});
+let nameT = 0;
+window.__w2back = function () {
+  if (ui.sheet && ui.sheet !== 'result') { ui.sheet = (ui.sheet === 'settings' && G && G.phase === 'over') ? 'result' : null; refresh(); return true; }
+  if (view === 'game') { ui.sheet = 'menu'; refresh(); return true; }
+  if (view !== 'home') { leaveNet(); view = 'home'; ui.sheet = null; render(); return true; }
+  return false;
+};
+window.addEventListener('pagehide', () => { if (role) leaveNet(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && role === 'host' && G && G.phase === 'play' && !G.paused) setPause(true); });
+if (document.fonts && document.fonts.load) document.fonts.load('800 24px "Bricolage Grotesque"');
+render();
+})();
+</script>
+</body>
+</html>

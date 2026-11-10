@@ -84,6 +84,7 @@ input[type=file]{display:none}
 <script src="docx.js"></script>
 <script src="../samen/sync.js"></script>
 <script src="../samen/deel.js"></script>
+<script src="../samen/boodschappen.js"></script>
 <script>
 const { esc, $, $$, icon, sheet, confirm, toast } = UI;
 const D = W2D, app = $('#app');
@@ -129,6 +130,15 @@ function scale(line, f) {
   let s = fmt(a * f);
   if (m[3]) { const b = num(m[3]); if (isFinite(b)) s += '–' + fmt(b * f); }
   return `<b>${esc(s)}</b>` + esc(line.slice(m[0].length));
+}
+/** Zelfde als scale, maar als gewone tekst (voor de boodschappenlijst). */
+function scaleText(line, f) {
+  const m = f === 1 ? null : QTY.exec(line);
+  if (!m) return line;
+  const a = num(m[1]); if (!isFinite(a)) return line;
+  let s = fmt(a * f);
+  if (m[3]) { const b = num(m[3]); if (isFinite(b)) s += '–' + fmt(b * f); }
+  return s + line.slice(m[0].length);
 }
 
 // ---------------------------------------------------------------- lijst
@@ -196,6 +206,7 @@ async function renderRecipe(r) {
     ${r.intro && r.intro.length ? `<p class="muted sel" style="margin:0;white-space:pre-wrap">${esc(r.intro.join('\n'))}</p>` : ''}
     ${r.ingr.length ? `<h2>Ingrediënten</h2>
       ${base ? `<div class="serv"><b>Voor ${n} ${n === 1 ? 'persoon' : 'personen'}</b><button data-act="min" type="button" aria-label="Minder">${icon('minus')}</button><span class="n">${n}</span><button data-act="plus" type="button" aria-label="Meer">${icon('plus')}</button></div>` : ''}
+      <button class="btn q wide" data-act="shop" type="button" style="margin-bottom:10px">${icon('plus')}Op de boodschappenlijst</button>
       <div class="card ing">${r.ingr.map((x, i) => `<div class="check${strike.has(i) ? ' on' : ''}" data-ing="${i}"><span class="box">${strike.has(i) ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${scale(x, f)}</span></div>`).join('')}</div>` : ''}
     ${r.stappen.length ? `<h2>Bereiding</h2><ol class="steps sel">${r.stappen.map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol>` : ''}
     ${r.tips && r.tips.length ? `<h2>Tips</h2><div class="tips sel">${esc(r.tips.join('\n'))}</div>` : ''}
@@ -223,12 +234,48 @@ app.addEventListener('click', async e => {
     case 'fav': r.fav = !r.fav; await db.put(r.id, r); return renderRecipe(r);
     case 'edit': return edit(r);
     case 'cook': return startCook(r);
+    case 'shop': return toShopping(r);
     case 'del':
       if (!(await confirm(`<b>${esc(r.titel)}</b> verwijderen?`, 'Verwijderen', true))) return;
       await db.del(r.id); await fotos.del(r.id);
       all = all.filter(x => x !== r); return open(null);
   }
 });
+
+// ---------------------------------------------------------------- naar de boodschappenlijst (Samen)
+async function toShopping(r) {
+  const B = window.Boodschappen, S = window.Samen;
+  if (!S || !S.cfg) {
+    const res = await sheet('Boodschappenlijst', `<div class="muted">De boodschappenlijst staat in <b style="color:var(--text)">Samen</b>, de lijstjes die je deelt. Zet Samen eerst aan (ook als je hem alleen voor jezelf gebruikt); daarna kun je ingrediënten er met één tik op zetten.</div>`,
+      [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Naar Samen', value: 'go' }]).done;
+    if (res.value === 'go') location.href = '../samen/index.html';
+    return;
+  }
+  const lists = B.lists();
+  if (!lists.length) return toast('Er is nog geen boodschappenlijst in Samen. Maak er daar een.');
+  const base = r.personen || null, n = servings || base, f = base && n ? n / base : 1;
+  const lines = r.ingr.map((x, i) => ({ i, orig: scaleText(x, f), t: B.fromRecipe(scaleText(x, f)) })).filter(x => x.t);
+  const pick = new Set(lines.filter(x => !strike.has(x.i) && !B.isStaple(x.t)).map(x => x.i));
+  const sh = sheet('Op de boodschappenlijst', `
+    ${lists.length > 1 ? `<label class="f">Lijst<select class="in" name="lijst">${lists.map(l => `<option value="${esc(l.id)}">${esc((l.emoji || '') + ' ' + l.naam)}</option>`).join('')}</select></label>` : `<div class="muted small">Op ${esc((lists[0].emoji || '') + ' ' + lists[0].naam)}${n ? ` · voor ${n} ${n === 1 ? 'persoon' : 'personen'}` : ''}</div>`}
+    <div class="card ing" id="shop">${lines.map(x => `<div class="check pick${pick.has(x.i) ? ' on' : ''}" data-pi="${x.i}"><span class="box">${pick.has(x.i) ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}${x.t !== x.orig ? `<span class="muted small" style="display:block">${esc(x.orig)}</span>` : ''}</span></div>`).join('')}</div>
+    <div class="muted small">Zout, peper, olie en wat je al afvinkte staan uit. Tik om aan of uit te zetten.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Erop zetten', value: 'ok' }]);
+  sh.el.addEventListener('click', e => {
+    const c = e.target.closest('[data-pi]'); if (!c) return;
+    const i = +c.dataset.pi, on = !pick.has(i);
+    on ? pick.add(i) : pick.delete(i);
+    c.classList.toggle('on', on);
+    c.querySelector('.box').innerHTML = on ? icon('check', 'width="16" height="16" stroke-width="3"') : '';
+  });
+  const res = await sh.done;
+  if (res.value !== 'ok') return;
+  const lijst = lists.length > 1 ? (res.form.lijst || lists[0].id) : lists[0].id;
+  const L = lists.find(l => l.id === lijst) || lists[0];
+  try { await S.start(); } catch (e) {}
+  const out = B.addLines(L.id, lines.filter(x => pick.has(x.i)).map(x => x.t), 'Voor ' + r.titel);
+  toast(out.added ? `${out.added} ${out.added === 1 ? 'ding' : 'dingen'} op ${(L.emoji || '') + ' ' + L.naam}${out.dup ? ` (${out.dup} stond${out.dup === 1 ? '' : 'en'} er al op)` : ''}` : 'Alles stond er al op.', 3500);
+}
 
 // ---------------------------------------------------------------- zelf maken / bewerken
 async function edit(r) {
@@ -346,6 +393,7 @@ function startCook(r) {
   C = { r, pages, i: 0, timers: C ? C.timers : [] };
   $('#c-title').textContent = r.titel;
   $('#cook').classList.add('on');
+  W2.awake(true);
   $('#c-close').innerHTML = icon('x');
   showPage();
 }
@@ -399,7 +447,7 @@ setInterval(() => {
 }, 500);
 $('#c-prev').onclick = () => { if (C.i > 0) { C.i--; showPage(); } };
 $('#c-next').onclick = () => { if (C.i < C.pages.length - 1) { C.i++; showPage(); } else closeCook(); };
-function closeCook() { $('#cook').classList.remove('on'); }
+function closeCook() { $('#cook').classList.remove('on'); W2.awake(false); }
 $('#c-close').onclick = closeCook;
 
 // ---------------------------------------------------------------- delen met je partner (Samen)

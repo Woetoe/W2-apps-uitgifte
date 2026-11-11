@@ -528,6 +528,10 @@
     get cfg() { return cfg; },
     get data() { return data; },
     get status() { return { status, msg: statusMsg, pending: pending(), lastSync, synced }; },
+    /** Staat dit item echt in Firebase (laatst bekende stand van de server, ook als het nog niet ontsleuteld is)? */
+    onServer: (kind, id) => !!(raw[kind] && raw[kind][id]),
+    /** Wacht er voor dit item nog iets op versturen? */
+    isPending: (kind, id) => queue.some(q => q.k === kind && q.id === id),
     on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     start, stop, peek, preview, setup, uploadFile, downloadFile, deleteFile, KINDS, leave, setMe, invite, put, del, update, summary,
     newCode, prettyCode, parseInvite, urlOk, cleanUrl, flush,

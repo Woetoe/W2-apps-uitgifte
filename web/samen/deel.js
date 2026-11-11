@@ -32,9 +32,14 @@
 
   function koppel(opts) {
     const kind = opts.kind;
-    const SNAP = 'deel-snap-' + kind;
+    const SNAP = 'deel-snap-' + kind, WACHT = 'deel-wacht-' + kind, GEZIEN = 'deel-gezien-' + kind;
     let snap = D.get(SNAP, {}) || {};
-    const saveSnap = () => D.set(SNAP, snap);
+    // wacht: verstuurd maar nog niet bevestigd door Firebase (id → vingerafdruk van wat we stuurden).
+    // gezien: stond ooit echt in Firebase. Alleen dan mag "ontbreekt in Firebase" betekenen: elders verwijderd.
+    const wacht = D.get(WACHT, {}) || {}, gezien = D.get(GEZIEN, {}) || {};
+    const saveSnap = () => { D.set(SNAP, snap); D.set(WACHT, wacht); D.set(GEZIEN, gezien); };
+    const onServer = id => S.onServer ? S.onServer(kind, id) : true;
+    const pendingHere = id => S.isPending ? S.isPending(kind, id) : false;
     let chain = Promise.resolve(), timer = null, busyFiles = false, active = false;
     const tried = new Set();   // bestanden die deze sessie al geprobeerd zijn
 
@@ -55,12 +60,12 @@
           const h = hash(o);
           if (snap[id] === h) return;
           S.put(kind, id, { o: copy(o), door: me });
-          snap[id] = h;
+          snap[id] = h; wacht[id] = h;
         });
         Object.keys(snap).forEach(id => {
           if (local[id]) return;
           S.del(kind, id);
-          delete snap[id];
+          delete snap[id]; delete wacht[id]; delete gezien[id];
         });
         saveSnap();
         files(local, false);
@@ -76,17 +81,29 @@
         const remote = remoteMap();
         const merged = {}, out = [], changed = [];
         const me = S.cfg && S.cfg.me ? S.cfg.me.id : '';
+        // Bevestigd: Firebase heeft precies wat wij stuurden en er wacht niets meer.
+        for (const [id, r] of Object.entries(remote)) {
+          if (!onServer(id) || pendingHere(id)) continue;
+          if (wacht[id] && hash(r) === wacht[id]) delete wacht[id];
+          if (!wacht[id]) gezien[id] = true;
+        }
         for (const [id, r] of Object.entries(remote)) {
           const l = local[id];
-          if (l && snap[id] !== hash(l) && hash(l) !== hash(r)) { merged[id] = l; out.push(id); }   // hier gewijzigd: wint
-          else { merged[id] = r; snap[id] = hash(r); if (!l || hash(l) !== hash(r)) changed.push(id); }
+          const hl = l ? hash(l) : '', hr = hash(r);
+          if (l && hl === hr) { merged[id] = l; snap[id] = hr; continue; }
+          // hier gewijzigd, of verstuurd maar nooit bevestigd (bv. app dicht zonder internet): de versie hier wint
+          if (l && (snap[id] !== hl || wacht[id])) { merged[id] = l; out.push(id); continue; }
+          merged[id] = r; snap[id] = hr; changed.push(id);
         }
         for (const [id, l] of Object.entries(local)) {
           if (remote[id]) continue;
-          if (snap[id] && snap[id] === hash(l)) { delete snap[id]; changed.push(id); continue; }   // elders verwijderd
-          merged[id] = l; out.push(id);   // nieuw hier (of hier gewijzigd na verwijderen elders: bewaren)
+          if (onServer(id)) { merged[id] = l; continue; }   // staat in Firebase maar is nog niet ontsleuteld: afwachten
+          if (gezien[id] && !wacht[id] && !pendingHere(id) && snap[id] === hash(l)) {   // stond in Firebase, nu weg: elders verwijderd
+            delete snap[id]; delete gezien[id]; changed.push(id); continue;
+          }
+          merged[id] = l; out.push(id);   // nieuw hier, nooit aangekomen, of hier gewijzigd na verwijderen elders: (opnieuw) delen
         }
-        out.forEach(id => { S.put(kind, id, { o: copy(merged[id]), door: me }); snap[id] = hash(merged[id]); });
+        out.forEach(id => { const h = hash(merged[id]); S.put(kind, id, { o: copy(merged[id]), door: me }); snap[id] = h; wacht[id] = h; });
         saveSnap();
         if (changed.length) await opts.schrijf(merged, changed);
         files(merged, true);

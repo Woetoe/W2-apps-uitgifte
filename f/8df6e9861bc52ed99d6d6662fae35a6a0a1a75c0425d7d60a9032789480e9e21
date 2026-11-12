@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Dampoe Wars</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Speels: paarse avondlucht, tatami-veld, groene stank. */
+:root{
+  --bg:#1b1430; --bg2:#251c40; --panel:#30254f; --line:#43376a;
+  --text:#f8f3ff; --muted:#b4a9d6; --accent:#b6e04a; --accent-ink:#1d2a05; --good:#7ed957; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body{background:radial-gradient(120% 70% at 50% 0%,#2e2152,var(--bg) 60%);background-attachment:fixed;color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#app{height:100%}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:16px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 20px) max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:52px;font-weight:700;font-size:17px;background:var(--accent);color:var(--accent-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btn.small{min-height:40px;padding:8px 14px;font-size:15px}
+.hero h1{font-size:50px;line-height:.9;letter-spacing:-.03em}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{margin-top:8px;color:var(--muted)}
+.hero canvas{width:100%;height:auto;display:block;margin-top:14px;border-radius:18px;background:#efe2b6}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:76px}
+.choice .ic{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.label{font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.label small{font-weight:500;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:8px}
+.input{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:17px;-webkit-user-select:text;user-select:text;width:100%}
+.input:focus{outline:none;border-color:var(--accent)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.players{display:flex;flex-direction:column;gap:8px}
+.pl{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-left:4px solid var(--c,#888);border-radius:14px;padding:6px 8px 6px 8px;min-height:62px}
+.av{width:48px;height:48px;border-radius:50%;display:block;border:0;padding:0;background:none}
+button.av{position:relative}
+button.av::after{content:"";position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 19l1-4L16 5l3 3L9 18z' fill='%231d2a05'/%3E%3C/svg%3E") center/12px no-repeat;border:2px solid var(--bg2)}
+.pl .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .nm small{display:block;font-weight:500;color:var(--muted);font-size:13px}
+.pl .acts{display:flex;gap:6px;align-items:center}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 11px;font-size:14px;font-weight:600;min-height:40px}
+.xbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center}
+.xbtn svg{width:16px;height:16px}
+.addrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.status{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.status b{display:block}
+.pulse{width:14px;height:14px;border-radius:50%;background:var(--accent);animation:pu 1.2s ease-in-out infinite;flex:none}
+.pulse.off{animation:none;background:var(--line)}
+@keyframes pu{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+.tip{background:var(--bg2);border-left:3px solid var(--accent);border-radius:6px 12px 12px 6px;padding:12px 14px;font-size:15px;color:var(--muted)}
+.tip b{color:var(--text)}
+.err{color:var(--warn);font-weight:600}
+.sticky{position:sticky;bottom:0;padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 4px);background:linear-gradient(transparent,var(--bg) 30%);margin-top:auto}
+.sticky .btn{width:100%}
+.rules ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:15px}
+.rules summary{cursor:pointer}
+.items{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.items div{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);line-height:1.25}
+.items img{width:34px;height:34px;flex:none}
+.items b{color:var(--text);display:block}
+/* figuurtjes kiezen */
+.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.charbtn{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.charbtn img{width:72px;height:72px}
+.charbtn b{font-size:16px}
+.charbtn small{font-size:12px;color:var(--muted);text-align:center;line-height:1.2}
+.charbtn[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
+.charbtn .who{font-size:12px;color:var(--warn);font-weight:700}
+/* spel */
+.game{height:100%;display:flex;flex-direction:column;gap:6px;max-width:640px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 6px) max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 8px) max(8px,env(safe-area-inset-left,0px));touch-action:none}
+.hud{display:flex;align-items:center;gap:8px;min-height:44px;flex:none}
+.chips{flex:1;display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.chip{display:flex;align-items:center;gap:5px;background:var(--bg2);border:2px solid transparent;border-radius:999px;padding:2px 10px 2px 2px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;transition:opacity .2s}
+.chip img{width:28px;height:28px;border-radius:50%;display:block}
+.chip.me{border-color:var(--text)}
+.chip.out{opacity:.38}
+.chip em{font-style:normal;font-weight:500;color:var(--muted);font-size:13px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.goal{font-size:12px;color:var(--muted);text-align:right;line-height:1.1;flex:none;min-width:44px}
+.goal b{display:block;font:800 17px/1 var(--f-display);color:var(--text);font-variant-numeric:tabular-nums}
+.goal b.hot{color:var(--warn)}
+.stage{position:relative;flex:1;min-height:0;display:grid;place-items:center}
+.fieldbox{position:relative;border-radius:8px;box-shadow:0 10px 40px #0008;overflow:hidden}
+.fieldbox canvas{position:absolute;inset:0;display:block}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.banner>div{background:#1b1430e8;border:2px solid var(--line);border-radius:18px;padding:14px 20px;text-align:center;min-width:200px;max-width:88%;animation:pop .25s ease-out;display:flex;flex-direction:column;align-items:center;gap:4px}
+.banner img{width:64px;height:64px}
+.banner h2{font-size:28px;line-height:1.05}
+.banner p{color:var(--muted);font-size:15px}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.stats{display:flex;gap:10px;justify-content:center;align-items:center;min-height:30px;font-size:14px;color:var(--muted);flex:none}
+.st{display:flex;align-items:center;gap:3px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
+.st img{width:24px;height:24px}
+.st.off{opacity:.3}
+/* bediening */
+.ctl{flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;height:clamp(150px,26vh,220px);padding:0 4px;color:var(--me,#b6e04a)}
+.ctl.flip{transform:rotate(180deg);height:clamp(120px,19vh,170px)}
+.pad{position:relative;height:min(100%,54vw);width:auto;aspect-ratio:1;flex:none;border-radius:50%;background:radial-gradient(circle,var(--panel) 0 35%,var(--bg2) 36%);border:2px solid var(--line);touch-action:none}
+.pad svg.ar{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.pad .knob{position:absolute;left:50%;top:50%;width:34%;height:34%;margin:-17% 0 0 -17%;border-radius:50%;background:color-mix(in srgb,currentColor 55%,var(--panel));border:2px solid currentColor;transition:transform .05s}
+.pad.on{border-color:currentColor}
+.fartbtn{height:min(84%,36vw);width:auto;aspect-ratio:1;flex:none;padding:0;border-radius:50%;border:3px solid #5b6d1c;background:radial-gradient(circle at 40% 35%,#d9f27e,#9cc53a 60%,#6f9024);display:grid;place-items:center;touch-action:none;box-shadow:0 6px 0 #4a5c14,0 10px 20px #0006;color:#2d3a0c;font:800 15px/1 var(--f-display);flex-direction:column}
+.fartbtn img{width:56%;height:auto;pointer-events:none}
+.fartbtn.on{transform:translateY(4px);box-shadow:0 2px 0 #4a5c14,0 4px 10px #0006}
+.fartbtn span{pointer-events:none;margin-top:-4px}
+.duo .hud{min-height:36px}
+.duo .stats{min-height:22px}
+.p2name{position:absolute;left:50%;top:6px;transform:translateX(-50%) rotate(180deg);font-size:12px;color:var(--muted)}
+/* vellen */
+.scrim{position:fixed;inset:0;background:#0d0820c2;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.sheet h3{font-size:17px;margin-top:4px}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.rank{display:flex;flex-direction:column;gap:6px;width:100%}
+.rank div{display:grid;grid-template-columns:22px 34px 1fr auto;gap:10px;align-items:center;background:var(--panel);border-radius:10px;padding:6px 12px;text-align:left;font-variant-numeric:tabular-nums}
+.rank img{width:34px;height:34px}
+.rank b:last-child{font-size:18px}
+.result{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.result>img{width:110px;height:110px}
+.result h2{font-size:36px;line-height:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../inet.js"></script>
+<script src="../w2.js"></script>
+<script src="engine.js"></script>
+<script src="art.js"></script>
+<script>
+(function () {
+'use strict';
+const K = window.DAMPOE, A = window.DAMPOE_ART;
+const NET = window.W2 && W2.net;
+const GAME = 'dampoe';
+const app = document.getElementById('app');
+const { W, H } = K;
+
+const MAXP = 4, STEP_MS = 1000 / 60, FRAME_EVERY = 3, FRAME_MS = FRAME_EVERY * STEP_MS, COUNT_MS = 2400, ROUND_PAUSE = 3000;
+const LEVEL_NAME = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+const SHRINK_OPTS = [[0, 'Nooit'], [90, '1½ min'], [150, '2½ min']];
+const ROUND_OPTS = [1, 3, 5];
+const BLOCK_OPTS = [['few', 'Weinig'], ['normal', 'Normaal'], ['many', 'Veel']];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CH = A.CHARS;
+const colOf = p => CH[p.ch] ? CH[p.ch].col : '#888';
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  host: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="6" width="8" height="14" rx="2"/><path d="M5 9.5a8 8 0 0 0 0 7M19 9.5a8 8 0 0 1 0 7M2.5 7.5a12 12 0 0 0 0 11M21.5 7.5a12 12 0 0 1 0 11"/></svg>',
+  join: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="2.5" y="6" width="7" height="13" rx="2"/><rect x="14.5" y="6" width="7" height="13" rx="2"/><path d="M10.5 12.5h3M12 11l1.5 1.5L12 14"/></svg>',
+  arrows: '<svg class="ar" viewBox="0 0 100 100" fill="currentColor"><path d="M50 8l9 11H41zM50 92l9-11H41zM8 50l11-9v18zM92 50l-11-9v18z"/></svg>'
+};
+
+/* ---------------- instellingen ---------------- */
+const SKEY = 'dampoe-settings';
+const S = Object.assign({
+  sound: true, vibrate: true, ch: 0, ch2: 1, name2: 'Speler 2', bots: [{ level: 'normal', ch: 2 }], botLevel: 'normal',
+  local2: false, rounds: 3, shrink: 150, blocks: 'normal'
+}, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+if (!ROUND_OPTS.includes(S.rounds)) S.rounds = 3;
+if (!SHRINK_OPTS.some(o => o[0] === S.shrink)) S.shrink = 150;
+if (!BLOCK_OPTS.some(o => o[0] === S.blocks)) S.blocks = 'normal';
+const validCh = v => (Number.isInteger(v) && v >= 0 && v < CH.length ? v : 0);
+S.ch = validCh(S.ch); S.ch2 = validCh(S.ch2);
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const myName = () => { try { return localStorage.getItem('w2-name') || ''; } catch (e) { return ''; } };
+const setName = n => { try { localStorage.setItem('w2-name', n); } catch (e) {} };
+const TOK = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+/* ---------------- toestand ---------------- */
+let view = 'home';          // home | host | join | game
+let role = null;            // host | join   (host = ook alleen tegen de computer)
+const ui = { sheet: null, pick: null };
+const net = { status: 'idle', found: new Map(), hostName: '', peers: new Map(), err: '', lobby: null, busy: false };
+let L = null;               // lobby (alleen bij de host)
+let G = null;               // lopend spel
+let sim = null;             // simulatie (alleen bij de host)
+let pending = [], roundTimer = 0, countTimer = 0;
+
+const multiOK = () => !!(NET && NET.multiAvailable && NET.multiAvailable());
+const netBadge = () => (NET && NET.badge ? NET.badge() : '');
+const nearby = () => !!(NET && NET.can && NET.can().near);
+const send = m => { if (NET && role && multiOK()) { m.game = GAME; NET.send(m); } };
+const sendTo = (id, m) => { if (NET && multiOK()) { m.game = GAME; NET.sendTo(id, m); } };
+const remoteCount = () => L ? L.players.filter(p => p.kind === 'human' && p.tok !== TOK).length : 0;
+
+/* ---------------- geluid en trillen ---------------- */
+let ac = null, noiseBuf = null;
+function audio() {
+  if (!S.sound) return null;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  } catch (e) { return null; }
+}
+function tone(f, d, type, vol, delay, f2) {
+  const a = audio(); if (!a) return;
+  try {
+    const t = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+// Een scheet, nagemaakt: zaagtand met een trillende toonhoogte door een laagdoorlaat, plus wat ruis.
+function fartSound(dur, pitch, vol) {
+  const a = audio(); if (!a) return;
+  try {
+    const t = a.currentTime;
+    const o = a.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(pitch * (1.15 + Math.random() * 0.3), t);
+    o.frequency.exponentialRampToValueAtTime(pitch * (0.55 + Math.random() * 0.2), t + dur);
+    const lfo = a.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 16 + Math.random() * 16;
+    const lg = a.createGain(); lg.gain.value = pitch * 0.45;
+    lfo.connect(lg); lg.connect(o.frequency);
+    const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380 + Math.random() * 160; f.Q.value = 5;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.025);
+    g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(a.destination);
+    if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const n = a.createBufferSource(); n.buffer = noiseBuf;
+    const nf = a.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 200; nf.Q.value = 1.2;
+    const ng = a.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(vol * 0.9, t + 0.03); ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(nf); nf.connect(ng); ng.connect(a.destination);
+    o.start(t); lfo.start(t); n.start(t);
+    o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05); n.stop(t + dur + 0.05);
+  } catch (e) {}
+}
+const buzz = p => { if (S.vibrate) try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+const sBeep = hi => tone(hi ? 990 : 620, hi ? 0.22 : 0.09, 'square', 0.05);
+const sDrop = () => fartSound(0.13, 170, 0.05);
+const sBoom = () => fartSound(0.45 + Math.random() * 0.35, 62 + Math.random() * 40, 0.15);
+const sItem = () => tone(660, 0.14, 'triangle', 0.09, 0, 1320);
+const sDie = () => tone(520, 0.55, 'triangle', 0.08, 0, 110);
+const sKick = () => tone(260, 0.06, 'square', 0.05, 0, 140);
+const sWall = () => tone(95, 0.07, 'square', 0.04);
+const sShield = () => { tone(880, 0.1, 'triangle', 0.08); tone(1175, 0.14, 'triangle', 0.08, 0.08); };
+const sWin = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.08, i * 0.09));
+
+/* ================================================================ netwerk */
+if (NET) NET.on(ev => {
+  if (!role) return;
+  switch (ev.type) {
+    case 'hosting': if (role === 'host') net.status = 'hosting'; break;
+    case 'searching': if (role === 'join') net.status = 'searching'; break;
+    case 'found': net.found.set(ev.id, ev.name); break;
+    case 'lost': net.found.delete(ev.id); break;
+    case 'connecting': if (role === 'join') { net.status = 'connecting'; net.hostName = ev.name || net.hostName; } break;
+    case 'connected':
+      if (role === 'host') net.peers.set(ev.id, { name: ev.name || 'Speler', tok: null });
+      else { net.status = 'connected'; net.hostName = ev.name || net.hostName; net.found.clear(); net.err = ''; send({ t: 'hi', name: myName() || 'Speler', tok: TOK, ch: S.ch }); }
+      break;
+    case 'disconnected':
+      if (role === 'host') peerGone(ev.id); else hostGone();
+      break;
+    case 'error':
+      net.err = NET.explain(ev);
+      if (role === 'join' && net.status !== 'connected') net.status = 'idle';
+      if (role === 'host' && net.status === 'hosting' && ev.where === 'host') net.status = 'idle';
+      break;
+    case 'stopped': net.status = 'idle'; break;
+    case 'message': {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.game !== GAME) return;
+      if (role === 'host') hostMsg(ev.id, m); else clientMsg(m);
+      return;
+    }
+    default: return;
+  }
+  refresh();
+});
+
+/* ---------- host ---------- */
+function openHost() {
+  role = 'host'; view = 'host'; net.err = ''; net.peers.clear();
+  advertise();
+  const me = { name: myName() || 'Jij', kind: 'human', tok: TOK, ep: null, ch: S.ch };
+  const players = [me];
+  if (S.local2) players.push({ name: S.name2 || 'Speler 2', kind: 'local2', ch: S.ch2 });
+  S.bots.slice(0, MAXP - players.length).forEach(b => players.push({ name: '', kind: 'cpu', level: LEVEL_NAME[b.level] ? b.level : 'normal', ch: validCh(b.ch) }));
+  L = { players, rounds: S.rounds, shrink: S.shrink, blocks: S.blocks };
+  if (L.players.length < 2) L.players.push({ name: '', kind: 'cpu', level: S.botLevel, ch: 0 });
+  fixChars(); renumberBots();
+}
+function advertise() {
+  if (!multiOK()) return;
+  if (!myName().trim()) setName('Speler');
+  net.status = 'hosting'; NET.hostMulti(myName());
+}
+// Elk figuurtje maar één keer; wie dubbel zit, krijgt het eerste vrije.
+function fixChars(keep) {
+  const used = new Set();
+  const order = L.players.map((p, i) => i).sort((a, b) => (a === keep ? -1 : b === keep ? 1 : 0));
+  for (const i of order) {
+    const p = L.players[i];
+    if (!CH[p.ch] || used.has(p.ch)) { let c = 0; while (used.has(c)) c++; p.ch = c; }
+    used.add(p.ch);
+  }
+}
+function lobbyMsg() {
+  return { t: 'lobby', host: myName() || 'Host', players: L.players.map(p => ({ name: p.name, kind: p.kind, level: p.level, tok: p.tok, ch: p.ch })), rounds: L.rounds, shrink: L.shrink, blocks: L.blocks };
+}
+function lobbyChanged() {
+  if (!L) return;
+  renumberBots();
+  S.bots = L.players.filter(p => p.kind === 'cpu').map(p => ({ level: p.level, ch: p.ch }));
+  S.local2 = L.players.some(p => p.kind === 'local2');
+  const l2 = L.players.find(p => p.kind === 'local2'); if (l2) S.ch2 = l2.ch;
+  const me = L.players.find(p => p.tok === TOK); if (me) S.ch = me.ch;
+  S.rounds = L.rounds; S.shrink = L.shrink; S.blocks = L.blocks; saveS();
+  if (!G) send(lobbyMsg());
+  refresh();
+}
+function hostMsg(id, m) {
+  if (m.t === 'hi') {
+    const peer = net.peers.get(id) || {};
+    peer.name = String(m.name || peer.name || 'Speler').slice(0, 16); peer.tok = m.tok; net.peers.set(id, peer);
+    if (!L) return;
+    let p = L.players.find(q => q.tok === m.tok);
+    if (p) { p.ep = id; p.name = peer.name; }
+    else {
+      if (L.players.length >= MAXP) {
+        const bi = L.players.map(q => q.kind).lastIndexOf('cpu');
+        if (bi >= 0 && !G) L.players.splice(bi, 1);
+        else { sendTo(id, { t: 'full' }); setTimeout(() => NET.disconnect(id), 400); return; }
+      }
+      const at = L.players.findIndex(q => q.kind === 'cpu');
+      p = { name: peer.name, kind: 'human', tok: m.tok, ep: id, ch: validCh(m.ch) };
+      L.players.splice(at < 0 ? L.players.length : at, 0, p);
+      fixChars(L.players.indexOf(p) === 0 ? 0 : undefined);
+    }
+    if (G) {
+      const i = G.players.findIndex(q => q.tok === m.tok);
+      if (i >= 0) {           // terug na verbinding kwijt: weer zelf spelen
+        const gp = G.players[i];
+        gp.ep = id; gp.kind = 'human'; gp.away = false; gp.name = peer.name;
+        sim.setKind(i, 'human');
+        sendTo(id, startMsg());
+        send({ t: 'away', p: i, on: false });
+        if (!G.players.some(q => q.away)) NET.stopSearching();
+      } else sendTo(id, { t: 'busy', host: myName() });
+      sendTo(id, lobbyMsg());
+    }
+    renumberBots(); lobbyChanged();
+  } else if (m.t === 'ki') {
+    if (!G || !sim) return;
+    const i = G.players.findIndex(q => q.ep === id);
+    if (i >= 0 && G.players[i].kind === 'human') sim.setInput(i, m.d | 0);
+  } else if (m.t === 'kf') {
+    if (!G || !sim || G.phase !== 'play' || G.paused) return;
+    const i = G.players.findIndex(q => q.ep === id);
+    if (i >= 0 && G.players[i].kind === 'human') sim.drop(i);
+  } else if (m.t === 'bye') {
+    peerGone(id); NET.disconnect(id);
+  } else if (m.t === 'name') {
+    const p = L && L.players.find(q => q.ep === id);
+    if (p) { p.name = String(m.name || 'Speler').slice(0, 16); lobbyChanged(); }
+  } else if (m.t === 'ch') {
+    const i = L ? L.players.findIndex(q => q.ep === id) : -1;
+    if (i >= 0 && !G) { pickChar(i, validCh(m.ch)); }
+  }
+}
+function pickChar(i, ch) {
+  const other = L.players.findIndex((q, j) => j !== i && q.ch === ch);
+  if (other >= 0) L.players[other].ch = L.players[i].ch;   // ruilen
+  L.players[i].ch = ch;
+  fixChars(i); lobbyChanged();
+}
+function peerGone(id) {
+  net.peers.delete(id);
+  if (L) L.players = L.players.filter(p => p.ep !== id);
+  if (G) {
+    const i = G.players.findIndex(p => p.ep === id);
+    if (i >= 0) {
+      const gp = G.players[i];
+      gp.ep = null;
+      if (gp.kind === 'human') {   // de computer neemt het over tot die terug is
+        gp.kind = 'cpu'; gp.level = 'normal'; gp.away = true;
+        sim.setKind(i, 'cpu', 'normal');
+        send({ t: 'away', p: i, on: true });
+        advertise();
+      }
+    }
+  }
+  lobbyChanged();
+}
+function startMsg() {
+  return { t: 'start', players: G.players.map(p => ({ name: p.name, kind: p.kind, level: p.level, tok: p.tok, ch: p.ch, away: !!p.away })), target: G.target, scores: G.scores, round: G.round, shrink: G.shrink };
+}
+function startGame() {
+  if (!L || L.players.length < 2) return;
+  fixChars();
+  const players = L.players.map(p => ({ name: p.kind === 'cpu' ? p.name : (p.name || 'Speler'), kind: p.kind, level: p.level || 'normal', tok: p.tok || null, ep: p.ep || null, ch: p.ch, away: false }));
+  G = newG({ players, target: L.rounds, scores: players.map(() => 0), shrink: L.shrink });
+  sim = K.createSim({ players: players.map(p => ({ kind: p.kind === 'cpu' ? 'cpu' : 'human', level: p.level })), shrink: L.shrink, blocks: L.blocks });
+  if (multiOK()) NET.stopSearching();
+  send(startMsg());
+  ui.sheet = null; view = 'game'; buildGame(); nextRound();
+}
+function newG(o) {
+  const g = Object.assign({ round: 0, phase: 'wait', winner: -1, paused: false, banner: null, snap: null, prev: null, snapAt: 0, prevAt: 0, countStart: 0 }, o);
+  g.me = g.players.findIndex(p => p.tok === TOK);
+  g.me2 = role === 'host' ? g.players.findIndex(p => p.kind === 'local2') : -1;
+  g.alive = g.players.map(() => true);
+  return g;
+}
+function nextRound() {
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  sim.newRound();
+  pending = [];
+  const snap = sim.snap();
+  const msg = { t: 'round', n: sim.round, scores: G.scores, snap };
+  send(msg); beginRound(msg);
+  countTimer = setTimeout(() => { if (G && G.phase === 'count') { goPlay(); send({ t: 'go' }); acc = 0; } }, COUNT_MS);
+}
+function hostStep() {
+  const ev = sim.step();
+  let roundEv = null;
+  for (const e of ev) { if (e[0] === 'round') roundEv = e; else { pending.push(e); handleEvent(e); } }
+  if (sim.t % FRAME_EVERY === 0 || sim.over) {
+    const s = sim.snap();
+    const f = { t: 'f', s: sim.t, g: s.g, f: s.f, p: s.p, tl: s.tl };
+    if (pending.length) f.e = pending.slice(0, 40);
+    send(f);
+    pending = [];
+    G.scores = sim.players.map(p => p.score);
+  }
+  if (roundEv) {
+    G.scores = sim.players.map(p => p.score);
+    const gw = sim.winner(G.target);
+    const m = { t: 'rend', winner: roundEv[1], scores: G.scores, gw };
+    send(m); roundEnd(m);
+    if (gw < 0) roundTimer = setTimeout(() => { if (G && G.phase === 'roundover') nextRound(); }, ROUND_PAUSE);
+  }
+}
+function stopGameToLobby() {
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  send({ t: 'end' });
+  G = null; sim = null; ui.sheet = null; view = 'host'; W2a(false);
+  advertise(); lobbyChanged();
+}
+function setPause(on) {
+  if (!G || role !== 'host') return;
+  G.paused = on; send({ t: 'pause', on }); acc = 0; updateHud();
+}
+
+/* ---------- meedoen ---------- */
+function openJoin() { role = 'join'; view = 'join'; net.err = ''; net.lobby = null; net.busy = false; net.status = 'idle'; net.found.clear(); }
+function search() {
+  if (!multiOK()) return;
+  if (!myName().trim()) { net.err = 'Vul eerst je naam in, dan ziet de host wie je bent.'; render(); return; }
+  net.err = ''; net.status = 'searching'; net.found.clear(); NET.joinMulti(myName());
+}
+function hostGone() {
+  net.status = 'lost'; net.lobby = null; buzz([80, 60, 80]);
+  if (view === 'game') { G = null; ui.sheet = null; view = 'join'; W2a(false); }
+}
+function clientMsg(m) {
+  switch (m.t) {
+    case 'lobby': net.lobby = m; net.hostName = m.host || net.hostName; { const me = m.players.find(p => p.tok === TOK); if (me && CH[me.ch]) S.ch = me.ch; } break;
+    case 'busy': net.busy = true; break;
+    case 'full': net.err = 'Dit spel zit al vol (4 spelers).'; break;
+    case 'start': {
+      G = newG({ players: m.players, target: m.target, scores: m.scores, shrink: m.shrink });
+      G.round = m.round;
+      if (G.me < 0) { net.busy = true; G = null; break; }
+      net.busy = false; ui.sheet = null; view = 'game'; buildGame();
+      return;
+    }
+    case 'round': if (G) beginRound(m); return;
+    case 'go': if (G && G.phase === 'count') goPlay(); return;
+    case 'f': if (G) clientFrame(m); return;
+    case 'rend': if (G) roundEnd(m); return;
+    case 'pause': if (G) { G.paused = m.on; updateHud(); } return;
+    case 'away': if (G && G.players[m.p]) { G.players[m.p].away = m.on; updateHud(); } return;
+    case 'end': G = null; ui.sheet = null; view = 'join'; net.busy = false; W2a(false); break;
+    default: return;
+  }
+  refresh();
+}
+function clientFrame(m) {
+  if (G.phase === 'count') goPlay();
+  if (m.e) m.e.forEach(handleEvent);
+  pushSnap({ g: m.g, f: m.f, p: m.p, tl: m.tl });
+}
+function leaveNet() {
+  if (role === 'join' && net.status === 'connected') send({ t: 'bye' });
+  clearTimeout(roundTimer); clearTimeout(countTimer);
+  if (NET && role && multiOK()) NET.stop();
+  role = null; L = null; G = null; sim = null; net.status = 'idle'; net.lobby = null; net.peers.clear(); net.found.clear();
+  W2a(false);
+}
+function W2a(on) { try { window.W2 && W2.awake && W2.awake(on); } catch (e) {} }
+
+/* ================================================================ gedeeld spelverloop */
+function pushSnap(s) {
+  G.prev = G.snap; G.prevAt = G.snapAt;
+  G.snap = s; G.snapAt = performance.now();
+  if (s.p) s.p.forEach((q, i) => {
+    const alive = !!(q[3] & 1);
+    if (G.alive[i] && !alive) R.deadAt[i] = performance.now();
+    G.alive[i] = alive;
+  });
+}
+function beginRound(m) {
+  G.round = m.n; G.phase = 'count'; G.paused = false; G.winner = -1; G.banner = null;
+  if (m.scores) G.scores = m.scores;
+  G.alive = G.players.map(() => true);
+  G.snap = null; G.prev = null; R.deadAt = G.players.map(() => 0);
+  pushSnap(m.snap); G.prev = null;
+  G.countStart = performance.now(); lastBeep = -1;
+  updateHud();
+}
+function goPlay() { G.phase = 'play'; G.banner = null; sBeep(true); updateHud(); }
+function roundEnd(m) {
+  G.scores = m.scores; G.phase = 'roundover';
+  const w = m.winner;
+  if (m.gw >= 0) {
+    G.phase = 'over'; G.winner = m.gw; G.banner = null; ui.sheet = 'result';
+    const mine = m.gw === G.me || m.gw === G.me2;
+    if (mine) { sWin(); buzz([40, 50, 40, 50, 120]); } else tone(300, 0.4, 'triangle', 0.07, 0, 200);
+    W2a(false);
+    renderSheet();
+  } else if (w >= 0) {
+    const p = G.players[w];
+    G.banner = { img: A.avatarURL(p.ch, true), title: w === G.me ? 'Jij wint de ronde!' : `${esc(p.name)} wint de ronde`, sub: 'Stand ' + G.scores.join(' – '), color: colOf(p) };
+    if (w === G.me || w === G.me2) sWin();
+  } else {
+    G.banner = { title: 'Gelijkspel', sub: 'Niemand overleefde de stank' };
+  }
+  updateHud();
+}
+function handleEvent(e) {
+  const k = e[0];
+  if (k === 'drop') { sDrop(); if (e[1] === G.me) buzz(12); }
+  else if (k === 'boom') { if (boomsThisFrame++ < 3) sBoom(); R.shake = Math.max(R.shake, 4); buzz(18); }
+  else if (k === 'item') { if (e[1] === G.me || e[1] === G.me2 || role === 'host') sItem(); if (e[1] === G.me) buzz(15); R.pop(e[1], e[2]); }
+  else if (k === 'die') { sDie(); if (e[1] === G.me || e[1] === G.me2) buzz([60, 40, 160]); R.killMsg(e); }
+  else if (k === 'kick') sKick();
+  else if (k === 'wall') sWall();
+  else if (k === 'shield') { sShield(); R.pop(e[1], 'knijper', true); }
+}
+let boomsThisFrame = 0;
+
+/* ================================================================ tekenen */
+const R = {
+  cv: null, c: null, cell: 32, dpr: 1, deadAt: [], shake: 0, fx: [], staticKey: '', layer: null, sprites: new Map(), msg: null,
+  attach(box) { this.cv = box.querySelector('canvas'); this.c = this.cv.getContext('2d'); },
+  fit(cell) {
+    this.dpr = Math.min(3, window.devicePixelRatio || 1);
+    this.cell = cell;
+    this.cv.width = Math.round(cell * W * this.dpr); this.cv.height = Math.round(cell * H * this.dpr);
+    this.cv.style.width = cell * W + 'px'; this.cv.style.height = cell * H + 'px';
+    this.staticKey = ''; this.sprites.clear();
+  },
+  pop(i, id, shield) { this.fx.push({ i, id, t0: performance.now(), shield }); },
+  killMsg(e) {
+    if (!G) return;
+    const v = G.players[e[1]], by = e[3];
+    let t;
+    if (e[2] === 1) t = `${v.name} is geplet door de muur`;
+    else if (by === e[1]) t = `${v.name} stikte in eigen stank`;
+    else if (by >= 0 && G.players[by]) t = `${G.players[by].name} stonk ${v.name} weg`;
+    else t = `${v.name} ligt eruit`;
+    this.msg = { t, until: performance.now() + 2200 };
+  },
+  // Vaste laag: vloer en stenen blokken (verandert alleen bij krimpen)
+  staticLayer(g) {
+    let key = '';
+    for (let i = 0; i < g.length; i++) key += g[i] === '#' ? '#' : '.';
+    if (key === this.staticKey && this.layer) return this.layer;
+    this.staticKey = key;
+    const cv = this.layer || document.createElement('canvas');
+    cv.width = this.cv.width; cv.height = this.cv.height;
+    const c = cv.getContext('2d'), s = this.cell * this.dpr;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      c.save(); c.translate((x + 0.5) * s, (y + 0.5) * s); c.scale(s, s);
+      if (key[y * W + x] === '#') {
+        const border = x === 0 || y === 0 || x === W - 1 || y === H - 1;
+        const pillar = x % 2 === 0 && y % 2 === 0;
+        A.drawHard(c, border, !border && !pillar);
+      } else A.drawFloor(c, x, y);
+      c.restore();
+    }
+    this.layer = cv;
+    return cv;
+  },
+  sprite(key, w, h, ox, oy, fn) {
+    let sp = this.sprites.get(key);
+    if (sp) return sp;
+    const s = this.cell * this.dpr;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * s); cv.height = Math.ceil(h * s);
+    const c = cv.getContext('2d'); c.translate(ox * s, oy * s); c.scale(s, s); fn(c);
+    sp = { cv, ox: ox * s, oy: oy * s };
+    this.sprites.set(key, sp);
+    return sp;
+  },
+  draw(now) {
+    if (!this.c || !G || !G.snap) return;
+    const c = this.c, s = this.cell * this.dpr, snap = G.snap;
+    boomsThisFrame = 0;
+    // tussen twee momentopnames in (alleen bij meedoen)
+    let a = 1;
+    if (role !== 'host' && G.prev) a = Math.max(0, Math.min(1, (now - G.snapAt) / FRAME_MS));
+    const lerp = (p, q) => (p == null ? q : p + (q - p) * a);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    let sx = 0, sy = 0;
+    if (this.shake > 0.2) { sx = (Math.random() - 0.5) * this.shake * this.dpr; sy = (Math.random() - 0.5) * this.shake * this.dpr; this.shake *= 0.82; } else this.shake = 0;
+    c.drawImage(this.staticLayer(snap.g), sx, sy);
+    c.translate(sx, sy);
+    const t = now / 1000;
+    const at = (x, y, fn) => { c.save(); c.translate(x * s, y * s); c.scale(s, s); fn(); c.restore(); };
+    const blit = (sp, x, y) => c.drawImage(sp.cv, x * s - sp.ox, y * s - sp.oy);
+    // dozen en power-ups
+    const g = snap.g;
+    for (let i = 0; i < g.length; i++) {
+      const ch = g[i], x = i % W, y = (i - x) / W;
+      if (ch === 'x') blit(this.sprite('crate', 1, 1.1, 0.5, 0.5, cc => A.drawCrate(cc)), x + 0.5, y + 0.5);
+      else if (K.ICH[ch]) {
+        const id = K.ITEMS[K.ICH[ch] - 1].id;
+        blit(this.sprite('it' + id, 1, 1.1, 0.5, 0.5, cc => { cc.scale(0.86, 0.86); A.drawItem(cc, id); }), x + 0.5, y + 0.5 + Math.sin(t * 3 + i) * 0.03);
+      }
+    }
+    // gelegde scheten
+    const prevF = new Map(); if (G.prev && a < 1) G.prev.f.forEach(f => prevF.set(f[4], f));
+    for (const f of snap.f) {
+      const pf = prevF.get(f[4]);
+      const fx = lerp(pf && pf[0], f[0]) / 100, fy = lerp(pf && pf[1], f[1]) / 100;
+      const owner = G.players[f[3]];
+      at(fx + 0.5, fy + 0.5, () => A.drawFart(c, t + f[4] * 0.37, f[2], owner ? colOf(owner) : null));
+    }
+    // stinkwolken
+    for (let i = 0; i < g.length; i++) {
+      const ch = g.charCodeAt(i);
+      if (ch >= 49 && ch <= 52) { const x = i % W, y = (i - x) / W; at(x + 0.5, y + 0.5, () => A.drawCloud(c, ch - 48, i, t)); }
+    }
+    // spelers, van achter naar voor
+    const prevP = G.prev && a < 1 ? G.prev.p : null;
+    const order = snap.p.map((q, i) => i).sort((i, j) => snap.p[i][1] - snap.p[j][1]);
+    for (const i of order) {
+      const q = snap.p[i], pq = prevP && prevP[i];
+      const pl = G.players[i]; if (!pl) continue;
+      const x = lerp(pq && pq[0], q[0]) / 100, y = lerp(pq && pq[1], q[1]) / 100;
+      const alive = q[3] & 1, moving = q[3] & 2, shield = q[3] & 4, inv = q[3] & 8;
+      if (!alive) {
+        const dt = (now - (this.deadAt[i] || 0)) / 1000;
+        if (dt > 1.6 || !this.deadAt[i]) continue;
+        c.save(); c.globalAlpha = Math.max(0, 1 - dt / 1.6);
+        at(x + 0.5, y + 0.5 - dt * 0.4, () => { c.rotate(Math.sin(dt * 14) * 0.25); A.drawChar(c, pl.ch, 3, 0, { dead: true }); });
+        c.restore();
+        continue;
+      }
+      if (inv && Math.floor(now / 90) % 2) continue;
+      const frame = moving ? (Math.floor(now / 140) % 2) + 1 : 0;
+      const blink = !moving && (Math.floor(now / 100) + i * 13) % 38 === 0;
+      const key = `p${pl.ch}|${q[2]}|${frame}|${shield ? 1 : 0}|${blink ? 1 : 0}`;
+      const sp = this.sprite(key, 1.3, 1.5, 0.65, 0.95, cc => A.drawChar(cc, pl.ch, q[2], frame, { peg: !!shield, blink }));
+      blit(sp, x + 0.5, y + 0.5);
+      // eigen figuurtje: pijltje erboven
+      if (i === G.me || i === G.me2) {
+        at(x + 0.5, y - 0.12 + Math.sin(t * 5) * 0.03, () => {
+          c.fillStyle = colOf(pl); c.strokeStyle = '#fff'; c.lineWidth = 0.04;
+          c.beginPath(); c.moveTo(-0.1, -0.12); c.lineTo(0.1, -0.12); c.lineTo(0, 0); c.closePath(); c.fill(); c.stroke();
+        });
+      }
+    }
+    // gepakte power-ups even laten zien
+    this.fx = this.fx.filter(p => now - p.t0 < 800);
+    for (const p of this.fx) {
+      const q = snap.p[p.i]; if (!q) continue;
+      const k = (now - p.t0) / 800;
+      c.save(); c.globalAlpha = 1 - k;
+      at(q[0] / 100 + 0.5, q[1] / 100 - 0.4 - k * 0.6, () => { c.scale(0.55, 0.55); A.drawItem(c, p.id); });
+      c.restore();
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+  }
+};
+
+/* ================================================================ invoer */
+const input = [{ d: 0, sent: 0 }, { d: 0, sent: 0 }];
+const keys = { a: new Set(), b: new Set() };
+function setDir(who, d) {
+  const inp = input[who]; if (inp.d === d) return;
+  inp.d = d; pushInput(who);
+}
+function pushInput(who) {
+  if (!G) return;
+  const idx = who === 0 ? G.me : G.me2;
+  if (idx < 0) return;
+  const d = input[who].d;
+  if (role === 'host') { if (sim && G.players[idx].kind !== 'cpu') sim.setInput(idx, d); }
+  else if (input[who].sent !== d) { input[who].sent = d; send({ t: 'ki', d }); }
+}
+function press(who) {
+  if (!G || G.phase !== 'play' || G.paused) return;
+  const idx = who === 0 ? G.me : G.me2;
+  if (idx < 0 || !G.alive[idx]) return;
+  if (role === 'host') { if (sim && G.players[idx].kind !== 'cpu') sim.drop(idx); }
+  else send({ t: 'kf' });
+}
+// stuurknop: vinger ergens op de cirkel, de richting is de grootste kant
+const padPtr = new Map();
+function padDir(el, ev) {
+  const r = el.getBoundingClientRect();
+  // Richting zoals op het scherm: de speler bovenaan ziet het veld op z'n kop, dus "van mij af" = omlaag op het scherm.
+  const dx = ev.clientX - (r.left + r.width / 2), dy = ev.clientY - (r.top + r.height / 2);
+  const knob = el.querySelector('.knob');
+  const m = Math.hypot(dx, dy), max = r.width * 0.32, k = m > max ? max / m : 1, f = el.dataset.flip ? -1 : 1;
+  if (knob) knob.style.transform = `translate(${dx * k * f}px,${dy * k * f}px)`;   // de knop zelf is gedraaid
+  if (m < r.width * 0.09) return 0;
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 2 : 4) : (dy > 0 ? 3 : 1);
+}
+app.addEventListener('pointerdown', e => {
+  const pad = e.target.closest('.pad'), fb = e.target.closest('.fartbtn');
+  if (pad) { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch (x) {} padPtr.set(e.pointerId, pad); pad.classList.add('on'); setDir(+pad.dataset.who, padDir(pad, e)); }
+  else if (fb) { e.preventDefault(); fb.classList.add('on'); press(+fb.dataset.who); audio(); }
+});
+app.addEventListener('pointermove', e => { const pad = padPtr.get(e.pointerId); if (pad) setDir(+pad.dataset.who, padDir(pad, e)); });
+function padUp(e) {
+  const pad = padPtr.get(e.pointerId);
+  if (pad) { padPtr.delete(e.pointerId); pad.classList.remove('on'); const kn = pad.querySelector('.knob'); if (kn) kn.style.transform = ''; if (![...padPtr.values()].includes(pad)) setDir(+pad.dataset.who, 0); }
+  const fb = e.target.closest && e.target.closest('.fartbtn'); if (fb) fb.classList.remove('on');
+}
+app.addEventListener('pointerup', padUp);
+app.addEventListener('pointercancel', padUp);
+app.addEventListener('contextmenu', e => { if (view === 'game') e.preventDefault(); });
+// toetsenbord (laptop): pijltjes + spatie; tweede speler WASD + E
+const KEYMAP = { ArrowUp: ['a', 1], ArrowRight: ['a', 2], ArrowDown: ['a', 3], ArrowLeft: ['a', 4], w: ['b', 1], d: ['b', 2], s: ['b', 3], a: ['b', 4], W: ['b', 1], D: ['b', 2], S: ['b', 3], A: ['b', 4] };
+function keyDir(set) { const arr = [...set]; return arr.length ? arr[arr.length - 1] : 0; }
+document.addEventListener('keydown', e => {
+  if (view !== 'game' || !G || e.target.tagName === 'INPUT') return;
+  const km = KEYMAP[e.key];
+  if (km) {
+    e.preventDefault();
+    const who = km[0] === 'b' && G.me2 >= 0 ? 'b' : 'a';
+    keys[who].add(km[1]); setDir(who === 'a' ? 0 : 1, keyDir(keys[who]));
+  } else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) press(0); }
+  else if ((e.key === 'e' || e.key === 'E' || e.key === 'q' || e.key === 'Q') && !e.repeat) press(G.me2 >= 0 ? 1 : 0);
+});
+document.addEventListener('keyup', e => {
+  const km = KEYMAP[e.key]; if (!km || !G) return;
+  const who = km[0] === 'b' && G.me2 >= 0 ? 'b' : 'a';
+  keys[who].delete(km[1]); setDir(who === 'a' ? 0 : 1, keyDir(keys[who]));
+});
+
+/* ================================================================ lus */
+let last = 0, acc = 0, lastBeep = -1;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(100, ts - (last || ts)); last = ts;
+  if (view !== 'game' || !G) return;
+  fitField();
+  if (G.phase === 'count') {
+    const left = Math.ceil((COUNT_MS - (performance.now() - G.countStart)) / 800);
+    if (left !== lastBeep && left > 0 && left <= 3) { lastBeep = left; sBeep(false); }
+    const want = left > 0 ? { title: String(Math.min(3, left)), sub: G.round > 1 ? `Ronde ${G.round}` : 'Klaar om te stinken?' } : null;
+    if (JSON.stringify(want) !== JSON.stringify(G.banner)) { G.banner = want; updateHud(); }
+  }
+  if (role === 'host' && sim && G.phase !== 'over' && !G.paused && (G.phase === 'play' || G.phase === 'roundover') && !sim.over) {
+    acc += dt;
+    let n = 0;
+    while (acc >= STEP_MS && n++ < 8) { acc -= STEP_MS; hostStep(); if (!G || sim.over) break; }
+    if (n >= 8) acc = 0;
+    if (G && sim) pushSnap(sim.snap());
+  }
+  if (!G) return;
+  R.draw(performance.now());
+  if (ts - hudTick > 250) { hudTick = ts; updateStats(); }
+}
+let hudTick = 0;
+requestAnimationFrame(loop);
+
+/* ================================================================ schermen */
+function refresh() { if (view === 'game' && G) { updateHud(); renderSheet(); } else render(); }
+
+function vHome() {
+  const canJoin = multiOK();
+  const why = !NET || !NET.available() ? 'Kan hier niet' : !canJoin ? 'Werk eerst de app bij (Instellingen › Updates)' : 'Bij iemand die een spel heeft gemaakt';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><h1>Dampoe <em>Wars</em></h1><p>Leg een scheet, ren weg en laat de anderen in de stank staan. Wie als laatste overeind blijft, wint.</p><canvas id="hero" width="720" height="300" aria-hidden="true"></canvas></div>
+    <div class="choices">
+      <button class="choice" data-a="host"><span class="ic">${IC.host}</span><span><b>Spel maken</b><span>Tegen de computer, met z'n tweeën op deze telefoon, of met andere telefoons erbij</span></span></button>
+      <button class="choice" data-a="join" ${canJoin ? '' : 'disabled'}><span class="ic">${IC.join}</span><span><b>Meedoen</b><span>${why}</span></span></button>
+    </div>
+    <details class="rules"><summary><b>Zo werkt het</b></summary><ul>
+      <li>Loop met de stuurknop, leg een scheet met de groene knop.</li>
+      <li>Na 2½ seconde waait de stinkwolk als een kruis: recht omhoog, omlaag, links en rechts.</li>
+      <li>Sta je in de wolk, dan lig je eruit. Ook in je eigen stank!</li>
+      <li>Kartonnen dozen waaien weg; daaronder liggen soms power-ups. Stenen blokken houden alles tegen.</li>
+      <li>Raakt een wolk een andere scheet, dan gaat die meteen mee af.</li>
+      <li>Wie als laatste overblijft, wint de ronde. Gaan de laatsten tegelijk neer, dan is het gelijkspel.</li>
+      <li>Na de ingestelde tijd schuiven de muren van buiten naar binnen. Blijf niet aan de rand hangen.</li>
+    </ul>
+    <div class="items">${K.ITEMS.map(it => `<div><img src="${A.itemURL(it.id)}" alt=""><span><b>${it.name}</b>${it.desc}</span></div>`).join('')}</div>
+    </details>
+  </div>`;
+}
+function drawHero() {
+  const cv = document.getElementById('hero'); if (!cv) return;
+  const c = cv.getContext('2d'), s = 60;
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 12; x++) {
+    c.save(); c.translate((x + 0.5) * s, (y + 0.5) * s); c.scale(s, s);
+    if (y === 0 || y === 4) A.drawHard(c, true, false); else A.drawFloor(c, x, y);
+    c.restore();
+  }
+  const put = (x, y, fn) => { c.save(); c.translate(x * s, y * s); c.scale(s, s); fn(); c.restore(); };
+  put(2.5, 2.5, () => A.drawCrate(c)); put(9.5, 1.5, () => A.drawCrate(c));
+  [[5.5, 2.5, 4], [6.5, 2.5, 3], [7.5, 2.5, 2], [5.5, 1.5, 3], [5.5, 3.5, 3], [4.5, 2.5, 3]].forEach(([x, y, k], i) => put(x, y, () => A.drawCloud(c, k, i + 3, 0.4)));
+  put(10.5, 3.5, () => A.drawFart(c, 0.2, 90, CH[1].col));
+  put(1.5, 1.5, () => A.drawItem(c, 'bonen'));
+  [[3.5, 1.5, 0, 2], [8.5, 2.5, 1, 4], [1.5, 3.5, 3, 3], [10.5, 1.6, 5, 3], [6.5, 1.55, 2, 3]].forEach(([x, y, ci, f], k) => put(x, y + 0.05, () => { c.scale(1.15, 1.15); A.drawChar(c, ci, f, k % 2, { dead: k === 4 }); }));
+}
+function nameField() {
+  return `<div class="field"><label class="label" for="nm">Jouw naam</label><input class="input" id="nm" data-in="name" value="${esc(myName())}" maxlength="16" placeholder="bijv. Wouter" autocomplete="off"></div>`;
+}
+function plRow(p, i, editable) {
+  const C = CH[p.ch] || CH[0];
+  const mine = p.tok === TOK;
+  const tag = mine ? 'Jij' : p.kind === 'cpu' ? 'Computer' : p.kind === 'local2' ? 'Ook op deze telefoon' : i === 0 ? 'Maakt het spel' : 'Andere telefoon';
+  const canPick = editable ? p.kind !== 'human' || mine : mine;
+  const av = canPick ? `<button class="av" ${editable ? `data-a="pick" data-i="${i}"` : 'data-a="pickme"'} aria-label="Figuurtje kiezen voor ${esc(p.name || C.name)}"><img class="av" src="${A.avatarURL(p.ch)}" alt=""></button>` : `<img class="av" src="${A.avatarURL(p.ch)}" alt="">`;
+  let acts = '';
+  if (editable && p.kind === 'cpu') acts = `<button class="pill" data-a="botlevel" data-i="${i}">${LEVEL_NAME[p.level]}</button><button class="xbtn" data-a="botdel" data-i="${i}" aria-label="Computer weghalen">${IC.x}</button>`;
+  else if (editable && p.kind === 'local2') acts = `<button class="xbtn" data-a="botdel" data-i="${i}" aria-label="Tweede speler weghalen">${IC.x}</button>`;
+  else if (p.kind === 'cpu') acts = `<span class="note">${LEVEL_NAME[p.level]}</span>`;
+  const name = p.kind === 'cpu' ? C.name : (p.name || 'Speler');
+  return `<div class="pl" style="--c:${C.col}">${av}<span class="nm">${esc(name)}<small>${C.name === name ? '' : C.name + ' · '}${tag}</small></span><span class="acts">${acts}</span></div>`;
+}
+function optionsHTML(o, editable) {
+  const seg = (a, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button ${editable ? `data-a="${a}" data-v="${v}"` : 'disabled'} aria-pressed="${String(v) === String(cur)}">${l}</button>`).join('')}</div>`;
+  return `<div class="field"><div class="label">Winnen bij</div>${seg('rounds', ROUND_OPTS.map(n => [n, n === 1 ? '1 ronde' : n + ' rondes']), o.rounds)}</div>
+    <div class="field"><div class="label">Muren schuiven in</div>${seg('shrink', SHRINK_OPTS.map(([v, l]) => [v, l]), o.shrink)}
+      <p class="note">${o.shrink ? `Na ${SHRINK_OPTS.find(x => x[0] === o.shrink)[1]} gaat het veld van buiten naar binnen dicht.` : 'Het veld blijft open; de ronde duurt tot er nog één over is.'}</p></div>
+    <div class="field"><div class="label">Dozen</div>${seg('blocks', BLOCK_OPTS, o.blocks)}</div>`;
+}
+function vHost() {
+  const n = L.players.length, phones = remoteCount();
+  let status;
+  if (!NET || !NET.available()) status = `<div class="status"><span class="pulse off"></span><div><b>Op deze telefoon</b><span class="note">Andere telefoons kunnen hier niet meedoen.</span></div></div>`;
+  else if (!multiOK()) status = `<div class="status"><span class="pulse off"></span><div><b>Op deze telefoon</b><span class="note">Voor meer telefoons is een nieuwe versie van de app nodig (Instellingen › Updates).</span></div></div>`;
+  else if (net.status === 'hosting') status = `<div class="status"><span class="pulse"></span><div><b>Anderen kunnen nu meedoen</b><span class="note">Laat ze Dampoe Wars openen en op Meedoen tikken. ${phones ? `${phones} telefoon${phones > 1 ? 's' : ''} verbonden.` : ''}</span></div></div>`;
+  else status = `<div class="status"><span class="pulse off"></span><div><b>Niet zichtbaar voor anderen</b><span class="note">${NET.via && (NET.via() === 'inet' || !nearby()) ? 'Zonder internet kunnen anderen niet meedoen. Tegen de computer of samen op deze telefoon kan gewoon.' : 'Zet Bluetooth en wifi aan.'}</span></div><button class="btn quiet small" data-a="readvertise">Opnieuw</button></div>`;
+  const has2 = L.players.some(p => p.kind === 'local2');
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Dampoe Wars</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <h1 style="font-size:36px">Spel maken</h1>
+    ${net.err ? `<p class="err">${esc(net.err)}</p>` : ''}
+    ${status}
+    ${netBadge()}
+    ${nameField()}
+    <div class="field"><div class="label">Spelers <small>${n} van ${MAXP} · tik op een gezicht om te wisselen</small></div>
+      <div class="players">${L.players.map((p, i) => plRow(p, i, true)).join('')}</div>
+      ${n < MAXP ? `<div class="addrow"><button class="btn quiet" data-a="botadd">+ Computer</button>${has2 ? '<span></span>' : '<button class="btn quiet" data-a="add2">+ Tweede speler hier</button>'}</div>` : ''}
+      ${has2 ? '<p class="note">Met z\'n tweeën op één telefoon: jij onderaan, de ander bovenaan (telefoon plat tussen jullie in).</p>' : ''}
+    </div>
+    ${optionsHTML(L, true)}
+    <div class="sticky"><button class="btn" data-a="start" ${n < 2 ? 'disabled' : ''}>${n < 2 ? 'Voeg een computer toe of wacht op iemand' : `Start met ${n} spelers`}</button></div>
+  </div>`;
+}
+function vJoin() {
+  const st = net.status;
+  let body = '';
+  const myAv = `<div class="pl" style="--c:${CH[S.ch].col}"><button class="av" data-a="pickme" aria-label="Figuurtje kiezen"><img class="av" src="${A.avatarURL(S.ch)}" alt=""></button><span class="nm">${esc(CH[S.ch].name)}<small>Jouw figuurtje · tik om te wisselen</small></span><span></span></div>`;
+  if (st === 'idle' || st === 'lost') {
+    body = `${nameField()}${myAv}
+      ${st === 'lost' ? '<p class="err">De verbinding met de host is weg.</p>' : ''}
+      <button class="btn" data-a="search">Zoeken naar een spel</button>
+      <p class="note">Iemand anders moet in Dampoe Wars op Spel maken hebben getikt.</p>`;
+  } else if (st === 'searching') {
+    const list = [...net.found.entries()];
+    const inet = NET.via && NET.via() === 'inet';
+    body = `<div class="status"><span class="pulse"></span><div><b>${inet ? 'Verbinden via internet…' : 'Zoeken naar spellen in de buurt…'}</b><span class="note">${inet ? 'Vul de spelcode in van wie het spel maakte.' : 'Houd de telefoons bij elkaar.'}</span></div></div>
+      <div class="list">${list.map(([id, nm]) => `<button class="btn" data-a="connect" data-id="${esc(id)}">Meedoen met ${esc(nm)}</button>`).join('')}</div>
+      <button class="btn quiet" data-a="stopsearch">Stoppen</button>`;
+  } else if (st === 'connecting') {
+    body = `<div class="status"><span class="pulse"></span><b>Verbinden met ${esc(net.hostName || 'de host')}…</b></div>`;
+  } else if (st === 'connected') {
+    const lb = net.lobby;
+    body = `<div class="status"><span class="pulse"></span><div><b>${lb ? `Wachten tot ${esc(lb.host)} start…` : 'Verbonden'}</b><span class="note">${net.busy ? 'Er loopt nog een spel. Je doet mee vanaf het volgende.' : 'Het spel begint vanzelf op jouw telefoon.'}</span></div></div>
+      ${nameField()}
+      ${lb ? `<div class="field"><div class="label">Spelers <small>${lb.players.length} van ${MAXP}</small></div><div class="players">${lb.players.map((p, i) => plRow(p, i, false)).join('')}</div></div>
+      ${optionsHTML(lb, false)}` : ''}
+      <button class="btn quiet" data-a="leave">Weggaan</button>`;
+  }
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Dampoe Wars</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <h1 style="font-size:36px">Meedoen</h1>
+    ${net.err ? `<p class="err">${esc(net.err)}</p>` : ''}
+    ${st === 'idle' || st === 'lost' || st === 'searching' ? netBadge() : ''}
+    ${body}
+    <div class="tip">${NET && NET.tip ? NET.tip() : ''}</div>
+  </div>`;
+}
+
+/* ---------- spelscherm: één keer opbouwen, daarna alleen bijwerken ---------- */
+function ctlHTML(who, flip, col) {
+  return `<div class="ctl ${flip ? 'flip' : ''}" style="--me:${col}">
+    <div class="pad" data-who="${who}" ${flip ? 'data-flip="1"' : ''} aria-label="Stuurknop">${IC.arrows}<div class="knob"></div></div>
+    <button class="fartbtn" data-who="${who}" aria-label="Scheet leggen"><img src="${A.fartURL()}" alt=""><span>PRRT</span></button>
+  </div>`;
+}
+function buildGame() {
+  const me = G.me >= 0 ? colOf(G.players[G.me]) : '#b6e04a';
+  const duo = G.me2 >= 0;
+  app.innerHTML = `<div class="game ${duo ? 'duo' : ''}" style="--me:${me}">
+    ${duo ? ctlHTML(1, true, colOf(G.players[G.me2])) : ''}
+    <div class="hud"><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button><div class="chips" id="chips"></div><div class="goal" id="goal"></div></div>
+    <div class="stage" id="stage"><div class="fieldbox" id="fieldbox"><canvas></canvas><div class="banner" id="banner"></div></div></div>
+    <div class="stats" id="stats"></div>
+    ${G.me >= 0 ? ctlHTML(0, false, me) : ''}
+  </div><div id="sheethost"></div>`;
+  R.attach(document.getElementById('fieldbox'));
+  fitKey = ''; fitField(true);
+  input.forEach(x => { x.d = 0; x.sent = 0; }); padPtr.clear(); keys.a.clear(); keys.b.clear();
+  W2a(true);
+  updateHud(); renderSheet();
+}
+let fitKey = '';
+function fitField(force) {
+  const st = document.getElementById('stage'); if (!st) return;
+  const w = st.clientWidth, h = st.clientHeight, key = w + 'x' + h + ':' + (window.devicePixelRatio || 1);
+  if (!force && key === fitKey) return;
+  fitKey = key;
+  const cell = Math.max(12, Math.floor(Math.min(w / W, h / H)));
+  const fb = document.getElementById('fieldbox'); fb.style.width = cell * W + 'px'; fb.style.height = cell * H + 'px';
+  R.fit(cell);
+}
+window.addEventListener('resize', () => { if (view === 'game') fitField(); });
+function updateHud() {
+  if (view !== 'game' || !G) return;
+  const chips = document.getElementById('chips'); if (!chips) return;
+  const html = G.players.map((p, i) => `<span class="chip ${i === G.me ? 'me' : ''} ${G.alive[i] || G.phase !== 'play' ? '' : 'out'}" style="border-color:${i === G.me ? colOf(p) : 'transparent'}"><img src="${A.avatarURL(p.ch)}" alt="">${G.players.length <= 3 ? `<em>${esc(p.kind === 'cpu' ? CH[p.ch].name : p.name)}</em>` : ''}${G.scores[i]}${p.away ? ' <em>(pc)</em>' : ''}</span>`).join('');
+  if (chips.dataset.k !== html) { chips.innerHTML = html; chips.dataset.k = html; }
+  const bn = document.getElementById('banner');
+  const b = G.paused ? { title: 'Pauze', sub: role === 'host' ? 'Tik op ⋯ om door te gaan' : 'De host heeft het spel gepauzeerd' } : G.banner;
+  const want = b ? `<div style="${b.color ? `border-color:${b.color}` : ''}">${b.img ? `<img src="${b.img}" alt="">` : ''}<h2 style="${b.color ? `color:${b.color}` : ''}">${b.title}</h2>${b.sub ? `<p>${b.sub}</p>` : ''}</div>` : '';
+  if (bn.dataset.k !== want) { bn.innerHTML = want; bn.dataset.k = want; }
+  updateStats();
+}
+function updateStats() {
+  if (!G) return;
+  const goal = document.getElementById('goal'), row = document.getElementById('stats');
+  if (!goal || !row) return;
+  const tl = G.snap ? G.snap.tl : -1;
+  let gh;
+  if (tl > 0) gh = `<b class="${tl <= 10 ? 'hot' : ''}">${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}</b>muren`;
+  else if (tl === 0) gh = '<b class="hot">!!</b>muren';
+  else gh = `<b>${G.target}</b>${G.target === 1 ? 'ronde' : 'rondes'}`;
+  if (goal.dataset.k !== gh) { goal.innerHTML = gh; goal.dataset.k = gh; }
+  let html = '';
+  const R2 = window.performance.now();
+  if (R.msg && R.msg.until > R2) html = esc(R.msg.t);
+  else if (G.me >= 0 && G.snap && G.snap.p[G.me]) {
+    const statFor = idx => {
+      const q = G.snap.p[idx]; if (!q) return '';
+      const f = q[3];
+      return `<span class="st"><img src="${A.itemURL('bonen')}" alt="Scheten">${q[4]}</span><span class="st"><img src="${A.itemURL('spruit')}" alt="Bereik">${q[5]}</span><span class="st"><img src="${A.itemURL('sneaker')}" alt="Snelheid">${q[6]}</span><span class="st ${f & 16 ? '' : 'off'}"><img src="${A.itemURL('trap')}" alt="Trap"></span><span class="st ${f & 4 ? '' : 'off'}"><img src="${A.itemURL('knijper')}" alt="Wasknijper"></span>`;
+    };
+    if (G.phase === 'play' && !G.alive[G.me] && G.me2 < 0) html = 'Je ligt eruit. Kijk wie het langst blijft staan.';
+    else html = statFor(G.me);
+  } else html = `Ronde ${G.round || 1}`;
+  if (row.dataset.k !== html) { row.innerHTML = html; row.dataset.k = html; }
+}
+
+/* ---------- vellen ---------- */
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="btn quiet small" data-a="close">Klaar</button></div>
+    ${tog('sound', 'Geluid', 'Ja, met echte nep-scheten')}
+    ${tog('vibrate', 'Trillen')}
+    <p class="note">Op een laptop: pijltjes en spatie. Tweede speler: W A S D en E.</p>`;
+}
+function sheetPick() {
+  const who = ui.pick;   // index in lobby, of 'me' bij meedoen
+  let cur, taken = new Map();
+  if (who === 'me') { cur = S.ch; if (net.lobby) net.lobby.players.forEach(p => { if (p.tok !== TOK) taken.set(p.ch, p.kind === 'cpu' ? 'computer' : p.name); }); }
+  else { const p = L && L.players[who]; if (!p) return ''; cur = p.ch; L.players.forEach((q, j) => { if (j !== who) taken.set(q.ch, q.kind === 'cpu' ? 'computer' : q.name || 'Speler'); }); }
+  return `<div class="sheet-head"><h2>Kies je figuurtje</h2><button class="btn quiet small" data-a="close">Klaar</button></div>
+    <div class="chars">${CH.map((c, i) => `<button class="charbtn" data-a="char" data-v="${i}" aria-pressed="${i === cur}"><img src="${A.avatarURL(i)}" alt=""><b>${c.name}</b><small>${c.desc}</small>${taken.has(i) ? `<span class="who">nu: ${esc(taken.get(i))}</span>` : ''}</button>`).join('')}</div>
+    <p class="note">Kies je een figuurtje dat al bezet is, dan ruil je.</p>`;
+}
+function sheetMenu() {
+  const host = role === 'host';
+  return `<div class="sheet-head"><h2>Menu</h2><button class="btn quiet small" data-a="close">Sluiten</button></div>
+    <div class="list">
+      ${host && G.phase !== 'over' ? `<button class="btn" data-a="pause">${G.paused ? 'Doorgaan' : 'Pauze'}</button>` : ''}
+      <button class="btn quiet" data-a="settings">Instellingen</button>
+      ${host ? `<button class="btn quiet" data-a="tolobby">Stoppen, terug naar spelers</button>` : `<button class="btn quiet" data-a="leave">Spel verlaten</button>`}
+    </div>`;
+}
+function sheetResult() {
+  if (!G || G.winner < 0) return '';
+  const w = G.winner, host = role === 'host', wp = G.players[w];
+  const order = G.players.map((p, i) => ({ p, i, s: G.scores[i] })).sort((a, b) => b.s - a.s);
+  const nm = p => esc(p.kind === 'cpu' ? CH[p.ch].name : p.name);
+  return `<div class="result"><img src="${A.avatarURL(wp.ch, true)}" alt=""><h2 style="color:${colOf(wp)}">${w === G.me ? 'Je wint!' : `${nm(wp)} wint!`}</h2>
+    <div class="rank">${order.map((o, k) => `<div><b>${k + 1}</b><img src="${A.avatarURL(o.p.ch)}" alt=""><span>${nm(o.p)}${o.i === G.me && o.p.name !== 'Jij' ? ' (jij)' : ''}</span><b>${o.s}</b></div>`).join('')}</div></div>
+    <div class="list">${host ? `<button class="btn" data-a="again">Nog een spel</button><button class="btn quiet" data-a="tolobby">Terug naar spelers</button>`
+      : `<p class="note" style="text-align:center">Wachten tot ${esc(net.hostName || 'de host')} een nieuw spel start…</p><button class="btn quiet" data-a="leave">Spel verlaten</button>`}</div>`;
+}
+function sheetHTML() {
+  if (!ui.sheet) return '';
+  const fn = { settings: sheetSettings, menu: sheetMenu, result: sheetResult, pick: sheetPick }[ui.sheet];
+  if (!fn || ((ui.sheet === 'menu' || ui.sheet === 'result') && !G)) return '';
+  const inner = fn(); if (!inner) return '';
+  return `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner}</div></div>`;
+}
+function renderSheet() {
+  const host = document.getElementById('sheethost'); if (!host) return;
+  const html = sheetHTML();
+  if (host.dataset.k === html) return;
+  const sc = host.querySelector('.sheet'), top = sc ? sc.scrollTop : 0;
+  host.innerHTML = html; host.dataset.k = html;
+  const ns = host.querySelector('.sheet'); if (ns) ns.scrollTop = top;
+}
+function render() {
+  if (view === 'game' && G) { renderSheet(); return; }
+  const html = (view === 'host' && L ? vHost() : view === 'join' ? vJoin() : vHome()) + '<div id="sheethost"></div>';
+  const act = document.activeElement, focusName = act && act.id === 'nm', pos = focusName ? act.selectionStart : 0;
+  const scroller = document.scrollingElement, sy = scroller ? scroller.scrollTop : 0;
+  app.innerHTML = html;
+  if (scroller) scroller.scrollTop = sy;
+  if (focusName) { const el = document.getElementById('nm'); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
+  if (view === 'home') drawHero();
+  renderSheet();
+}
+
+/* ================================================================ kliks */
+function closeSheet() { ui.sheet = (ui.sheet === 'settings' && G && G.phase === 'over') ? 'result' : null; ui.pick = null; }
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; if (ui.sheet === 'result') return; closeSheet(); refresh(); return; }
+  switch (a) {
+    case 'exit': leaveNet(); location.href = '../index.html'; return;
+    case 'home': leaveNet(); view = 'home'; ui.sheet = null; break;
+    case 'host': openHost(); break;
+    case 'join': openJoin(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': closeSheet(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'vibrate') buzz(30); if (el.dataset.k === 'sound') sBoom(); break;
+    case 'pick': ui.pick = +el.dataset.i; ui.sheet = 'pick'; break;
+    case 'pickme': ui.pick = 'me'; ui.sheet = 'pick'; break;
+    case 'char': {
+      const v = +el.dataset.v;
+      if (ui.pick === 'me') { S.ch = v; saveS(); if (role === 'join' && net.status === 'connected') send({ t: 'ch', ch: v }); }
+      else if (L && L.players[ui.pick]) { pickChar(ui.pick, v); }
+      closeSheet(); break;
+    }
+    case 'botadd': if (L.players.length < MAXP) { const used = new Set(L.players.map(p => p.ch)); let ch = 0; while (used.has(ch)) ch++; L.players.push({ name: '', kind: 'cpu', level: S.botLevel, ch }); renumberBots(); lobbyChanged(); } return;
+    case 'add2': if (L.players.length < MAXP && !L.players.some(p => p.kind === 'local2')) { const used = new Set(L.players.map(p => p.ch)); let ch = used.has(S.ch2) ? 0 : S.ch2; while (used.has(ch)) ch++; const at = L.players.findIndex(p => p.kind === 'cpu'); L.players.splice(at < 0 ? L.players.length : at, 0, { name: S.name2 || 'Speler 2', kind: 'local2', ch }); lobbyChanged(); } return;
+    case 'botdel': L.players.splice(+el.dataset.i, 1); renumberBots(); lobbyChanged(); return;
+    case 'botlevel': { const p = L.players[+el.dataset.i]; const lv = ['easy', 'normal', 'strong']; p.level = lv[(lv.indexOf(p.level) + 1) % 3]; S.botLevel = p.level; lobbyChanged(); return; }
+    case 'rounds': L.rounds = +el.dataset.v; lobbyChanged(); return;
+    case 'shrink': L.shrink = +el.dataset.v; lobbyChanged(); return;
+    case 'blocks': L.blocks = el.dataset.v; lobbyChanged(); return;
+    case 'readvertise': net.err = ''; advertise(); break;
+    case 'start': audio(); startGame(); return;
+    case 'again': ui.sheet = null; startGame(); return;
+    case 'tolobby': stopGameToLobby(); return;
+    case 'pause': setPause(!G.paused); ui.sheet = null; break;
+    case 'search': search(); break;
+    case 'stopsearch': NET.stop(); net.status = 'idle'; break;
+    case 'connect': net.status = 'connecting'; net.hostName = net.found.get(el.dataset.id) || ''; NET.connect(el.dataset.id); break;
+    case 'leave': leaveNet(); openJoin(); ui.sheet = null; break;
+  }
+  refresh();
+});
+// computers heten zoals hun figuurtje
+function renumberBots() { if (L) L.players.forEach(p => { if (p.kind === 'cpu') p.name = CH[p.ch] ? CH[p.ch].name : 'Computer'; }); }
+app.addEventListener('input', e => {
+  if (e.target.dataset.in !== 'name') return;
+  const v = e.target.value; setName(v);
+  if (role === 'host' && L) { const me = L.players.find(p => p.tok === TOK); if (me) me.name = v.trim() || 'Jij'; clearTimeout(nameT); nameT = setTimeout(() => { lobbyChanged(); }, 400); }
+  if (role === 'join' && net.status === 'connected') { clearTimeout(nameT); nameT = setTimeout(() => send({ t: 'name', name: v.trim() || 'Speler' }), 500); }
+});
+let nameT = 0;
+window.__w2back = function () {
+  if (ui.sheet && ui.sheet !== 'result') { closeSheet(); refresh(); return true; }
+  if (view === 'game') { ui.sheet = 'menu'; refresh(); return true; }
+  if (view !== 'home') { leaveNet(); view = 'home'; ui.sheet = null; render(); return true; }
+  return false;
+};
+window.addEventListener('pagehide', () => { if (role) leaveNet(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && role === 'host' && G && G.phase !== 'over' && !G.paused) setPause(true); });
+if (document.fonts && document.fonts.load) document.fonts.load('800 24px "Bricolage Grotesque"').then(() => { if (view === 'home') render(); }).catch(() => {});
+render();
+// voor de browsertest
+window.__dampoe = { get G() { return G; }, get sim() { return sim; }, get L() { return L; }, get view() { return view; } };
+})();
+</script>
+</body>
+</html>

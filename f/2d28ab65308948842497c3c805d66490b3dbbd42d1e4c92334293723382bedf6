@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Zeeslag</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Zeekaart bij nacht: diep marineblauw, rasterlijnen als op een plotkaart, signaaloranje voor raak. */
+:root{
+  --room:#071421; --room-2:#0d1e30; --panel:#13283e; --line:#21405e;
+  --sea:#0e3555; --sea-2:#0b2c48; --grid:#2a5a82; --ship:#9fb4c8; --ship-edge:#5d7488;
+  --hit:#ff6b35; --miss:#7fb4dd; --accent:#3fa7ff; --accent-ink:#021627;
+  --text:#eaf3fb; --muted:#93acc4; --good:#7fe0a0; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  --ng-accent:var(--accent); --ng-accent-ink:var(--accent-ink); --ng-panel:var(--panel); --ng-line:var(--line); --ng-warn:var(--warn);
+  color-scheme:dark;
+}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+.wrap{max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(12px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:4px}
+.hero h1{font-size:48px;line-height:.95}
+.hero svg{width:92px;height:92px;flex:none}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+.bar{display:flex;align-items:center;gap:8px}
+.bar .info{flex:1;text-align:center;font-size:14px;color:var(--muted)}
+.lbl{display:flex;justify-content:space-between;align-items:baseline;font-weight:700}
+.lbl span{font-weight:500;color:var(--muted);font-size:14px}
+.sea{border-radius:10px;overflow:hidden;box-shadow:0 10px 30px #000a,0 0 0 1px var(--line)}
+.sea svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.mini{display:grid;grid-template-columns:44% 1fr;gap:12px;align-items:start}
+.fleet{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted)}
+.fleet div{display:flex;align-items:center;gap:6px}
+.fleet i{display:flex;gap:2px}
+.fleet i b{width:10px;height:10px;border-radius:2px;background:var(--ship)}
+.fleet .gone{text-decoration:line-through;opacity:.55}
+.fleet .gone i b{background:var(--hit)}
+.status{text-align:center;font-weight:700;min-height:26px;font-size:17px}
+.status.wait{color:var(--muted);font-weight:500}
+.status.hit{color:var(--hit)}
+.netlost{background:#4a1f1a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost button{border:0;background:var(--text);color:#071421;border-radius:10px;padding:9px 12px;font-weight:700}
+.pass{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
+.pass h2{font-size:34px}
+.scrim{position:fixed;inset:0;background:#020810c0;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group>.t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.result{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:6px 0}
+.result h2{font-size:34px;line-height:1}
+.scoreline{font-family:var(--f-display);font-weight:800;font-size:22px}
+.flash{animation:fl .5s ease-out}
+@keyframes fl{0%{transform:scale(1.04)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../inet.js"></script>
+<script src="../w2.js"></script>
+<script src="../netgame.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const Z = window.ZEE;
+const app = document.getElementById('app');
+
+const SKEY = 'zee-settings';
+const S = Object.assign({ level: 'normal', touch: false, again: false, sound: true, vibrate: true }, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const LEVELS = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+
+const GKEY = m => 'zee-game-' + m;
+const load = m => { try { const g = JSON.parse(localStorage.getItem(GKEY(m)) || 'null'); return g && g.gid ? g : null; } catch (e) { return null; } };
+const save = g => { try { localStorage.setItem(GKEY(g.mode), JSON.stringify(g)); } catch (e) {} };
+const inProgress = g => g && !g.result;
+
+let G = null, view = 'home';
+const ui = { sheet: null, sel: null, setup: null, thinking: false, token: 0, pass: false, last: null, msg: '' };
+const net = window.W2NetGame('zeeslag', {
+  storageKey: GKEY('net'),
+  inProgress,
+  startHost(saved, peer, mine) {
+    if (inProgress(saved) && saved.names[1] === peer) G = saved;
+    else G = newMatch('net', [mine, peer]);
+    G.seq++; view = 'game'; ui.setup = null; render();
+    return G;
+  },
+  onState(s) {
+    // eigen vloot nooit laten overschrijven door een oudere stand van de ander
+    const mine = G && G.gid === s.gid ? G.fleets[me()] : null;
+    const prevShots = G && G.gid === s.gid ? G.shots[1 - me()].length : -1;
+    G = s;
+    if (mine && !G.fleets[me()]) { G.fleets[me()] = mine; maybeStart(); G.seq++; save(G); net.publish(G); }
+    if (view === 'lobby' || view === 'home') view = 'game';
+    if (prevShots >= 0 && G.shots[1 - me()].length > prevShots) { const i = G.shots[1 - me()][G.shots[1 - me()].length - 1]; announce(1 - me(), i); }
+    if (G.result) ui.sheet = 'result';
+    render();
+  },
+  onChange() { render(); }
+});
+
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (type === 'sawtooth') o.frequency.exponentialRampToValueAtTime(Math.max(40, f / 4), t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sMiss = () => { tone(520, 0.08, 'sine', 0.08); tone(300, 0.18, 'sine', 0.06, 0.06); };
+const sHit = () => { tone(180, 0.35, 'sawtooth', 0.16); tone(90, 0.3, 'triangle', 0.2, 0.02); };
+const sSunk = () => { sHit(); tone(392, 0.15, 'triangle', 0.1, 0.35); tone(330, 0.15, 'triangle', 0.1, 0.5); tone(262, 0.3, 'triangle', 0.1, 0.65); };
+const sEnd = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+const uid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+function newMatch(mode, names) {
+  const g = { v: 1, gid: uid(), mode, names, score: [0, 0], gameNo: 0, seq: 0, level: S.level, touch: S.touch, again: S.again };
+  startGame(g, 0);
+  return g;
+}
+function startGame(g, first) {
+  g.fleets = [null, null]; g.shots = [[], []]; g.turn = first; g.first = first; g.phase = 'setup'; g.result = null; g.gameNo++;
+  if (g.mode === 'cpu') g.fleets[1] = Z.randomFleet(Math.random, g.touch);
+}
+const me = () => (G && G.mode === 'net' ? net.me() : G && G.mode === 'local' ? G.turn : 0);
+const isCpu = pl => G.mode === 'cpu' && pl === 1;
+const opp = pl => 1 - pl;
+function maybeStart() { if (G.phase === 'setup' && G.fleets[0] && G.fleets[1]) { G.phase = 'play'; G.turn = G.first; } }
+
+function commit() {
+  G.seq++; save(G);
+  if (G.mode === 'net') net.publish(G);
+  render(); schedule();
+}
+
+// ---------------------------------------------------------------- vloot neerleggen
+function setupFor(pl) {
+  if (!ui.setup || ui.setup.pl !== pl || ui.setup.gid !== G.gid) ui.setup = { pl, gid: G.gid, ships: Z.randomFleet(Math.random, G.touch) };
+  return ui.setup;
+}
+function tapSetup(i) {
+  const st = ui.setup;
+  const at = st.ships.find(s => s.cells.includes(i));
+  if (at) { if (ui.sel === at.id) rotate(); else ui.sel = at.id; render(); return; }
+  if (!ui.sel) return;
+  const s = st.ships.find(x => x.id === ui.sel);
+  const moved = Z.place(s, i, s.dir);
+  if (Z.fits(st.ships, moved.cells, s.id, G.touch)) { st.ships = st.ships.map(x => x.id === s.id ? moved : x); buzz(8); }
+  else { buzz([10, 30, 10]); ui.msg = 'Daar past hij niet.'; }
+  render();
+}
+function rotate() {
+  const st = ui.setup, s = st.ships.find(x => x.id === ui.sel); if (!s) return;
+  const r = Z.place(s, s.start, s.dir === 'h' ? 'v' : 'h');
+  if (Z.fits(st.ships, r.cells, s.id, G.touch)) { st.ships = st.ships.map(x => x.id === s.id ? r : x); buzz(8); }
+  else { buzz([10, 30, 10]); ui.msg = 'Draaien kan hier niet.'; }
+}
+function ready() {
+  const pl = ui.setup.pl;
+  G.fleets[pl] = ui.setup.ships.map(s => ({ id: s.id, naam: s.naam, l: s.l, start: s.start, dir: s.dir, cells: s.cells }));
+  ui.setup = null; ui.sel = null;
+  maybeStart();
+  if (G.mode === 'local' && G.phase === 'setup') { G.turn = 1; ui.pass = true; }
+  else if (G.mode === 'local') ui.pass = true;
+  commit();
+}
+
+// ---------------------------------------------------------------- schieten
+function announce(shooter, i) {
+  const res = Z.result(G.fleets[opp(shooter)], G.shots[shooter], i);
+  ui.last = { shooter, i, res };
+  if (res.type === 'mis') sMiss(); else if (res.type === 'raak') { sHit(); buzz(isMineView(opp(shooter)) ? [40, 30, 80] : 30); } else { sSunk(); buzz([60, 40, 60, 40, 120]); }
+}
+const isMineView = pl => G.mode === 'local' ? true : pl === me();
+function shoot(pl, i) {
+  if (G.shots[pl].includes(i)) return;
+  G.shots[pl].push(i);
+  announce(pl, i);
+  const res = ui.last.res;
+  if (Z.allSunk(G.fleets[opp(pl)], G.shots[pl])) {
+    G.result = { winner: pl, shots: G.shots[pl].length };
+    G.score[pl]++; ui.sheet = 'result'; setTimeout(sEnd, 700);
+  } else if (!(G.again && res.type !== 'mis')) {
+    G.turn = opp(pl);
+    if (G.mode === 'local') ui.pass = true;
+  }
+  commit();
+}
+function tapEnemy(i) {
+  if (!G || G.phase !== 'play' || G.result || ui.thinking) return;
+  const pl = G.mode === 'local' ? G.turn : me();
+  if (G.turn !== pl || isCpu(pl)) return;
+  if (G.mode === 'net' && net.status !== 'connected') return;
+  shoot(pl, i);
+}
+
+let cpuTimer = null;
+function schedule() {
+  if (!G || view !== 'game' || G.mode !== 'cpu' || G.result || G.phase !== 'play' || !isCpu(G.turn) || ui.thinking) return;
+  ui.thinking = true; render();
+  const gid = G.gid, n = G.shots[1].length;
+  clearTimeout(cpuTimer);
+  cpuTimer = setTimeout(() => {
+    ui.thinking = false;
+    if (!G || G.gid !== gid || G.shots[1].length !== n) return;
+    const i = Z.chooseShot(G.fleets[0], G.shots[1], G.level, G.touch);
+    if (i != null) shoot(1, i);
+  }, 900);
+}
+function nextGame() {
+  ui.sheet = null; ui.last = null;
+  startGame(G, opp(G.first));
+  if (G.mode === 'local') { G.turn = 0; ui.pass = true; }
+  commit();
+}
+
+// ---------------------------------------------------------------- tekenen
+const CS = 40;
+function seaSVG(opts) {
+  // opts: { ships (zichtbaar), shots (op deze zee), knownShips (gezonken, zichtbaar), tap, lastI, sel }
+  const W = CS * 10 + 24;
+  let s = `<svg viewBox="0 0 ${W} ${W}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${W}" fill="var(--sea-2)"/><rect x="24" y="24" width="${CS * 10}" height="${CS * 10}" fill="var(--sea)"/>`;
+  for (let k = 0; k <= 10; k++) s += `<path d="M${24 + k * CS} 24V${24 + CS * 10}M24 ${24 + k * CS}H${24 + CS * 10}" stroke="var(--grid)" stroke-width="1" opacity=".55"/>`;
+  for (let k = 0; k < 10; k++) {
+    s += `<text x="${24 + k * CS + CS / 2}" y="17" text-anchor="middle" font-family="Figtree" font-weight="700" font-size="13" fill="var(--muted)">${'ABCDEFGHIJ'[k]}</text>`;
+    s += `<text x="12" y="${24 + k * CS + CS / 2 + 5}" text-anchor="middle" font-family="Figtree" font-weight="700" font-size="13" fill="var(--muted)">${k + 1}</text>`;
+  }
+  const at = i => [24 + (i % 10) * CS, 24 + Math.floor(i / 10) * CS];
+  const drawShip = (sh, sunk, sel) => {
+    const xs = sh.cells.map(at), x0 = Math.min(...xs.map(p => p[0])), y0 = Math.min(...xs.map(p => p[1]));
+    const w = sh.dir === 'h' ? sh.l * CS : CS, h = sh.dir === 'h' ? CS : sh.l * CS;
+    s += `<rect x="${x0 + 4}" y="${y0 + 4}" width="${w - 8}" height="${h - 8}" rx="${CS / 2 - 4}" fill="${sunk ? '#3b2a26' : 'var(--ship)'}" stroke="${sel ? 'var(--accent)' : sunk ? 'var(--hit)' : 'var(--ship-edge)'}" stroke-width="${sel ? 4 : 2}"/>`;
+    if (!sunk) sh.cells.forEach(c => { const [x, y] = at(c); s += `<circle cx="${x + CS / 2}" cy="${y + CS / 2}" r="4" fill="var(--ship-edge)"/>`; });
+  };
+  (opts.ships || []).forEach(sh => drawShip(sh, (opts.sunkIds || new Set()).has(sh.id), sh.id === opts.sel));
+  (opts.knownShips || []).forEach(sh => drawShip(sh, true));
+  const shipCells = new Set((opts.allShips || opts.ships || []).flatMap(x => x.cells));
+  (opts.shots || []).forEach(i => {
+    const [x, y] = at(i), hit = shipCells.has(i);
+    if (hit) s += `<g${i === opts.lastI ? ' class="flash"' : ''}><circle cx="${x + CS / 2}" cy="${y + CS / 2}" r="13" fill="var(--hit)"/><path d="M${x + 12} ${y + 12}l16 16M${x + 28} ${y + 12}l-16 16" stroke="#3a1205" stroke-width="3.5" stroke-linecap="round"/></g>`;
+    else s += `<circle cx="${x + CS / 2}" cy="${y + CS / 2}" r="5" fill="var(--miss)" opacity=".85"/>`;
+    if (i === opts.lastI) s += `<rect x="${x + 1}" y="${y + 1}" width="${CS - 2}" height="${CS - 2}" fill="none" stroke="#fff" stroke-width="2.5" rx="4"/>`;
+  });
+  if (opts.tap) for (let i = 0; i < 100; i++) { const [x, y] = at(i); s += `<rect data-${opts.tap}="${i}" x="${x}" y="${y}" width="${CS}" height="${CS}" fill="transparent"/>`; }
+  return s + '</svg>';
+}
+function fleetList(ships, shots) {
+  const sunk = new Set(Z.sunkShips(ships, shots).map(s => s.id));
+  return `<div class="fleet">${Z.FLEET.map(f => `<div class="${sunk.has(f.id) ? 'gone' : ''}"><i>${'<b></b>'.repeat(f.l)}</i>${f.naam}</div>`).join('')}</div>`;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>'
+};
+
+function vHome() {
+  const cpu = load('cpu'), loc = load('local'), ng = load('net');
+  const resume = (g, m) => inProgress(g) ? `<div class="resume"><button class="btn quiet" data-a="resume" data-m="${m}">Doorgaan</button><button class="btn quiet" data-a="new" data-m="${m}">Nieuw spel</button></div>` : '';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><div><h1>Zeeslag</h1><p class="muted" style="margin-top:8px">Zoek en tor­pedeer de vloot van de ander</p></div>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="14" fill="var(--sea)"/><path d="M0 70q12-8 25 0t25 0 25 0 25 0V100H0z" fill="var(--sea-2)"/>
+        <path d="M14 58h62l-8 12H22z" fill="var(--ship)"/><rect x="34" y="44" width="22" height="14" rx="3" fill="var(--ship)"/><rect x="42" y="34" width="5" height="10" fill="var(--ship)"/>
+        <circle cx="76" cy="30" r="12" fill="var(--hit)"/><circle cx="76" cy="30" r="5" fill="#ffd2b8"/></svg></div>
+    <div class="choices">
+      <button class="choice" data-a="${inProgress(cpu) ? 'resume' : 'new'}" data-m="cpu"><span class="ic">${IC.cpu}</span><span><b>Tegen de computer</b><span>${LEVELS[S.level]} niveau</span></span></button>
+      ${resume(cpu, 'cpu')}
+      <button class="choice" data-a="lobby" ${net.available() ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${net.available() ? 'Ieder een eigen vloot, geheim op je eigen scherm' : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && net.available() ? `<p class="note">Er loopt nog een spel tegen ${esc(ng.names[net.me() ? 0 : 1])}. Verbind opnieuw om verder te spelen.</p>` : ''}
+      <button class="choice" data-a="${inProgress(loc) ? 'resume' : 'new'}" data-m="local"><span class="ic">${IC.one}</span><span><b>Samen op één telefoon</b><span>Telefoon doorgeven; niet spieken!</span></span></button>
+      ${resume(loc, 'local')}
+    </div>
+  </div>`;
+}
+function vLobby() {
+  return `<div class="wrap"><div class="top"><button class="back" data-a="home">${IC.back} Zeeslag</button></div><h1 style="font-size:36px">Twee telefoons</h1>
+    ${net.lobbyHTML(`${S.touch ? 'schepen mogen elkaar raken' : 'schepen mogen elkaar niet raken'}${S.again ? ', bij raak nog een keer' : ''}`)}</div>`;
+}
+function bar(info) {
+  const lost = G.mode === 'net' && net.status !== 'connected' ? `<div class="netlost"><span>Verbinding met ${esc(G.names[1 - me()])} is weg. De stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>` : '';
+  return `<div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button><span class="info">${info}</span><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>${lost}`;
+}
+function vSetup(pl) {
+  const st = setupFor(pl);
+  const msg = ui.msg; ui.msg = '';
+  const waiting = G.mode === 'net' && G.fleets[pl];
+  if (waiting) return `<div class="wrap">${bar('Vloot neerleggen')}<div class="pass"><h2>Je vloot ligt klaar</h2><p class="muted">Wachten tot ${esc(G.names[opp(pl)])} ook klaar is…</p></div></div>`;
+  return `<div class="wrap" style="gap:10px">${bar(G.mode === 'local' ? esc(G.names[pl]) + ': vloot neerleggen' : 'Vloot neerleggen')}
+    <p class="muted" style="text-align:center">${msg ? `<b style="color:var(--warn)">${esc(msg)}</b>` : ui.sel ? 'Tik op een vak om het schip te verplaatsen, of nog eens op het schip om te draaien.' : 'Tik op een schip om het te kiezen.'}${G.touch ? '' : ' Schepen mogen elkaar niet raken.'}</p>
+    <div class="sea">${seaSVG({ ships: st.ships, tap: 'setup', sel: ui.sel })}</div>
+    <div class="btnrow"><button class="btn quiet" data-a="shuffle">Husselen</button><button class="btn quiet" data-a="rotate" ${ui.sel ? '' : 'disabled'}>Draaien</button></div>
+    <button class="btn" data-a="ready">Klaar, ten strijde!</button></div>`;
+}
+function vPlay() {
+  const pl = G.mode === 'local' ? G.turn : me(), o = opp(pl);
+  const myTurn = G.turn === pl && !G.result;
+  const last = ui.last;
+  let status = '', cls = '';
+  if (G.result) status = G.result.winner === pl ? 'Gewonnen!' : 'Verloren…';
+  else if (last && last.shooter === pl && G.turn === pl && last.res.type !== 'mis') { status = last.res.type === 'gezonken' ? `Gezonken: ${last.res.ship.naam}! Nog een keer.` : 'Raak! Nog een keer.'; cls = 'hit'; }
+  else if (myTurn) { status = last && last.shooter === o ? `${esc(G.names[o])}: ${Z.label(last.i)} ${last.res.type === 'mis' ? 'mis' : last.res.type === 'raak' ? 'raak!' : 'raak en gezonken: ' + last.res.ship.naam}. Jouw beurt.` : 'Jouw beurt: tik op de zee van de ander.'; }
+  else if (isCpu(G.turn)) { status = last && last.shooter === pl ? (last.res.type === 'mis' ? 'Mis.' : last.res.type === 'raak' ? 'Raak!' : `Gezonken: ${last.res.ship.naam}!`) + ' De computer mikt…' : 'De computer mikt…'; cls = last && last.shooter === pl && last.res.type !== 'mis' ? 'hit' : 'wait'; }
+  else { status = last && last.shooter === pl ? (last.res.type === 'mis' ? 'Mis. ' : last.res.type === 'raak' ? 'Raak! ' : `Gezonken: ${last.res.ship.naam}! `) + `${esc(G.names[o])} is aan de beurt…` : `${esc(G.names[o])} is aan de beurt…`; cls = 'wait'; }
+  const enemySunk = Z.sunkShips(G.fleets[o], G.shots[pl]);
+  return `<div class="wrap" style="gap:10px">${bar(G.mode === 'cpu' ? 'Tegen computer · ' + LEVELS[G.level].toLowerCase() : `Spel ${G.gameNo} · ${G.score[0]}–${G.score[1]}`)}
+    <div class="lbl">Zee van ${esc(G.names[o])}<span>${G.shots[pl].length} schoten</span></div>
+    <div class="sea">${seaSVG({ shots: G.shots[pl], allShips: G.fleets[o], knownShips: G.result ? G.fleets[o] : enemySunk, tap: myTurn ? 'fire' : null, lastI: last && last.shooter === pl ? last.i : null })}</div>
+    <div class="status ${cls}">${status}</div>
+    <div class="mini"><div><div class="lbl" style="font-size:14px;margin-bottom:6px">Jouw vloot</div><div class="sea">${seaSVG({ ships: G.fleets[pl], shots: G.shots[o], sunkIds: new Set(Z.sunkShips(G.fleets[pl], G.shots[o]).map(s => s.id)), lastI: last && last.shooter === o ? last.i : null })}</div></div>
+      <div><div class="lbl" style="font-size:14px;margin-bottom:6px">Nog te vinden</div>${fleetList(G.fleets[o], G.shots[pl])}</div></div>
+  </div>`;
+}
+function vPass() {
+  const pl = G.turn;
+  return `<div class="wrap">${bar('Samen op één telefoon')}<div class="pass"><h2>Geef de telefoon aan ${esc(G.names[pl])}</h2>
+    <p class="muted">${G.phase === 'setup' ? 'Die legt nu zijn of haar vloot neer.' : 'Zodat niemand de vloot van de ander ziet.'}</p>
+    ${ui.last && G.phase === 'play' ? `<p>${esc(G.names[ui.last.shooter])} schoot op ${Z.label(ui.last.i)}: <b>${ui.last.res.type === 'mis' ? 'mis' : ui.last.res.type === 'raak' ? 'raak' : 'gezonken (' + ui.last.res.ship.naam + ')'}</b></p>` : ''}
+    <button class="btn" data-a="unpass" style="min-width:220px">Ik ben ${esc(G.names[pl])}</button></div></div>`;
+}
+function vGame() {
+  if (G.mode === 'local' && ui.pass && !G.result) return vPass();
+  if (G.phase === 'setup') return vSetup(G.mode === 'local' ? G.turn : me());
+  return vPlay();
+}
+function segBtns(key, opts) { return `<div class="seg">${opts.map(([v, l]) => `<button data-a="set" data-k="${key}" data-v="${v}" aria-pressed="${S[key] === v}">${l}</button>`).join('')}</div>`; }
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+const close = l => `<button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">${l}</button>`;
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2>${close('Klaar')}</div>
+    <div class="group"><span class="t">Computer</span>${segBtns('level', [['easy', 'Makkelijk'], ['normal', 'Normaal'], ['strong', 'Sterk']])}</div>
+    <div class="group">${tog('touch', 'Schepen mogen elkaar raken', 'Standaard uit: er zit altijd minstens één vak water tussen')}${tog('again', 'Bij raak nog een keer', 'Wie raak schiet, mag meteen nog eens')}
+      <p class="note">Geldt vanaf een nieuw spel; op twee telefoons bepaalt wie het spel maakt.</p>${tog('sound', 'Geluid')}${tog('vibrate', 'Trillen')}</div>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2>${close('Sluiten')}</div><div class="list"><button class="btn quiet" data-a="settings">Instellingen</button>
+    ${G.mode !== 'net' || net.me() === 0 ? `<button class="btn quiet" data-a="restart">Nieuw spel</button>` : ''}
+    ${G.mode === 'net' ? `<button class="btn quiet" data-a="leave">Verbinding verbreken</button>` : ''}</div>`;
+}
+function sheetResult() {
+  const R = G.result; if (!R) return '';
+  const pl = G.mode === 'local' ? R.winner : me();
+  const title = G.mode === 'local' ? `${esc(G.names[R.winner])} wint!` : R.winner === me() ? 'Gewonnen!' : `${esc(G.names[R.winner])} wint`;
+  const canNext = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${title}</h2><p class="muted">De hele vloot gezonken in ${R.shots} schoten.</p>
+    <div class="scoreline">${esc(G.names[0])} ${G.score[0]} – ${G.score[1]} ${esc(G.names[1])}</div></div>
+    <div class="list"><button class="btn" data-a="next" ${canNext ? '' : 'disabled'}>Nog een keer</button><button class="btn quiet" data-a="close">Zee bekijken</button></div>`;
+}
+function render() {
+  let html = view === 'lobby' ? vLobby() : view === 'game' && G ? vGame() : vHome();
+  if (ui.sheet) {
+    const inner = { settings: sheetSettings, menu: sheetMenu, result: sheetResult }[ui.sheet];
+    if (inner && (ui.sheet === 'settings' || G)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  const focused = document.activeElement && document.activeElement.id === 'ng-name' ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  if (focused !== null) { const el = document.getElementById('ng-name'); if (el) { el.focus(); try { el.setSelectionRange(focused, focused); } catch (e) {} } }
+}
+function startMode(mode) {
+  const nm = localStorage.getItem('w2-name') || '';
+  G = mode === 'cpu' ? newMatch('cpu', [nm || 'Jij', 'Computer']) : newMatch('local', ['Speler 1', 'Speler 2']);
+  view = 'game'; ui.sheet = null; ui.setup = null; ui.sel = null; ui.last = null; ui.pass = mode === 'local';
+  commit();
+}
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-setup],[data-fire]');
+  if (!el) return;
+  if (el.dataset.setup !== undefined) return tapSetup(+el.dataset.setup);
+  if (el.dataset.fire !== undefined) return tapEnemy(+el.dataset.fire);
+  if (net.handleClick(el)) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; ui.sheet = null; render(); return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html#spellen'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.token++; ui.thinking = false; clearTimeout(cpuTimer); net.stopSearching(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; break;
+    case 'set': S[el.dataset.k] = el.dataset.v; saveS(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'vibrate') buzz(30); break;
+    case 'new': startMode(el.dataset.m); return;
+    case 'resume': G = load(el.dataset.m); view = 'game'; ui.setup = null; ui.sel = null; ui.last = null; ui.pass = G.mode === 'local'; if (G.result) ui.sheet = 'result'; render(); schedule(); return;
+    case 'lobby': view = 'lobby'; net.error = ''; if (net.status === 'lost') net.status = 'idle';
+      if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } } break;
+    case 'reconnect': view = 'lobby'; net.reconnect(); break;
+    case 'leave': ui.sheet = null; net.stop(); view = 'home'; break;
+    case 'shuffle': ui.setup.ships = Z.randomFleet(Math.random, G.touch); ui.sel = null; buzz(10); break;
+    case 'rotate': rotate(); break;
+    case 'ready': ready(); return;
+    case 'unpass': ui.pass = false; break;
+    case 'next': nextGame(); return;
+    case 'restart': ui.sheet = null; G = newMatch(G.mode, G.names.slice()); ui.setup = null; ui.last = null; ui.pass = G.mode === 'local'; commit(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => { net.handleInput(e); });
+window.__w2back = function () {
+  if (ui.sheet) { ui.sheet = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.token++; ui.thinking = false; clearTimeout(cpuTimer); net.stopSearching(); render(); return true; }
+  return false;
+};
+if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } }
+render();
+})();
+</script>
+</body>
+</html>

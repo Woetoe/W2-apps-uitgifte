@@ -1,0 +1,25 @@
+/* W2 Apps — gedeelde basis voor de spellen (menu's, keuzekaarten, onderbladen, schakelaars).
+   Elk spel laadt dit vóór zijn eigen <style>; kleuren (--muted, --line, --good, --accent …) zet het spel zelf.
+   De tools (Reizen, Recepten …) gebruiken w2ui.css. */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+p{margin:0}
+.muted{color:var(--muted)}
+.iconbtn svg{width:22px;height:22px}
+.back{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-weight:600;padding:10px 4px}
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice b{display:block;font-size:17px}
+.choice span{color:var(--muted);font-size:14px}
+.choice:disabled{opacity:.5}
+.netlost span{flex:1}
+.sheet h2{font-size:26px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0}
+.row .d{font-size:14px;color:var(--muted)}
+.toggle{width:52px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;flex:none}
+.toggle[aria-pressed="true"]{background:var(--good)}
+.toggle[aria-pressed="true"]::after{transform:translateX(22px)}
+.note{font-size:14px;color:var(--muted)}

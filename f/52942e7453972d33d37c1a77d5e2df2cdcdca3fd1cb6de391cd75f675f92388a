@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Chinees dammen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Glazen knikkers op een berkenhouten ster, in een donkere pruimkleurige kamer. */
+:root{
+  --room:#17121f; --room-2:#211a2b; --panel:#2a2236; --line:#3d3350;
+  --birch:#efe2c6; --birch-2:#dccba6; --hole:#b9a57f;
+  --accent:#ff9f43; --accent-ink:#2b1500;
+  --text:#f3eef7; --muted:#ab9fbd; --good:#7fd19b; --warn:#ff8a6b;
+  --s0:#e5484d; --s1:#9b5de5; --s2:#2fbf71; --s3:#3b82f6; --s4:#f5b82e; --s5:#14b8a6;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  --ng-accent:var(--accent); --ng-accent-ink:var(--accent-ink); --ng-panel:var(--panel); --ng-line:var(--line); --ng-warn:var(--warn);
+  color-scheme:dark;
+}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(12px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accent-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.hero h1{font-size:44px;line-height:.95}
+.hero svg{width:100%;height:auto;display:block;margin-top:12px}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+/* opstelling */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room-2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seats{display:flex;flex-direction:column;gap:8px}
+.seat{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;background:var(--room-2);border:1px solid var(--line);border-radius:14px;padding:8px 8px 8px 12px}
+.seat .dot{width:22px;height:22px;border-radius:50%}
+.seat input{background:transparent;border:0;padding:8px 0;font-weight:600;min-width:0;width:100%;-webkit-user-select:text;user-select:text}
+.seat input:focus{outline:none}
+.seat .kind{display:flex;background:var(--room);border-radius:10px;padding:3px;gap:2px}
+.seat .kind button{border:0;background:none;border-radius:8px;padding:7px 9px;font-size:14px;font-weight:600;color:var(--muted)}
+.seat .kind button[aria-pressed="true"]{background:var(--panel);color:var(--text)}
+.label{font-weight:700}
+/* spel */
+.bar{display:flex;align-items:center;gap:8px}
+.bar .info{flex:1;text-align:center;font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chip{display:flex;align-items:center;gap:7px;background:var(--room-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px 5px 6px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.chip i{width:16px;height:16px;border-radius:50%;display:block}
+.chip.turn{border-color:var(--text)}
+.chip .home{color:var(--muted);font-weight:500}
+#board{display:block;width:100%;height:auto;touch-action:manipulation}
+.status{text-align:center;font-weight:600;min-height:24px}
+.status.wait{color:var(--muted);font-weight:500}
+.netlost{background:#4a1f2a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost button{border:0;background:var(--birch);color:#2b1500;border-radius:10px;padding:9px 12px;font-weight:700}
+/* vellen */
+.scrim{position:fixed;inset:0;background:#0a0710b8;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--birch);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.result{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;padding:6px 0}
+.result h2{font-size:34px;line-height:1}
+.rank{display:flex;flex-direction:column;gap:6px;width:100%}
+.rank div{display:grid;grid-template-columns:18px 1fr auto auto;gap:10px;align-items:center;background:var(--panel);border-radius:10px;padding:9px 12px;text-align:left;font-variant-numeric:tabular-nums}
+.rank i{width:16px;height:16px;border-radius:50%;display:block}
+.rules ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:15px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../inet.js"></script>
+<script src="../w2.js"></script>
+<script src="../netgame.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const H = window.HALMA;
+const app = document.getElementById('app');
+const COLORS = ['#e5484d', '#9b5de5', '#2fbf71', '#3b82f6', '#f5b82e', '#14b8a6'];
+const CNAMES = ['Rood', 'Paars', 'Groen', 'Blauw', 'Geel', 'Turkoois'];
+
+/* ---------------- instellingen ---------------- */
+const SKEY = 'halma-settings';
+const S = Object.assign({ n: 2, seats: null, level: 'normal', sound: true, vibrate: true, hints: true }, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const shared = () => { try { return localStorage.getItem('w2-name') || ''; } catch (e) { return ''; } };
+function seatSetup() {
+  // per aantal spelers: namen en mens/computer
+  if (!S.seats) S.seats = {};
+  if (!S.seats[S.n]) S.seats[S.n] = H.SEATS[S.n].map((seat, i) => ({ name: i === 0 ? (shared() || 'Jij') : `Computer ${i}`, kind: i === 0 ? 'human' : 'cpu' }));
+  return S.seats[S.n];
+}
+
+/* ---------------- opslag ---------------- */
+const GKEY = m => 'halma-game-' + m;
+const load = m => { try { const g = JSON.parse(localStorage.getItem(GKEY(m)) || 'null'); return g && g.gid ? g : null; } catch (e) { return null; } };
+const save = g => { try { localStorage.setItem(GKEY(g.mode), JSON.stringify(g)); } catch (e) {} };
+const inProgress = g => g && g.winner === null;
+
+/* ---------------- toestand ---------------- */
+let G = null, view = 'home';
+const ui = { sel: null, sheet: null, anim: null, token: 0, busy: false };
+const net = window.W2NetGame('halma', {
+  storageKey: GKEY('net'),
+  inProgress,
+  startHost(saved, peer, mine) {
+    if (inProgress(saved) && saved.players[1].name === peer) G = saved;
+    else G = newGame('net', [{ name: mine, kind: 'net' }, { name: peer, kind: 'net' }], 0);
+    G.seq++; view = 'game'; ui.sel = null; render();
+    return G;
+  },
+  onState(s) {
+    const prev = G && G.mode === 'net' ? G.moveNo : -1;
+    G = s; if (view !== 'game') view = 'game';
+    ui.sel = null;
+    if (G.winner !== null) ui.sheet = 'result'; else if (ui.sheet === 'result') ui.sheet = null;
+    if (prev >= 0 && G.moveNo > prev && G.last && G.last.p !== me()) { animate(G.last, null, true); if (isMine(G.turn)) buzz(25); return; }
+    render();
+  },
+  onChange() { render(); }
+});
+
+/* ---------------- geluid ---------------- */
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sHop = k => tone(520 + k * 70, 0.07, 'triangle', 0.14);
+const sWin = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+/* ---------------- spel ---------------- */
+const uid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+function newGame(mode, players, start) {
+  const n = players.length, seats = H.SEATS[n];
+  return { v: 1, gid: uid(), mode, seq: 0, players: players.map((p, i) => Object.assign({ seat: seats[i] }, p)),
+    board: H.setup(n), turn: start || 0, start: start || 0, moveNo: 0, last: null, winner: null,
+    wins: Array(n).fill(0), hist: [], level: S.level };
+}
+const me = () => (G && G.mode === 'net' ? net.me() : 0);
+const kindOf = p => G.players[p].kind;
+function isMine(p) {
+  if (G.mode === 'net') return p === me() && net.status === 'connected';
+  return kindOf(p) === 'human';
+}
+const isCpu = p => G.mode !== 'net' && kindOf(p) === 'cpu';
+const rotated = () => G && G.mode === 'net' && me() === 1; // eigen hoek altijd onderaan
+
+function commit() {
+  G.seq++; save(G);
+  if (G.mode === 'net') net.publish(G);
+  render(); schedule();
+}
+function doMove(from, to, path) {
+  if (G.mode !== 'net') { G.hist.push({ board: G.board, turn: G.turn, last: G.last, moveNo: G.moveNo }); if (G.hist.length > 40) G.hist.shift(); }
+  const p = G.turn;
+  G.board = H.move(G.board, from, to);
+  G.last = { p, from, to, path };
+  G.moveNo++;
+  ui.sel = null;
+  if (H.hasWon(G.board, p, G.players[p].seat)) {
+    G.winner = p; G.wins[p]++; ui.sheet = 'result'; sWin(); buzz([60, 40, 60, 40, 160]);
+  } else {
+    G.turn = (G.turn + 1) % G.players.length;
+    if (isMine(G.turn) && G.mode !== 'local' && !isCpu(G.turn)) buzz(20);
+  }
+}
+function animate(last, done, applied) {
+  // knikker hopt langs het pad; het bord is dan al bijgewerkt, dus het doel even leeg tonen
+  const a = { p: last.p, path: last.path, k: 0, hideTo: applied ? last.path[last.path.length - 1] : -1 };
+  ui.anim = a;
+  const step = () => {
+    if (ui.anim !== a) return; // vervangen door een nieuwere animatie
+    sHop(a.k);
+    render();
+    if (a.k < a.path.length - 1) { a.k++; setTimeout(step, 150); }
+    else { ui.anim = null; render(); done && done(); }
+  };
+  step();
+}
+function save2() { G.seq++; save(G); if (G.mode === 'net') net.publish(G); }
+function playHuman(from, to, path) {
+  // eerst de zet vastleggen (en doorsturen), dan pas de animatie tonen
+  doMove(from, to, path); save2();
+  animate(G.last, () => { render(); schedule(); }, true);
+}
+function undo() {
+  if (G.mode === 'net' || !G.hist.length) return;
+  ui.token++;
+  // terug tot er weer een mens aan zet is
+  do { const h = G.hist.pop(); Object.assign(G, h); } while (G.hist.length && isCpu(G.turn));
+  if (G.winner !== null) { G.wins[G.winner]--; G.winner = null; }
+  ui.sel = null; ui.busy = false; ui.anim = null;
+  commit();
+}
+function rematch() {
+  ui.sheet = null;
+  const n = G.players.length, start = (G.start + 1) % n;
+  const ng = newGame(G.mode, G.players.map(p => ({ name: p.name, kind: p.kind })), start);
+  ng.wins = G.wins.slice(); if (G.mode === 'net') ng.gid = G.gid + 'r' + Date.now().toString(36);
+  G = ng; commit();
+}
+
+function schedule() {
+  if (!G || view !== 'game' || G.winner !== null || G.mode === 'net' || ui.busy) return;
+  if (!isCpu(G.turn)) return;
+  const token = ++ui.token, gid = G.gid, mv = G.moveNo;
+  ui.busy = true; render();
+  setTimeout(() => {
+    if (token !== ui.token || !G || G.gid !== gid || G.moveNo !== mv) { ui.busy = false; return; }
+    const p = G.turn;
+    const m = H.chooseMove(G.board, p, G.players[p].seat, G.level || S.level);
+    if (!m) { G.turn = (G.turn + 1) % G.players.length; ui.busy = false; commit(); return; }
+    doMove(m.from, m.to, m.path); save2();
+    animate(G.last, () => { if (token !== ui.token) return; ui.busy = false; render(); schedule(); }, true);
+  }, 420);
+}
+
+/* ---------------- tekenen ---------------- */
+const K = 21; // schaal
+const XY = i => { const c = H.cells[i], r = rotated() ? -1 : 1; return [c.px * K * r, c.py * K * r]; };
+const R_MARBLE = 14.2, R_HOLE = 6;
+function boardSVG() {
+  const b = G.board;
+  const myTurn = G.winner === null && isMine(G.turn) && !isCpu(G.turn) && !ui.busy && !ui.anim;
+  const dests = myTurn && ui.sel !== null ? H.destinations(b, ui.sel) : new Map();
+  const mineChar = String(G.turn);
+  const activeSeats = new Map(G.players.map((p, i) => [p.seat, i]));
+  const W = 310, Hh = 268;
+  let s = `<svg id="board" viewBox="${-W} ${-Hh} ${2 * W} ${2 * Hh}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chinees-dambord">
+    <defs>${COLORS.map((c, i) => `<radialGradient id="m${i}" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset=".22" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity="1"/></radialGradient>`).join('')}
+    <radialGradient id="wood" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="var(--birch)"/><stop offset="1" stop-color="var(--birch-2)"/></radialGradient></defs>`;
+  // ster: twee grote driehoeken
+  const tri = pts => pts.map(([x, y, z]) => { const px = Math.sqrt(3) * (x + z / 2) * K * 1.13, py = 1.5 * z * K * 1.13; const r = rotated() ? -1 : 1; return `${(px * r).toFixed(1)},${(py * r).toFixed(1)}`; }).join(' ');
+  s += `<polygon points="${tri([[-8, 4, 4], [4, -8, 4], [4, 4, -8]])}" fill="url(#wood)" stroke="#00000030" stroke-width="2" stroke-linejoin="round"/>
+        <polygon points="${tri([[8, -4, -4], [-4, 8, -4], [-4, -4, 8]])}" fill="url(#wood)" stroke="#00000030" stroke-width="2" stroke-linejoin="round"/>`;
+  // gekleurde thuisvakken van de spelers
+  for (let k = 0; k < 6; k++) {
+    if (!activeSeats.has(k)) continue;
+    const list = H.CORNER[k];
+    const pts = list.map(XY);
+    const cx = pts.reduce((a, p) => a + p[0], 0) / 10, cy = pts.reduce((a, p) => a + p[1], 0) / 10;
+    const apex = XY(H.APEX[k]);
+    const far = list.filter(i => H.dist(i, H.APEX[k]) === 3).map(XY);
+    const ends = [far[0], far[far.length - 1]];
+    const grow = ([x, y]) => [cx + (x - cx) * 1.55, cy + (y - cy) * 1.55];
+    const poly = [apex, ends[0], ends[1]].map(grow).map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+    s += `<polygon points="${poly}" fill="${COLORS[k]}" opacity=".2" stroke-linejoin="round"/>`;
+  }
+  // laatste zet: pad
+  if (G.last && !ui.anim) {
+    const d = G.last.path.map((i, n) => { const [x, y] = XY(i); return (n ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }).join(' ');
+    s += `<path d="${d}" fill="none" stroke="${COLORS[G.players[G.last.p].seat]}" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round" opacity=".9"/>`;
+  }
+  // gaatjes en knikkers
+  const animAt = ui.anim ? ui.anim.path[ui.anim.k] : -1, animFrom = ui.anim ? ui.anim.path[0] : -1;
+  for (let i = 0; i < H.N; i++) {
+    const [x, y] = XY(i);
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R_HOLE}" fill="var(--hole)"/>`;
+    let ch = b[i];
+    if (ui.anim && (i === animFrom || i === ui.anim.hideTo)) ch = '.';
+    if (ch !== '.') {
+      const p = +ch, seat = G.players[p].seat;
+      const movable = myTurn && ch === mineChar && S.hints && H.destinations(b, i).size;
+      s += `<circle cx="${x.toFixed(1)}" cy="${(y + 1.6).toFixed(1)}" r="${R_MARBLE}" fill="#0000003a"/>
+            <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R_MARBLE}" fill="url(#m${seat})"/>`;
+      if (ui.sel === i) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R_MARBLE + 3.5}" fill="none" stroke="#fff" stroke-width="3"/>`;
+      else if (movable && ui.sel === null) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R_MARBLE + 2.5}" fill="none" stroke="#1d1626" stroke-opacity=".5" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+    }
+    if (dests.has(i)) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${COLORS[G.players[G.turn].seat]}" stroke="#fff" stroke-width="2.5"/>`;
+  }
+  if (ui.anim) {
+    const [x, y] = XY(animAt), seat = G.players[ui.anim.p].seat;
+    s += `<circle cx="${x.toFixed(1)}" cy="${(y + 4).toFixed(1)}" r="${R_MARBLE}" fill="#00000040"/><circle cx="${x.toFixed(1)}" cy="${(y - 3).toFixed(1)}" r="${R_MARBLE + 1}" fill="url(#m${seat})"/>`;
+  }
+  return s + '</svg>';
+}
+function homeCount(p) { const tgt = H.CORNER[H.target(G.players[p].seat)]; return tgt.filter(i => G.board[i] === String(p)).length; }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>'
+};
+
+function heroStar() {
+  // klein sterretje met de zes kleuren als decoratie op het startscherm
+  let s = '<svg viewBox="-150 -125 300 250" aria-hidden="true">';
+  const tri = pts => pts.map(([x, y, z]) => `${(Math.sqrt(3) * (x + z / 2) * 9.6).toFixed(1)},${(1.5 * z * 9.6).toFixed(1)}`).join(' ');
+  s += `<polygon points="${tri([[-8, 4, 4], [4, -8, 4], [4, 4, -8]])}" fill="var(--birch)"/><polygon points="${tri([[8, -4, -4], [-4, 8, -4], [-4, -4, 8]])}" fill="var(--birch)"/>`;
+  H.cells.forEach((c, i) => {
+    const x = c.px * 8.4, y = c.py * 8.4;
+    s += c.corner >= 0 ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.4" fill="${COLORS[c.corner]}"/>` : `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="var(--hole)"/>`;
+  });
+  return s + '</svg>';
+}
+
+function vHome() {
+  const loc = load('local'), ng = load('net');
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><h1>Chinees dammen</h1>${heroStar()}</div>
+    <div class="choices">
+      <button class="choice" data-a="setup"><span class="ic">${IC.one}</span><span><b>Op deze telefoon</b><span>2 tot 6 spelers, mensen en computers</span></span></button>
+      ${inProgress(loc) ? `<div class="resume"><button class="btn quiet" data-a="resume" data-m="local">Doorgaan · ${loc.players.length} spelers</button></div>` : ''}
+      <button class="choice" data-a="lobby" ${net.available() ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${net.available() ? W2.net.how() : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && net.available() ? `<p class="note">Er loopt nog een spel tegen ${esc(ng.players[net.me() ? 0 : 1].name)}. Verbind opnieuw om verder te spelen.</p>` : ''}
+    </div>
+  </div>`;
+}
+function vSetup() {
+  const seats = seatSetup();
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Chinees dammen</button></div>
+    <h1 style="font-size:34px">Wie doen er mee?</h1>
+    <div class="seg">${[2, 3, 4, 6].map(n => `<button data-a="setn" data-v="${n}" aria-pressed="${S.n === n}">${n} spelers</button>`).join('')}</div>
+    <div class="seats">${seats.map((p, i) => {
+      const seat = H.SEATS[S.n][i];
+      return `<div class="seat"><span class="dot" style="background:${COLORS[seat]}"></span>
+        <input data-in="seatname" data-i="${i}" value="${esc(p.name)}" maxlength="16" aria-label="Naam ${CNAMES[seat]}">
+        <div class="kind"><button data-a="kind" data-i="${i}" data-v="human" aria-pressed="${p.kind === 'human'}">Mens</button><button data-a="kind" data-i="${i}" data-v="cpu" aria-pressed="${p.kind === 'cpu'}">Computer</button></div></div>`;
+    }).join('')}</div>
+    <p class="note">Spelers in dezelfde kleur volgorde als op het bord. Meerdere mensen geven de telefoon gewoon door.</p>
+    <button class="btn" data-a="start">Start</button>
+  </div>`;
+}
+function vLobby() {
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="home">${IC.back} Chinees dammen</button></div>
+    <h1 style="font-size:36px">Twee telefoons</h1>
+    ${net.lobbyHTML('')}
+  </div>`;
+}
+function statusLine() {
+  if (G.winner !== null) return { text: `${esc(G.players[G.winner].name)} heeft gewonnen`, btns: `<button class="btn" data-a="showresult">Uitslag bekijken</button>` };
+  const p = G.turn, nm = esc(G.players[p].name);
+  let text, wait = false;
+  if (ui.busy && isCpu(p)) { text = `${nm} zet…`; wait = true; }
+  else if (isMine(p)) text = G.mode === 'net' ? 'Jij bent aan zet' : `${nm} is aan zet`;
+  else { text = `${nm} is aan zet…`; wait = true; }
+  if (!wait && ui.sel !== null) text += ' · tik op een stip';
+  const btns = G.mode !== 'net' ? `<button class="btn quiet" data-a="undo" ${G.hist.length ? '' : 'disabled'}>Zet terug</button>` : '';
+  return { text, btns, wait };
+}
+function vGame() {
+  const st = statusLine();
+  const lost = G.mode === 'net' && net.status !== 'connected'
+    ? `<div class="netlost"><span>Verbinding met ${esc(G.players[1 - me()].name)} is weg. De stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>` : '';
+  return `<div class="wrap" style="gap:10px">
+    <div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button><span class="info">Spel ${G.wins.reduce((a, b) => a + b, 0) + (G.winner === null ? 1 : 0)} · ${G.players.length} spelers</span><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${lost}
+    <div class="chips">${G.players.map((p, i) => `<span class="chip ${G.turn === i && G.winner === null ? 'turn' : ''}"><i style="background:${COLORS[p.seat]}"></i>${esc(p.name)} <span class="home">${homeCount(i)}/10</span></span>`).join('')}</div>
+    ${boardSVG()}
+    <div class="status ${st.wait ? 'wait' : ''}">${st.text}</div>
+    ${st.btns ? `<div class="btnrow">${st.btns}</div>` : ''}
+  </div>`;
+}
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Klaar</button></div>
+    <div class="row"><b>Computer</b></div>
+    <div class="seg">${[['easy', 'Makkelijk'], ['normal', 'Normaal']].map(([v, l]) => `<button data-a="level" data-v="${v}" aria-pressed="${S.level === v}">${l}</button>`).join('')}</div>
+    ${tog('hints', 'Hulp bij zetten', 'Laat zien welke knikkers kunnen bewegen')}
+    ${tog('sound', 'Geluid')}
+    ${tog('vibrate', 'Trillen')}
+    <details class="rules"><summary><b>Spelregels kort</b></summary><ul>
+      <li>Breng al je 10 knikkers naar de punt aan de overkant. Wie dat eerst doet, wint.</li>
+      <li>Per beurt zet je één knikker één gaatje verder, óf je springt.</li>
+      <li>Springen gaat over één knikker (van wie dan ook) naar een leeg gaatje erachter. Je mag zo vaak achter elkaar springen als kan.</li>
+      <li>Blijft er een knikker van een ander in jouw doelvak staan? Dan win je ook als het vak vol is en jij er minstens één in hebt.</li>
+    </ul></details>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2><button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">Sluiten</button></div>
+    <div class="list">
+      <button class="btn quiet" data-a="settings">Instellingen</button>
+      ${G.mode !== 'net' || net.me() === 0 ? `<button class="btn quiet" data-a="restart">Opnieuw beginnen</button>` : ''}
+      ${G.mode === 'net' ? `<button class="btn quiet" data-a="leave">Verbinding verbreken</button>` : ''}
+    </div>`;
+}
+function sheetResult() {
+  if (G.winner === null) return '';
+  const w = G.winner;
+  const title = G.mode === 'net' ? (w === me() ? 'Je wint!' : `${esc(G.players[w].name)} wint`) : `${esc(G.players[w].name)} wint!`;
+  const order = G.players.map((p, i) => ({ p, i, h: homeCount(i), d: H.progress(G.board, i, p.seat) })).sort((a, b) => (a.i === w ? -1 : b.i === w ? 1 : a.d - b.d));
+  const canNext = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${title}</h2>
+    <div class="rank">${order.map(o => `<div><i style="background:${COLORS[o.p.seat]}"></i><span>${esc(o.p.name)}</span><span class="muted">${o.h}/10 thuis</span><b>${G.wins[o.i]}×</b></div>`).join('')}</div></div>
+    <div class="list"><button class="btn" data-a="rematch" ${canNext ? '' : 'disabled'}>Nog een potje</button><button class="btn quiet" data-a="close">Bord bekijken</button></div>`;
+}
+
+function render() {
+  let html = view === 'setup' ? vSetup() : view === 'lobby' ? vLobby() : view === 'game' && G ? vGame() : vHome();
+  if (ui.sheet) {
+    const inner = { settings: sheetSettings, menu: sheetMenu, result: sheetResult }[ui.sheet];
+    if (inner && (ui.sheet === 'settings' || G)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  const act = document.activeElement, fid = act && act.dataset && act.dataset.in ? (act.dataset.in + (act.dataset.i || '')) : (act && act.id === 'ng-name' ? 'ng' : null);
+  const pos = act && act.selectionStart;
+  app.innerHTML = html;
+  if (fid) {
+    const el = fid === 'ng' ? document.getElementById('ng-name') : [...document.querySelectorAll('[data-in]')].find(x => x.dataset.in + (x.dataset.i || '') === fid);
+    if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} }
+  }
+}
+
+/* ---------------- invoer ---------------- */
+function tapBoard(ev) {
+  if (!G || G.winner !== null || ui.busy || ui.anim) return;
+  const p = G.turn;
+  if (!isMine(p) || isCpu(p)) return;
+  const svg = document.getElementById('board');
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  let best = -1, bd = Infinity;
+  for (let i = 0; i < H.N; i++) { const [x, y] = XY(i); const d = (x - loc.x) ** 2 + (y - loc.y) ** 2; if (d < bd) { bd = d; best = i; } }
+  if (best < 0 || bd > (K * 1.2) ** 2) { ui.sel = null; render(); return; }
+  if (ui.sel !== null) {
+    const ds = H.destinations(G.board, ui.sel);
+    if (ds.has(best)) { const from = ui.sel; ui.sel = null; playHuman(from, best, ds.get(best)); return; }
+  }
+  if (G.board[best] === String(p) && H.destinations(G.board, best).size) ui.sel = ui.sel === best ? null : best;
+  else ui.sel = null;
+  render();
+}
+app.addEventListener('click', e => {
+  if (e.target.closest('#board')) { tapBoard(e); return; }
+  const el = e.target.closest('[data-a]');
+  if (!el) return;
+  if (net.handleClick(el)) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; ui.sheet = null; render(); return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.token++; ui.busy = false; ui.anim = null; net.stopSearching(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; break;
+    case 'setup': view = 'setup'; break;
+    case 'setn': S.n = +el.dataset.v; seatSetup(); saveS(); break;
+    case 'kind': { const seats = seatSetup(); const p = seats[+el.dataset.i]; p.kind = el.dataset.v;
+      if (p.kind === 'cpu' && !/^Computer/.test(p.name)) p.name = 'Computer ' + (+el.dataset.i + 1);
+      if (p.kind === 'human' && /^Computer/.test(p.name)) p.name = +el.dataset.i === 0 ? (shared() || 'Jij') : 'Speler ' + (+el.dataset.i + 1);
+      saveS(); break; }
+    case 'start': {
+      const seats = seatSetup().map(p => ({ name: p.name.trim() || 'Speler', kind: p.kind }));
+      G = newGame('local', seats, 0); view = 'game'; ui.sel = null; ui.busy = false; commit(); return;
+    }
+    case 'level': S.level = el.dataset.v; saveS(); if (G && G.mode !== 'net') G.level = S.level; break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'sound' && S.sound) sHop(2); if (el.dataset.k === 'vibrate') buzz(30); break;
+    case 'resume': G = load(el.dataset.m); view = 'game'; ui.sel = null; ui.busy = false; if (G.winner !== null) ui.sheet = 'result'; render(); schedule(); return;
+    case 'lobby': view = 'lobby'; net.error = ''; if (net.status === 'lost') net.status = 'idle';
+      if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } } break;
+    case 'reconnect': view = 'lobby'; net.reconnect(); break;
+    case 'leave': ui.sheet = null; net.stop(); view = 'home'; break;
+    case 'undo': undo(); return;
+    case 'showresult': ui.sheet = 'result'; break;
+    case 'rematch': rematch(); return;
+    case 'restart': ui.sheet = null; ui.token++; ui.busy = false; ui.anim = null;
+      G = newGame(G.mode, G.players.map(p => ({ name: p.name, kind: p.kind })), 0); commit(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => {
+  if (net.handleInput(e)) return;
+  if (e.target.dataset.in === 'seatname') { seatSetup()[+e.target.dataset.i].name = e.target.value; saveS(); }
+});
+window.__w2back = function () {
+  if (ui.sheet) { ui.sheet = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.token++; ui.busy = false; ui.anim = null; net.stopSearching(); render(); return true; }
+  return false;
+};
+if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } }
+render();
+})();
+</script>
+</body>
+</html>

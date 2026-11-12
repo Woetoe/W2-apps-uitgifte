@@ -7,6 +7,11 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <meta name="theme-color" content="#14161f">
 <link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="W2 Apps">
 
 <link rel="stylesheet" href="../fonts/fonts.css">
 <link rel="stylesheet" href="../w2ui.css">
@@ -89,7 +94,7 @@ input[type=file]{display:none}
 <button class="fab" id="fab" type="button" aria-label="Nieuwe reis" hidden></button>
 <input type="file" id="pick" multiple accept="application/pdf,image/*,.pkpass,.html,.txt,.doc,.docx,.ics">
 <input type="file" id="pickx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-<script>window.W2WEB = 1; if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});</script>
+<script src="../web.js"></script>
 <script src="../w2.js"></script>
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>

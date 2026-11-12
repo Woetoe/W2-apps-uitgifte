@@ -7,6 +7,11 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <meta name="theme-color" content="#14161f">
 <link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="W2 Apps">
 
 <link rel="stylesheet" href="../fonts/fonts.css">
 <link rel="stylesheet" href="../w2ui.css">
@@ -91,7 +96,7 @@
 <div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Samen</h1><button class="st" id="st" type="button" hidden></button><button class="ib" id="menu" type="button" aria-label="Instellingen" hidden></button></div>
 <main class="page" id="app"></main>
 <button class="fab" id="fab" type="button" aria-label="Nieuwe lijst" hidden></button>
-<script>window.W2WEB = 1; if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});</script>
+<script src="../web.js"></script>
 <script src="../w2.js"></script>
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
@@ -115,7 +120,7 @@ const SOORTEN = { boodschappen: 'Boodschappen', todo: 'To-do', lijst: 'Gewone li
 const { CATS, CAT, guessCat, parseQty, cap, remember } = Boodschappen;
 
 // Regels voor de eigen Firebase-database (zelfde als tools/firebase/regels.json). Nieuwe onderdelen passen er vanzelf in.
-const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
+const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"g\": {\n      \"$kamer\": {\n        \".read\": \"$kamer.length == 32\",\n        \".write\": \"$kamer.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort == 'p' || $soort == 'm'\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 200000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 // ---------------------------------------------------------------- hulpjes
 const me = () => S.cfg && S.cfg.me;

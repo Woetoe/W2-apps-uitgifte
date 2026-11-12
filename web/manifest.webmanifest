@@ -1,10 +1,12 @@
 {
-  "name": "W2 Samen",
-  "short_name": "Samen",
-  "description": "Lijsten, reizen, recepten en aftellen die je samen bijhoudt; dezelfde gegevens als in W2 Apps.",
+  "name": "W2 Apps",
+  "short_name": "W2 Apps",
+  "description": "Spellen en gedeelde lijstjes; werkt ook zonder internet. Dezelfde gegevens als in de Android-app W2 Apps.",
+  "lang": "nl",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#14161f",
   "theme_color": "#14161f",
   "icons": [

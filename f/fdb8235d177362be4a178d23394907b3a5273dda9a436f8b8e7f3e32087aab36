@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Dammen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Dambord in een bruin café: walnoot en esdoorn, crème en ebben schijven, koperen accent. */
+:root{
+  --room:#17110c; --room-2:#221a13; --panel:#2c2219; --line:#3e3125;
+  --light:#e9d6b5; --dark:#8a5a36; --accent:#e8a24a; --accent-ink:#2a1700;
+  --text:#f4ece2; --muted:#b5a594; --good:#8fd694; --warn:#ff8a6b;
+  --pw:#f7efe1; --pw-edge:#c9b79a; --pb:#2a211b; --pb-edge:#0d0907;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  --ng-accent:var(--accent); --ng-accent-ink:var(--accent-ink); --ng-panel:var(--panel); --ng-line:var(--line); --ng-warn:var(--warn);
+  color-scheme:dark;
+}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(12px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:4px}
+.hero h1{font-size:48px;line-height:.95}
+.hero svg{width:92px;height:92px;flex:none}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel)}
+.choice .ic svg{width:26px;height:26px}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+.bar{display:flex;align-items:center;gap:8px}
+.bar .info{flex:1;text-align:center;font-size:14px;color:var(--muted)}
+.player{display:flex;align-items:center;gap:10px;min-height:34px}
+.player .sw{width:18px;height:18px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 2px #0005}
+.player .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.player.turn .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-left:8px;vertical-align:middle}
+.player .cnt{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.player .sc{font-family:var(--f-display);font-weight:800;font-size:20px;min-width:2ch;text-align:right;font-variant-numeric:tabular-nums}
+.boardwrap{border-radius:8px;overflow:hidden;box-shadow:0 10px 30px #000a,0 0 0 4px #3a2414}
+#board{display:block;width:100%;height:auto;touch-action:manipulation}
+.status{text-align:center;font-weight:600;min-height:24px}
+.status.wait{color:var(--muted);font-weight:500}
+.status.must{color:var(--accent)}
+.moves{display:flex;gap:4px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none;font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+.moves::-webkit-scrollbar{display:none}
+.moves span{white-space:nowrap;padding:3px 6px;border-radius:6px}
+.moves span.n{padding-right:0;opacity:.6}
+.moves span.last{background:var(--panel);color:var(--text)}
+.netlost{background:#4a1f1a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost button{border:0;background:var(--light);color:#2a1700;border-radius:10px;padding:9px 12px;font-weight:700}
+.scrim{position:fixed;inset:0;background:#0a0705c0;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group>.t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--light);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+.result{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:6px 0}
+.result h2{font-size:34px;line-height:1}
+.scoreline{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.rules{font-size:15px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.rules b{color:var(--text)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../inet.js"></script>
+<script src="../w2.js"></script>
+<script src="../netgame.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const E = window.DAM;
+const app = document.getElementById('app');
+
+const SKEY = 'dam-settings';
+const S = Object.assign({ level: 'normal', color: 'w', numbers: false, flip: false, sound: true, vibrate: true }, (() => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } })());
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const LEVELS = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+
+const GKEY = m => 'dam-game-' + m;
+const load = m => { try { const g = JSON.parse(localStorage.getItem(GKEY(m)) || 'null'); return g && g.gid ? g : null; } catch (e) { return null; } };
+const save = g => { try { localStorage.setItem(GKEY(g.mode), JSON.stringify(g)); } catch (e) {} };
+const inProgress = g => g && !g.result;
+
+let G = null, view = 'home';
+const ui = { sel: null, sheet: null, choose: null, thinking: false, token: 0 };
+const net = window.W2NetGame('dammen', {
+  storageKey: GKEY('net'),
+  inProgress,
+  startHost(saved, peer, mine) {
+    if (inProgress(saved) && saved.names[1] === peer) G = saved;
+    else G = newMatch('net', [mine, peer]);
+    G.seq++; view = 'game'; ui.sel = null; render();
+    return G;
+  },
+  onState(s) {
+    const before = G && G.mode === 'net' ? G.moves.length : -1;
+    G = s; if (view === 'lobby' || view === 'home') view = 'game';
+    ui.sel = null;
+    if (G.result) ui.sheet = 'result'; else if (ui.sheet === 'result') ui.sheet = null;
+    if (G.moves.length > before && before >= 0) { const m = G.moves[G.moves.length - 1]; m && m.c ? sCap() : sMove(); if (isMine(turnPlayer())) buzz(25); }
+    render();
+  },
+  onChange() { render(); }
+});
+
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sMove = () => { tone(260, 0.06, 'triangle', 0.2); tone(130, 0.07, 'sine', 0.14, 0.01); };
+const sCap = () => { tone(180, 0.1, 'triangle', 0.24); tone(360, 0.06, 'square', 0.04, 0.02); tone(180, 0.08, 'triangle', 0.18, 0.11); };
+const sKing = () => { tone(660, 0.12, 'sine', 0.1); tone(990, 0.2, 'sine', 0.1, 0.1); };
+const sEnd = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+
+const uid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+function newMatch(mode, names) {
+  const g = { v: 1, gid: uid(), mode, names, score: [0, 0], gameNo: 0, seq: 0, level: S.level };
+  let white = 0;
+  if (mode === 'cpu' || mode === 'net') white = S.color === 'b' ? 1 : S.color === 'r' ? Math.round(Math.random()) : 0;
+  startGame(g, white);
+  return g;
+}
+function startGame(g, white) {
+  g.white = white; g.pos = E.newGame(); g.moves = []; g.keys = [E.key(g.pos)];
+  g.result = null; g.drawOffer = null; g.gameNo++;
+}
+const colorOfPlayer = pl => (G.white === pl ? 'w' : 'b');
+const playerOfColor = c => (c === 'w' ? G.white : 1 - G.white);
+const turnPlayer = () => playerOfColor(G.pos.turn);
+const me = () => (G && G.mode === 'net' ? net.me() : 0);
+const isCpu = pl => G.mode === 'cpu' && pl === 1;
+function isMine(pl) {
+  if (G.mode === 'local') return true;
+  if (G.mode === 'cpu') return pl === 0;
+  return pl === me() && net.status === 'connected';
+}
+const viewColor = () => G.mode === 'local' ? (S.flip ? G.pos.turn : 'w') : colorOfPlayer(me());
+
+function commit() {
+  G.seq++; save(G);
+  if (G.mode === 'net') net.publish(G);
+  render(); schedule();
+}
+function play(m) {
+  const wasMan = !E.king(G.pos.b[m.from]);
+  G.pos = E.make(G.pos, m);
+  G.moves.push({ f: m.from, t: m.to, c: m.caps.slice(), p: m.path.slice(), s: E.notation(m) });
+  G.keys.push(E.key(G.pos));
+  G.drawOffer = null; ui.sel = null;
+  m.caps.length ? sCap() : sMove(); buzz(m.caps.length ? [15, 30, 15] : 12);
+  if (wasMan && E.king(G.pos.b[m.to])) { sKing(); buzz([20, 40, 60]); }
+  const st = E.status(G.pos, G.keys);
+  if (st) finish(st);
+  commit();
+}
+function finish(st) {
+  const winner = st.winner ? playerOfColor(st.winner) : null;
+  G.result = Object.assign({}, st, { winner });
+  if (winner === null) { G.score[0] += 0.5; G.score[1] += 0.5; } else G.score[winner] += 1;
+  ui.sheet = 'result'; sEnd(); buzz([60, 40, 60, 40, 160]);
+}
+function rebuild(moves) {
+  let p = E.newGame(); const keys = [E.key(p)];
+  for (const mv of moves) {
+    const m = E.legal(p).find(x => x.from === mv.f && x.to === mv.t && x.caps.slice().sort().join() === (mv.c || []).slice().sort().join());
+    if (!m) break;
+    p = E.make(p, m); keys.push(E.key(p));
+  }
+  return { p, keys };
+}
+function takeBack() {
+  if (!G.moves.length || G.result) return;
+  let n = 1;
+  if (G.mode === 'cpu') n = turnPlayer() === 0 ? 2 : 1;
+  const moves = G.moves.slice(0, Math.max(0, G.moves.length - n));
+  const r = rebuild(moves);
+  G.moves = moves; G.pos = r.p; G.keys = r.keys; ui.sel = null; ui.token++; ui.thinking = false;
+  commit();
+}
+function resign(pl) { G.result = { type: 'opgegeven', winner: 1 - pl, reden: 'opgegeven' }; G.score[1 - pl] += 1; ui.sheet = 'result'; sEnd(); commit(); }
+function agreeDraw() { G.result = { type: 'remise', winner: null, reden: 'remise afgesproken' }; G.score[0] += 0.5; G.score[1] += 0.5; ui.sheet = 'result'; sEnd(); commit(); }
+function nextGame() {
+  ui.sheet = null;
+  const white = G.mode === 'cpu' ? (S.color === 'b' ? 1 : S.color === 'r' ? Math.round(Math.random()) : 0) : 1 - G.white;
+  startGame(G, white); commit();
+}
+
+let worker = null, workerOk = true;
+function think(pos, level, cb) {
+  const id = ++ui.token;
+  if (workerOk) {
+    try {
+      worker = worker || new Worker('ai-worker.js');
+      worker.onmessage = e => { if (e.data.id === id) cb(e.data.mv); };
+      worker.onerror = () => { workerOk = false; setTimeout(() => cb(E.chooseMove(pos, level)), 30); };
+      worker.postMessage({ pos, level, id });
+      return;
+    } catch (e) { workerOk = false; }
+  }
+  setTimeout(() => { if (id === ui.token) cb(E.chooseMove(pos, level)); }, 60);
+}
+function schedule() {
+  if (!G || view !== 'game' || G.mode !== 'cpu' || G.result) return;
+  if (!isCpu(turnPlayer()) || ui.thinking) return;
+  ui.thinking = true; render();
+  const gid = G.gid, n = G.moves.length, started = Date.now();
+  think(G.pos, G.level || S.level, mv => {
+    if (!G || G.gid !== gid || G.moves.length !== n) { ui.thinking = false; return; }
+    setTimeout(() => {
+      if (!G || G.gid !== gid || G.moves.length !== n) { ui.thinking = false; return; }
+      ui.thinking = false;
+      if (mv) play(mv); else render();
+    }, Math.max(0, 500 - (Date.now() - started)));
+  });
+}
+
+// ---------------------------------------------------------------- tekenen
+const SQ = 80;
+function xy(n) {
+  const [r, c] = E.rc(n);
+  return viewColor() === 'w' ? [c * SQ, r * SQ] : [(9 - c) * SQ, (9 - r) * SQ];
+}
+function piece(p, x, y, ghost) {
+  const w = p === 'w' || p === 'W', cx = x + SQ / 2, cy = y + SQ / 2;
+  const fill = w ? 'var(--pw)' : 'var(--pb)', edge = w ? 'var(--pw-edge)' : 'var(--pb-edge)', ring = w ? '#d8c6a8' : '#45382d';
+  let s = `<g opacity="${ghost ? .35 : 1}"><circle cx="${cx}" cy="${cy + 4}" r="31" fill="${edge}"/><circle cx="${cx}" cy="${cy}" r="31" fill="${fill}"/><circle cx="${cx}" cy="${cy}" r="21" fill="none" stroke="${ring}" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="12" fill="none" stroke="${ring}" stroke-width="2"/>`;
+  if (p === 'W' || p === 'B') s += `<path d="M${cx - 15} ${cy + 8}l-3-16 9 7 9-12 9 12 9-7-3 16z" fill="var(--accent)" stroke="${w ? '#7a5014' : '#f0c37a'}" stroke-width="2" stroke-linejoin="round"/>`;
+  return s + '</g>';
+}
+function boardSVG() {
+  const pos = G.pos, b = pos.b;
+  const moving = !G.result && isMine(turnPlayer()) && !isCpu(turnPlayer()) && !ui.thinking;
+  const legal = moving ? E.legal(pos) : [];
+  const movable = new Set(legal.map(m => m.from));
+  const targets = ui.sel !== null ? legal.filter(m => m.from === ui.sel) : [];
+  const last = G.moves[G.moves.length - 1];
+  let s = `<svg id="board" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dambord">`;
+  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) s += `<rect x="${c * SQ}" y="${r * SQ}" width="${SQ}" height="${SQ}" fill="${(r + c) % 2 ? 'var(--dark)' : 'var(--light)'}"/>`;
+  for (let n = 1; n <= 50; n++) {
+    const [x, y] = xy(n);
+    if (last && (n === last.f || n === last.t)) s += `<rect x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="var(--accent)" opacity=".35"/>`;
+    if (n === ui.sel) s += `<rect x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="var(--accent)" opacity=".6"/>`;
+    if (S.numbers) s += `<text x="${x + 5}" y="${y + 16}" font-family="Figtree" font-weight="700" font-size="14" fill="#f3e1c4" opacity=".7">${n}</text>`;
+  }
+  // laatst geslagen stukken als schaduw, en de weg van de laatste slag
+  if (last && last.p && last.p.length > 2) s += `<polyline points="${last.p.map(n => xy(n).map(v => v + SQ / 2).join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>`;
+  for (let n = 1; n <= 50; n++) {
+    const p = b[n]; if (!p) continue;
+    const [x, y] = xy(n);
+    s += piece(p, x, y);
+    if (moving && ui.sel === null && movable.has(n) && legal[0].caps.length) s += `<circle cx="${x + SQ / 2}" cy="${y + SQ / 2}" r="35" fill="none" stroke="var(--accent)" stroke-width="4"/>`;
+  }
+  for (const m of targets) {
+    const [x, y] = xy(m.to);
+    s += `<circle cx="${x + SQ / 2}" cy="${y + SQ / 2}" r="13" fill="var(--accent)" opacity=".85"/>`;
+    m.caps.forEach(c => { const [cx, cy] = xy(c); s += `<path d="M${cx + 24} ${cy + 24}l32 32M${cx + 56} ${cy + 24}l-32 32" stroke="#e5484d" stroke-width="6" stroke-linecap="round" opacity=".8"/>`; });
+  }
+  for (let n = 1; n <= 50; n++) { const [x, y] = xy(n); s += `<rect data-sq="${n}" x="${x}" y="${y}" width="${SQ}" height="${SQ}" fill="transparent"/>`; }
+  return s + '</svg>';
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtScore = n => (n % 1 ? (Math.floor(n) || '') + '½' : String(n));
+function playerRow(pl) {
+  const col = colorOfPlayer(pl), turn = !G.result && turnPlayer() === pl;
+  const men = G.pos.b.filter(p => p === col).length, kings = G.pos.b.filter(p => p === col.toUpperCase()).length;
+  return `<div class="player ${turn ? 'turn' : ''}"><span class="sw" style="background:${col === 'w' ? 'var(--pw)' : 'var(--pb)'}"></span><span class="nm">${esc(G.names[pl])}</span>
+    <span class="cnt">${men} schijf${men === 1 ? '' : 'ven'}${kings ? ` · ${kings} dam${kings === 1 ? '' : 'men'}` : ''}</span><span class="sc">${fmtScore(G.score[pl])}</span></div>`;
+}
+function statusLine() {
+  if (G.result) return { text: 'Partij afgelopen', btns: `<button class="btn" data-a="showresult">Uitslag bekijken</button>` };
+  const tp = turnPlayer(), nm = esc(G.names[tp]);
+  let text = '', btns = '', wait = false, must = false;
+  const legal = E.legal(G.pos), mx = legal.length && legal[0].caps.length;
+  if (G.drawOffer !== null && G.drawOffer !== undefined) {
+    const off = G.drawOffer;
+    if (isMine(1 - off) && !isCpu(1 - off)) return { text: `${esc(G.names[off])} biedt remise aan.`, btns: `<button class="btn quiet" data-a="declinedraw">Doorspelen</button><button class="btn" data-a="acceptdraw">Remise</button>` };
+    text = 'Remise aangeboden, wachten op antwoord…'; wait = true;
+  } else if (isCpu(tp)) { text = 'Computer denkt na…'; wait = true; }
+  else if (isMine(tp)) {
+    text = (G.mode === 'local' ? `${nm} (${G.pos.turn === 'w' ? 'wit' : 'zwart'}) is aan zet.` : 'Jij bent aan zet.');
+    if (mx) { text = `Slaan is verplicht: ${mx} stuk${mx === 1 ? '' : 'ken'}.`; must = true; }
+  } else { text = `${nm} is aan zet…`; wait = true; }
+  if (G.mode === 'cpu') btns = `<button class="btn quiet" data-a="undo" ${G.moves.length ? '' : 'disabled'}>Zet terug</button><button class="btn quiet" data-a="resign">Opgeven</button>`;
+  if (G.mode === 'local') btns = `<button class="btn quiet" data-a="undo" ${G.moves.length ? '' : 'disabled'}>Zet terug</button><button class="btn quiet" data-a="localdraw">Remise</button>`;
+  if (G.mode === 'net' && net.status === 'connected') btns = `<button class="btn quiet" data-a="offerdraw" ${G.drawOffer != null ? 'disabled' : ''}>Remise aanbieden</button><button class="btn quiet" data-a="resign">Opgeven</button>`;
+  return { text, btns, wait, must };
+}
+function movesHTML() {
+  if (!G.moves.length) return '<div class="moves"><span>Nog geen zetten</span></div>';
+  let h = '';
+  G.moves.forEach((m, i) => { if (i % 2 === 0) h += `<span class="n">${i / 2 + 1}.</span>`; h += `<span class="${i === G.moves.length - 1 ? 'last' : ''}">${esc(m.s)}</span>`; });
+  return `<div class="moves" id="moves">${h}</div>`;
+}
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  phones: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>',
+  one: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M3.5 9v6M20.5 9v6" stroke-linecap="round"/></svg>'
+};
+
+function vHome() {
+  const cpu = load('cpu'), loc = load('local'), ng = load('net');
+  const resume = (g, m) => inProgress(g) ? `<div class="resume"><button class="btn quiet" data-a="resume" data-m="${m}">Doorgaan · zet ${Math.ceil((g.moves.length + 1) / 2)}</button><button class="btn quiet" data-a="new" data-m="${m}">Nieuwe partij</button></div>` : '';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><div><h1>Dammen</h1><p class="muted" style="margin-top:8px">Internationaal, 10×10 · computer: ${LEVELS[S.level].toLowerCase()}</p></div>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="var(--light)"/><rect x="50" width="50" height="50" fill="var(--dark)"/><rect y="50" width="50" height="50" fill="var(--dark)"/>
+        <circle cx="75" cy="27" r="19" fill="var(--pb-edge)"/><circle cx="75" cy="25" r="19" fill="var(--pb)"/><circle cx="25" cy="77" r="19" fill="var(--pw-edge)"/><circle cx="25" cy="75" r="19" fill="var(--pw)"/>
+        <path d="M16 80l-2-10 6 4 5-7 5 7 6-4-2 10z" fill="var(--accent)"/></svg></div>
+    <div class="choices">
+      <button class="choice" data-a="${inProgress(cpu) ? 'resume' : 'new'}" data-m="cpu"><span class="ic">${IC.cpu}</span><span><b>Tegen de computer</b><span>${LEVELS[S.level]} niveau</span></span></button>
+      ${resume(cpu, 'cpu')}
+      <button class="choice" data-a="lobby" ${net.available() ? '' : 'disabled'}><span class="ic">${IC.phones}</span><span><b>Twee telefoons</b><span>${net.available() ? W2.net.how() : 'Werkt alleen in de geïnstalleerde app'}</span></span></button>
+      ${inProgress(ng) && net.available() ? `<p class="note">Er loopt nog een partij tegen ${esc(ng.names[net.me() ? 0 : 1])}. Verbind opnieuw om verder te spelen.</p>` : ''}
+      <button class="choice" data-a="${inProgress(loc) ? 'resume' : 'new'}" data-m="local"><span class="ic">${IC.one}</span><span><b>Samen op één telefoon</b><span>Om de beurt, telefoon tussen jullie in</span></span></button>
+      ${resume(loc, 'local')}
+      <button class="btn quiet" data-a="rules">Spelregels</button>
+    </div>
+  </div>`;
+}
+function vLobby() {
+  return `<div class="wrap"><div class="top"><button class="back" data-a="home">${IC.back} Dammen</button></div><h1 style="font-size:36px">Twee telefoons</h1>
+    ${net.lobbyHTML(`jij speelt ${S.color === 'w' ? 'wit' : S.color === 'b' ? 'zwart' : 'een willekeurige kleur'}`)}</div>`;
+}
+function vGame() {
+  const bottom = G.mode === 'local' ? playerOfColor(viewColor()) : me(), top = 1 - bottom, st = statusLine();
+  const info = G.mode === 'cpu' ? `Tegen computer · ${LEVELS[G.level || S.level].toLowerCase()}` : G.mode === 'net' ? `Partij ${G.gameNo}` : `Partij ${G.gameNo} · één telefoon`;
+  const lost = G.mode === 'net' && net.status !== 'connected' ? `<div class="netlost"><span>Verbinding met ${esc(G.names[1 - me()])} is weg. De stand is bewaard.</span><button data-a="reconnect">Opnieuw verbinden</button></div>` : '';
+  return `<div class="wrap" style="gap:10px">
+    <div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button><span class="info">${info}</span><button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${lost}${playerRow(top)}<div class="boardwrap">${boardSVG()}</div>${playerRow(bottom)}
+    <div class="status ${st.wait ? 'wait' : ''} ${st.must ? 'must' : ''}">${st.text}</div>
+    ${st.btns ? `<div class="btnrow">${st.btns}</div>` : ''}${movesHTML()}</div>`;
+}
+function segBtns(key, opts) { return `<div class="seg">${opts.map(([v, l]) => `<button data-a="set" data-k="${key}" data-v="${v}" aria-pressed="${S[key] === v}">${l}</button>`).join('')}</div>`; }
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+const close = l => `<button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">${l}</button>`;
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2>${close('Klaar')}</div>
+    <div class="group"><span class="t">Computer</span>${segBtns('level', [['easy', 'Makkelijk'], ['normal', 'Normaal'], ['strong', 'Sterk']])}<p class="note">Geldt vanaf een nieuwe partij.</p></div>
+    <div class="group"><span class="t">Jouw kleur</span>${segBtns('color', [['w', 'Wit'], ['b', 'Zwart'], ['r', 'Willekeurig']])}<p class="note">Wit begint. Daarna wisselen jullie elke partij.</p></div>
+    <div class="group">${tog('numbers', 'Veldnummers', 'Handig om de notatie te volgen')}${tog('flip', 'Bord draaien op één telefoon', 'Na elke zet draait het bord naar wie aan zet is')}${tog('sound', 'Geluid')}${tog('vibrate', 'Trillen')}</div>`;
+}
+function sheetRules() {
+  return `<div class="sheet-head"><h2>Spelregels</h2>${close('Klaar')}</div><div class="rules">
+    <p>Je speelt op de donkere velden. Wit begint. <b>Schijven</b> gaan één veld schuin vooruit.</p>
+    <p><b>Slaan is verplicht</b>, ook achteruit, en je moet altijd de <b>meeste stukken</b> slaan (een dam telt als één stuk). Mag je kiezen uit gelijke slagen, dan kies je zelf.</p>
+    <p>Geslagen stukken gaan pas na de hele slag van het bord, en je mag niet twee keer over hetzelfde stuk.</p>
+    <p>Eindigt je zet op de achterste rij, dan wordt je schijf een <b>dam</b>. Een dam gaat zo ver als hij wil over de diagonaal en slaat ook op afstand.</p>
+    <p>Je wint als de ander geen stukken meer heeft of niet meer kan zetten. <b>Remise</b> bij drie keer dezelfde stand of 25 zetten achter elkaar alleen met dammen.</p></div>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2>${close('Sluiten')}</div><div class="list">
+      <button class="btn quiet" data-a="settings">Instellingen</button><button class="btn quiet" data-a="rules">Spelregels</button>
+      ${G.mode !== 'net' || net.me() === 0 ? `<button class="btn quiet" data-a="restart">Nieuwe partij</button>` : ''}
+      ${G.mode === 'local' ? `<button class="btn quiet" data-a="resign">${esc(G.names[turnPlayer()])} geeft op</button>` : ''}
+      ${G.mode === 'net' ? `<button class="btn quiet" data-a="leave">Verbinding verbreken</button>` : ''}</div>`;
+}
+function sheetChoose() {
+  return `<div class="sheet-head"><h2>Welke slag?</h2>${close('Annuleren')}</div><p class="note">Deze slagen eindigen op hetzelfde veld maar slaan andere stukken.</p>
+    <div class="list">${ui.choose.map((m, i) => `<button class="btn quiet" data-a="pick" data-i="${i}">${esc(E.notation(m))} · slaat ${m.caps.join(', ')}</button>`).join('')}</div>`;
+}
+function sheetResult() {
+  const R = G.result; if (!R) return '';
+  let title;
+  if (R.winner == null) title = 'Remise';
+  else if (G.mode === 'local') title = `${esc(G.names[R.winner])} wint`;
+  else title = R.winner === me() ? 'Je wint!' : `${esc(G.names[R.winner])} wint`;
+  const canNext = G.mode !== 'net' || net.status === 'connected';
+  return `<div class="result"><h2>${title}</h2><p class="muted">${esc(R.reden || '')}</p>
+      <div class="scoreline">${esc(G.names[me()])} ${fmtScore(G.score[me()])} – ${fmtScore(G.score[1 - me()])} ${esc(G.names[1 - me()])}</div></div>
+    <div class="list"><button class="btn" data-a="next" ${canNext ? '' : 'disabled'}>Nieuwe partij</button><button class="btn quiet" data-a="close">Bord bekijken</button></div>`;
+}
+function render() {
+  let html = view === 'lobby' ? vLobby() : view === 'game' && G ? vGame() : vHome();
+  if (ui.sheet) {
+    const inner = { settings: sheetSettings, menu: sheetMenu, result: sheetResult, rules: sheetRules, choose: sheetChoose }[ui.sheet];
+    if (inner && (['settings', 'rules'].includes(ui.sheet) || G)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  const focused = document.activeElement && document.activeElement.id === 'ng-name' ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  if (focused !== null) { const el = document.getElementById('ng-name'); if (el) { el.focus(); try { el.setSelectionRange(focused, focused); } catch (e) {} } }
+  const mv = document.getElementById('moves'); if (mv) mv.scrollLeft = mv.scrollWidth;
+}
+
+function tapSquare(n) {
+  if (!G || G.result || ui.thinking) return;
+  const tp = turnPlayer();
+  if (!isMine(tp) || isCpu(tp)) return;
+  const legal = E.legal(G.pos);
+  if (ui.sel !== null) {
+    const ms = legal.filter(m => m.from === ui.sel && m.to === n);
+    if (ms.length > 1) { ui.choose = ms; ui.sheet = 'choose'; render(); return; }
+    if (ms.length === 1) { play(ms[0]); return; }
+  }
+  if (E.own(G.pos.b[n], G.pos.turn) && legal.some(m => m.from === n)) {
+    ui.sel = ui.sel === n ? null : n;
+    // maar één mogelijke zet met dit stuk? dan meteen doen niet: eerst laten zien waar hij heen gaat
+  } else {
+    if (E.own(G.pos.b[n], G.pos.turn) && legal.length && legal[0].caps.length) { buzz([10, 30, 10]); }
+    ui.sel = null;
+  }
+  render();
+}
+function startMode(mode) {
+  const nm = localStorage.getItem('w2-name') || '';
+  G = mode === 'cpu' ? newMatch('cpu', [nm || 'Jij', 'Computer']) : newMatch('local', ['Wit', 'Zwart']);
+  view = 'game'; ui.sheet = null; ui.sel = null; ui.thinking = false;
+  commit();
+}
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-sq]');
+  if (!el) return;
+  if (el.dataset.sq !== undefined) { tapSquare(+el.dataset.sq); return; }
+  if (net.handleClick(el)) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; ui.sheet = null; ui.choose = null; render(); return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html#spellen'; return;
+    case 'home': view = 'home'; ui.sheet = null; ui.token++; ui.thinking = false; net.stopSearching(); break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'rules': ui.sheet = 'rules'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'close': ui.sheet = null; ui.choose = null; break;
+    case 'set': S[el.dataset.k] = el.dataset.v; saveS(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'sound' && S.sound) sMove(); if (el.dataset.k === 'vibrate') buzz(30); break;
+    case 'new': startMode(el.dataset.m); return;
+    case 'resume': G = load(el.dataset.m); view = 'game'; ui.sel = null; ui.thinking = false; if (G.result) ui.sheet = 'result'; render(); schedule(); return;
+    case 'lobby': view = 'lobby'; net.error = ''; if (net.status === 'lost') net.status = 'idle';
+      if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } } break;
+    case 'reconnect': view = 'lobby'; net.reconnect(); break;
+    case 'leave': ui.sheet = null; net.stop(); view = 'home'; break;
+    case 'pick': { const m = ui.choose && ui.choose[+el.dataset.i]; ui.sheet = null; ui.choose = null; if (m) { play(m); return; } break; }
+    case 'undo': takeBack(); return;
+    case 'resign': ui.sheet = null; resign(G.mode === 'local' ? turnPlayer() : me()); return;
+    case 'localdraw': agreeDraw(); return;
+    case 'offerdraw': G.drawOffer = me(); commit(); return;
+    case 'acceptdraw': G.drawOffer = null; agreeDraw(); return;
+    case 'declinedraw': G.drawOffer = null; commit(); return;
+    case 'showresult': ui.sheet = 'result'; break;
+    case 'next': nextGame(); return;
+    case 'restart': ui.sheet = null; G = newMatch(G.mode, G.names.slice()); commit(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => { net.handleInput(e); });
+window.__w2back = function () {
+  if (ui.sheet) { ui.sheet = null; ui.choose = null; render(); return true; }
+  if (view !== 'home') { view = 'home'; ui.token++; ui.thinking = false; net.stopSearching(); render(); return true; }
+  return false;
+};
+if (net.status === 'connected') { const s = load('net'); if (inProgress(s)) { G = s; view = 'game'; } }
+render();
+})();
+</script>
+</body>
+</html>

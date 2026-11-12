@@ -3,10 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>W2 Samen</title>
+<title>W2 Apps</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#14161f">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="W2 Apps">
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
 /* Startscherm: elke tegel draagt de kleuren van zijn eigen spel, de rest blijft rustig. */
@@ -105,16 +110,160 @@ nav.tabs button{min-width:0}
 .who2{color:var(--muted);font-size:14px;margin:-4px 0 0}
 .alle{color:#ff7eb6;text-decoration:none;font-weight:700;text-align:center;padding:10px}
 
-body{padding-bottom:28px}
 .wrap{max-width:620px}
-.lijsten{display:flex;align-items:center;gap:16px}
+nav.tabs .in{max-width:620px}
+html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:none}
+.tile.kj{background:#13301f;color:#eaf7ee}
+.tile.dm{background:#2c1d12;color:#f8ecdf}
+.tile.zs{background:#0b1d31;color:#e6f2fc}
+.hint{display:flex;gap:14px;align-items:flex-start;background:#1f2538;border:1px solid #3b4468;border-radius:18px;padding:16px}
+.hint svg{width:28px;height:28px;flex:none;color:#ffc83d;margin-top:2px}
+.hint b{display:block;font:800 17px/1.25 var(--f-display);margin-bottom:4px}
+.hint span{color:#c9cbd8;font-size:15px}
+.hint button{margin-top:10px;border:1px solid var(--line);background:none;color:var(--muted);border-radius:10px;padding:8px 12px;font:600 14px var(--f-body);min-height:40px}
+.state{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px}
+.state i{width:9px;height:9px;border-radius:5px;background:#5d627c}
+.state.ok i{background:#5ee07a}
+.state.off i{background:#ffc83d}
 </style>
 </head>
 <body>
-<!-- Webversie (laptop) van W2 Apps: alleen wat je samen bijhoudt. Wordt door tools/uitgifte.py in web/ van het uitgifterepo gezet. -->
+<!-- Webversie van W2 Apps (iPhone, laptop): de spellen en wat je samen bijhoudt. tools/uitgifte.py zet dit in web/ van het
+     uitgifterepo en vult op de plek van W2:SPELLEN de tegels in uit het startscherm van de app (één bron). -->
 <div class="wrap">
-  <header><div class="l"><span class="mark">W<sup>2</sup></span><p>Samen bijhouden, op je laptop.</p></div></header>
-  <section class="panel on" id="p-samen" aria-label="Samen">
+  <header><div class="l"><span class="mark">W<sup>2</sup></span><p id="sub">Spellen en lijstjes, ook zonder internet.</p></div></header>
+
+  <div class="hint" id="ioshint" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>
+    <div><b>Zet W2 op je beginscherm</b><span>Tik in Safari op <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Deel</b> en kies <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Zet op beginscherm</b>. Dan opent hij schermvullend als app en blijft alles bewaard, ook zonder internet.</span><br><button type="button" id="ioshide">Niet meer tonen</button></div>
+  </div>
+
+  <section class="panel" id="p-spellen" aria-label="Spellen">
+    <h2>Spellen</h2>
+    <div class="tiles">
+    <a class="tile bg" href="backgammon/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#143d30"/>
+        <polygon points="6,0 20,0 13,34" fill="#8f2d2b"/><polygon points="22,0 36,0 29,34" fill="#e6d8b8"/>
+        <polygon points="48,84 62,84 55,50" fill="#e6d8b8"/><polygon points="64,84 78,84 71,50" fill="#8f2d2b"/>
+        <circle cx="13" cy="9" r="7" fill="#e3b04b" stroke="#a97a22"/><circle cx="29" cy="9" r="7" fill="#f4ecda" stroke="#b9ad93"/>
+        <circle cx="55" cy="75" r="7" fill="#f4ecda" stroke="#b9ad93"/><circle cx="71" cy="75" r="7" fill="#e3b04b" stroke="#a97a22"/>
+        <rect x="30" y="32" width="20" height="20" rx="4" fill="#f4ecda"/><circle cx="35.5" cy="37.5" r="2" fill="#2a1a08"/><circle cx="44.5" cy="46.5" r="2" fill="#2a1a08"/>
+      </svg>
+      <div><b>Backgammon</b><span>Tegen de computer of met twee telefoons</span></div>
+    </a>
+    <a class="tile sc" href="schaken/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#7f93a8"/>
+        <rect x="0" y="0" width="42" height="42" fill="#e4e1d8"/><rect x="42" y="42" width="42" height="42" rx="0" fill="#e4e1d8"/>
+        <path d="M0 0h42v42H0z M42 42h42v28a14 14 0 0 1-14 14H42z" fill="none"/>
+        <g transform="translate(46,3) scale(.36)" fill="#232b38" stroke="#0a0e14" stroke-width="4" stroke-linejoin="round"><path d="M66 84H32c0-14 4-24 12-32-6 2-11 5-15 3-5-2-5-8-1-12 6-6 10-12 12-19l3-9 5 7c15 2 26 14 26 34 0 11-2 20-2 28z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+        <g transform="translate(4,45) scale(.36)" fill="#f7f3ea" stroke="#1b2330" stroke-width="4" stroke-linejoin="round"><path d="M46 6h8v8h8v8h-8v10h-8V22h-8v-8h8z"/><path d="M28 40c0-10 44-10 44 0l-6 28H34z"/><path d="M30 70h40l4 12H26z"/><path d="M24 84h52a4 4 0 0 1 4 4v4H20v-4a4 4 0 0 1 4-4z"/></g>
+      </svg>
+      <div><b>Schaken</b><span>Tegen de computer of met twee telefoons</span></div>
+    </a>
+    <a class="tile cd" href="halma/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#2a2236"/>
+        <polygon points="42,6 73,60 11,60" fill="#efe2c6"/><polygon points="42,78 11,24 73,24" fill="#efe2c6"/>
+        <circle cx="42" cy="16" r="5" fill="#3b82f6"/><circle cx="37" cy="24" r="5" fill="#3b82f6"/><circle cx="47" cy="24" r="5" fill="#3b82f6"/>
+        <circle cx="42" cy="68" r="5" fill="#e5484d"/><circle cx="37" cy="60" r="5" fill="#e5484d"/><circle cx="47" cy="60" r="5" fill="#e5484d"/>
+        <circle cx="20" cy="30" r="5" fill="#2fbf71"/><circle cx="64" cy="54" r="5" fill="#f5b82e"/><circle cx="42" cy="42" r="2.5" fill="#b9a57f"/><circle cx="32" cy="42" r="2.5" fill="#b9a57f"/><circle cx="52" cy="42" r="2.5" fill="#b9a57f"/>
+      </svg>
+      <div><b>Chinees dammen</b><span>Knikkers springen, 2 tot 6 spelers</span></div>
+    </a>
+    <a class="tile wb" href="woordbord/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0d3b2e"/>
+        <g fill="#e9e2cc"><rect x="4" y="4" width="14" height="14" rx="2"/><rect x="20" y="4" width="14" height="14" rx="2"/><rect x="52" y="4" width="14" height="14" rx="2"/><rect x="68" y="4" width="12" height="14" rx="2"/>
+        <rect x="4" y="66" width="14" height="14" rx="2"/><rect x="20" y="66" width="14" height="14" rx="2"/><rect x="36" y="66" width="14" height="14" rx="2"/><rect x="68" y="66" width="12" height="14" rx="2"/>
+        <rect x="4" y="20" width="14" height="14" rx="2"/><rect x="4" y="50" width="14" height="14" rx="2"/><rect x="68" y="20" width="12" height="14" rx="2"/><rect x="68" y="36" width="12" height="14" rx="2"/></g>
+        <rect x="36" y="4" width="14" height="14" rx="2" fill="#d9473b"/><rect x="52" y="66" width="14" height="14" rx="2" fill="#3c8fc4"/><rect x="4" y="36" width="14" height="12" rx="2" fill="#f2b8b0"/><rect x="68" y="52" width="12" height="12" rx="2" fill="#9fd3e8"/>
+        <g font-family="Bricolage Grotesque" font-weight="800" font-size="13" text-anchor="middle" fill="#2b1d0e">
+          <rect x="20" y="20" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="27.5" y="32">W</text>
+          <rect x="20" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="27.5" y="47">O</text>
+          <rect x="35" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="42.5" y="47">R</text>
+          <rect x="50" y="35" width="15" height="15" rx="3" fill="#f6e7c1"/><text x="57.5" y="47">D</text>
+          <rect x="20" y="50" width="15" height="15" rx="3" fill="#ffc83d"/><text x="27.5" y="62">!</text></g>
+      </svg>
+      <div><b>Woordbord</b><span>Woorden leggen, tegen de computer of met twee telefoons</span></div>
+    </a>
+    <a class="tile kk" href="kronkel/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#050508"/>
+        <g fill="none" stroke-linecap="round" stroke-width="4">
+          <path d="M8 66c14-2 14-30 30-30s14 22 28 20" stroke="#ff4d4d"/>
+          <path d="M14 12c8 14 26 16 34 4s20-4 22 10" stroke="#ffd23f" stroke-dasharray="30 6 80"/>
+          <path d="M78 76c-12 0-16-12-28-10s-10 10-22 6" stroke="#3d9bff"/>
+        </g>
+        <g fill="#ffe14d"><circle cx="66" cy="56" r="3.2"/><circle cx="70" cy="26" r="3.2"/><circle cx="28" cy="72" r="3.2"/></g>
+      </svg>
+      <div><b>Kronkel</b><span>Lijnen sturen tot iemand botst, 2 tot 8 spelers</span></div>
+    </a>
+    <a class="tile tr" href="tegelrummy/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0f3d49"/>
+        <g font-family="Bricolage Grotesque" font-weight="800" font-size="15" text-anchor="middle">
+          <rect x="6" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="6" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="14.5" y="28" fill="#d3352c">7</text>
+          <rect x="25" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="25" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="33.5" y="28" fill="#1d63c9">7</text>
+          <rect x="44" y="12" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="44" y="32" width="17" height="3" rx="1" fill="#cdbd98"/><text x="52.5" y="28" fill="#e08600">7</text>
+          <rect x="16" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="16" y="68" width="17" height="3" rx="1" fill="#cdbd98"/><text x="24.5" y="64" fill="#22242b">4</text>
+          <rect x="35" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="35" y="68" width="17" height="3" rx="1" fill="#cdbd98"/><text x="43.5" y="64" fill="#22242b">5</text>
+          <rect x="54" y="48" width="17" height="23" rx="3" fill="#f7f1e3"/><rect x="54" y="68" width="17" height="3" rx="1" fill="#cdbd98"/>
+          <g transform="translate(55.5 52) scale(.35)"><path d="M20 3c1.6 9 3.5 11.2 17 17H20z" fill="#d3352c"/><path d="M37 20c-13.5 5.8-15.4 8-17 17V20z" fill="#1d63c9"/><path d="M20 37c-1.6-9-3.5-11.2-17-17h17z" fill="#e08600"/><path d="M3 20C16.5 14.2 18.4 12 20 3v17z" fill="#22242b"/></g></g>
+      </svg>
+      <div><b>Tegelrummy</b><span>Reeksen en groepen leggen, 2 tot 4 spelers</span></div>
+    </a>
+    <a class="tile lu" href="legtuit/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#203165"/>
+        <rect x="14" y="12" width="56" height="60" rx="8" fill="#fbf7ee" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="22" width="5" height="9" rx="1" fill="#ff6b5b" transform="rotate(-6 42 42)"/><rect x="28" y="24" width="30" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="35" width="5" height="9" rx="1" fill="#22b5a4" transform="rotate(-6 42 42)"/><rect x="28" y="37" width="24" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <rect x="20" y="48" width="5" height="9" rx="1" fill="#a76bdc" transform="rotate(-6 42 42)"/><rect x="28" y="50" width="34" height="5" rx="2.5" fill="#1a1d2b" transform="rotate(-6 42 42)"/>
+        <circle cx="66" cy="66" r="12" fill="#ffc83d"/><text x="66" y="71" text-anchor="middle" font-family="Dela Gothic One" font-size="13" fill="#1a1d2b">30</text>
+      </svg>
+      <div><b>Leg ’t Uit</b><span>Vijf woorden, dertig seconden, met teams</span></div>
+    </a>
+    <a class="tile vs" href="vingerspel/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#12131a"/>
+        <circle cx="26" cy="28" r="11" fill="none" stroke="#ff5d5d" stroke-width="3"/><circle cx="26" cy="28" r="7" fill="#ff5d5d"/>
+        <circle cx="58" cy="24" r="11" fill="none" stroke="#4d8dff" stroke-width="3"/><circle cx="58" cy="24" r="7" fill="#4d8dff"/>
+        <circle cx="42" cy="58" r="17" fill="#5ee07a" opacity=".22"/><circle cx="42" cy="58" r="13" fill="none" stroke="#5ee07a" stroke-width="3.5"/><circle cx="42" cy="58" r="9" fill="#5ee07a"/>
+      </svg>
+      <div><b>Vingerspel</b><span>Wie begint, wie haalt de friet? De app kiest</span></div>
+    </a>
+    <a class="tile kj" href="klaverjassen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#1f6b45"/>
+        <g transform="rotate(-14 42 42)"><rect x="14" y="16" width="34" height="48" rx="4" fill="#fbf8f1"/><text x="31" y="49" text-anchor="middle" font-size="26" fill="#1d1f24">♣</text></g>
+        <g transform="rotate(10 42 42)"><rect x="36" y="20" width="34" height="48" rx="4" fill="#fbf8f1"/><text x="53" y="53" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="24" fill="#d23a35">B</text></g>
+      </svg>
+      <div><b>Klaverjassen</b><span>Met je maat tegen de computer of aan tafel met 4 telefoons</span></div>
+    </a>
+    <a class="tile dm" href="dammen/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#e9d6b5"/>
+        <g fill="#8a5a36"><rect x="0" y="0" width="21" height="21" rx="0"/><rect x="42" y="0" width="21" height="21"/><rect x="21" y="21" width="21" height="21"/><rect x="63" y="21" width="21" height="21"/><rect x="0" y="42" width="21" height="21"/><rect x="42" y="42" width="21" height="21"/><rect x="21" y="63" width="21" height="21"/><rect x="63" y="63" width="21" height="21"/></g>
+        <circle cx="31" cy="34" r="9" fill="#2a211b"/><circle cx="53" cy="54" r="9" fill="#f7efe1" stroke="#c9b79a" stroke-width="2"/><circle cx="73" cy="34" r="9" fill="#2a211b"/>
+      </svg>
+      <div><b>Dammen</b><span>Internationaal 10×10, met vliegende dammen</span></div>
+    </a>
+    <a class="tile zs" href="zeeslag/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#0e3555"/>
+        <path d="M0 60q10-6 21 0t21 0 21 0 21 0V84H0z" fill="#0b2c48"/>
+        <path d="M12 50h52l-7 10H19z" fill="#9fb4c8"/><rect x="28" y="38" width="18" height="12" rx="2" fill="#9fb4c8"/><rect x="35" y="30" width="4" height="8" fill="#9fb4c8"/>
+        <circle cx="64" cy="24" r="9" fill="#ff6b35"/><circle cx="64" cy="24" r="4" fill="#ffd2b8"/>
+      </svg>
+      <div><b>Zeeslag</b><span>Zoek en tor­pedeer de vloot, tegen de computer of met twee telefoons</span></div>
+    </a>
+    </div>
+    <p class="who2" style="margin-top:4px">Tegen de computer en samen op één telefoon werkt zonder internet. Met meer telefoons speel je via internet, met een spelcode; dat kan ook tegen iemand met de Android-app.</p>
+  </section>
+
+  <section class="panel" id="p-samen" aria-label="Samen">
     <h2>Lijsten</h2>
     <div id="samenwrap"></div>
     <h2 style="margin-top:8px">Samen bijhouden</h2>
@@ -148,10 +297,80 @@ body{padding-bottom:28px}
       <div><b>Aftellen</b><span>Toernooien, uitjes en verjaardagen</span></div>
     </a>
     </div>
+    <p class="who2">Zelfde gegevens als in de app, via je koppelcode. Persoonlijke onderdelen (Kluis, Hardlopen, Judo, Huis) staan alleen in de Android-app.</p>
   </section>
-  <footer>Zelfde gegevens als in de app op je telefoon, via je koppelcode. Persoonlijke onderdelen en spellen staan alleen in de app.</footer>
+
+  <div class="state" id="state" role="status"><i></i><span id="statetx">Bezig met klaarzetten…</span></div>
+  <footer id="ver">W2 Apps · webversie</footer>
 </div>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<nav class="tabs" aria-label="Afdelingen"><div class="in">
+  <button type="button" data-tab="spellen"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/></svg></span>Spellen</button>
+  <button type="button" data-tab="samen"><span class="pip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l.8.8L6.5 5M4 12l.8.8L6.5 11M4 18l.8.8L6.5 17"/></svg></span>Samen</button>
+</div></nav>
+<script>
+/* Tabbladen, de tip voor de iPhone en of alles al op het apparaat staat (werkt dan zonder internet). */
+(function () {
+  const TABS = ['spellen', 'samen'];
+  const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; };
+  function show(tab) {
+    if (!TABS.includes(tab)) tab = 'spellen';
+    TABS.forEach(t => {
+      document.getElementById('p-' + t).classList.toggle('on', t === tab);
+      const b = document.querySelector('nav.tabs [data-tab="' + t + '"]');
+      b.classList.toggle('on', t === tab);
+      b.setAttribute('aria-current', t === tab ? 'page' : 'false');
+    });
+    ls('w2web-tab', tab);
+    try { history.replaceState(null, '', '#' + tab); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  document.querySelector('nav.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+  show((location.hash || '').slice(1) || ls('w2web-tab') || 'spellen');
+  window.W2WebTab = show;
+
+  // iPhone/iPad in Safari, nog niet op het beginscherm: uitleggen hoe dat moet
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  const hint = document.getElementById('ioshint');
+  if (ios && !standalone && ls('w2web-hint') !== '0') hint.hidden = false;
+  document.getElementById('ioshide').addEventListener('click', () => { hint.hidden = true; ls('w2web-hint', '0'); });
+
+  // Staat alles op het apparaat? Dan werkt het ook zonder internet.
+  const st = document.getElementById('state'), tx = document.getElementById('statetx'), ver = document.getElementById('ver');
+  function state(cls, text) { st.className = 'state ' + cls; tx.textContent = text; }
+  function ask(sw) {
+    if (!sw) return;
+    const ch = new MessageChannel();
+    ch.port1.onmessage = e => {
+      const d = e.data || {};
+      if (d.version) ver.textContent = 'W2 Apps · webversie 1.0.' + d.version;
+      if (d.ready) state(navigator.onLine === false ? 'off' : 'ok', navigator.onLine === false ? 'Geen internet: spellen werken gewoon, lijsten worden later bijgewerkt' : 'Alles staat op dit apparaat: werkt ook zonder internet');
+    };
+    try { sw.postMessage({ type: 'status' }, [ch.port2]); } catch (e) {}
+  }
+  if (!('serviceWorker' in navigator)) state('off', 'Deze browser kan niet zonder internet werken');
+  else {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      const watch = w => { if (!w) return; w.addEventListener('statechange', () => { if (w.state === 'activated') ask(w); }); };
+      watch(reg.installing); watch(reg.waiting);
+      reg.addEventListener('updatefound', () => watch(reg.installing));
+      if (reg.active) ask(reg.active);
+      // bij openen even kijken of er een nieuwe versie is
+      try { reg.update().catch(() => {}); } catch (e) {}
+    }).catch(() => state('off', 'Klaarzetten voor gebruik zonder internet lukte niet; met internet werkt alles'));
+    // Nieuwe versie actief geworden terwijl je op het startscherm staat: verversen, dan zie je hem meteen.
+    let had = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (had && !reloaded) { reloaded = true; location.reload(); }
+      had = true;
+    });
+    addEventListener('online', () => ask(navigator.serviceWorker.controller));
+    addEventListener('offline', () => ask(navigator.serviceWorker.controller));
+  }
+})();
+</script>
+<script src="web.js"></script>
 <script src="w2.js"></script>
 <script src="w2data.js"></script>
 <script src="samen/sync.js"></script>
@@ -162,7 +381,7 @@ body{padding-bottom:28px}
   function draw() {
     const host = document.getElementById('samenwrap');
     if (!S.cfg) {
-      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code uit de app op je telefoon (Samen › tandwiel › Iemand uitnodigen) en kies "Ik ben …". Daarna zie je hier dezelfde lijsten, reizen, recepten en aftellen.</span><em>Koppelen</em></a>`;
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code uit de Android-app (Samen › tandwiel › Iemand uitnodigen) en kies wie je bent. Daarna zie je hier dezelfde lijsten, reizen, recepten en aftellen.</span><em>Koppelen</em></a>`;
       return;
     }
     const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };

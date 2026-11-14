@@ -28,6 +28,51 @@
   }
   function place(ship, start, dir) { return Object.assign({}, ship, { start, dir, cells: cellsOf(start, ship.l, dir) }); }
 
+  /** Dichtstbijzijnde plek waar het schip past, met de kop zo dicht mogelijk bij (row, col); die mag ook buiten de zee
+      vallen (dan schuift hij vanzelf naar binnen). maxDist: hoe ver hij mag opschuiven (in vakken); null is onbeperkt. */
+  function nearestFit(ships, ship, row, col, dir, touch, maxDist) {
+    let best = null, bd = Infinity;
+    const lim = maxDist == null ? Infinity : maxDist * maxDist + 1e-9;
+    for (let rr = 0; rr < SIZE; rr++) for (let cc = 0; cc < SIZE; cc++) {
+      const d = (rr - row) * (rr - row) + (cc - col) * (cc - col);
+      if (d >= bd || d > lim) continue;
+      const s = place(ship, rr * SIZE + cc, dir);
+      if (s.cells && fits(ships, s.cells, ship.id, touch)) { best = s; bd = d; }
+    }
+    return best;
+  }
+  /** Draai een schip om zijn k-de vak; past dat niet precies, dan de dichtstbijzijnde plek waar het gedraaid wel past. */
+  function rotateAt(ships, ship, k, touch) {
+    k = Math.max(0, Math.min(ship.l - 1, k | 0));
+    const pivot = ship.cells[k], dir = ship.dir === 'h' ? 'v' : 'h';
+    const row = r(pivot) - (dir === 'v' ? k : 0), col = c(pivot) - (dir === 'h' ? k : 0);
+    return nearestFit(ships, ship, row, col, dir, touch, null);
+  }
+  /** Leg het schip precies hier (binnen de rand geschoven); schepen die in de weg liggen gaan naar de dichtstbijzijnde
+      vrije plek. Geeft de nieuwe vloot (zelfde volgorde) of null als het echt niet kan. */
+  function forcePlace(ships, ship, row, col, dir, touch) {
+    row = Math.max(0, Math.min(SIZE - (dir === 'v' ? ship.l : 1), row));
+    col = Math.max(0, Math.min(SIZE - (dir === 'h' ? ship.l : 1), col));
+    const s = place(ship, row * SIZE + col, dir);
+    const others = ships.filter(x => x.id !== ship.id);
+    const fleet = [s].concat(others.filter(o => fits([s], o.cells, o.id, touch)));
+    const moving = others.filter(o => !fits([s], o.cells, o.id, touch)).sort((a, b) => b.l - a.l);
+    for (const o of moving) {
+      const n = nearestFit(fleet, o, r(o.start), c(o.start), o.dir, touch, null) || nearestFit(fleet, o, r(o.start), c(o.start), o.dir === 'h' ? 'v' : 'h', touch, null);
+      if (!n) return null;
+      fleet.push(n);
+    }
+    return ships.map(x => fleet.find(y => y.id === x.id));
+  }
+  /** Draaien met de hele vloot erbij: liefst zonder iets te verschuiven, anders maken de andere schepen plaats. */
+  function rotateFleet(ships, ship, k, touch) {
+    const r1 = rotateAt(ships, ship, k, touch);
+    if (r1) return ships.map(x => x.id === ship.id ? r1 : x);
+    k = Math.max(0, Math.min(ship.l - 1, k | 0));
+    const pivot = ship.cells[k], dir = ship.dir === 'h' ? 'v' : 'h';
+    return forcePlace(ships, ship, r(pivot) - (dir === 'v' ? k : 0), c(pivot) - (dir === 'h' ? k : 0), dir, touch);
+  }
+
   function randomFleet(rnd, touch) {
     rnd = rnd || Math.random;
     for (let tries = 0; tries < 200; tries++) {
@@ -118,7 +163,7 @@
   }
 
   const label = i => 'ABCDEFGHIJ'[c(i)] + (r(i) + 1);
-  const api = { SIZE, N, FLEET, cellsOf, fits, place, randomFleet, validFleet, result, sunkShips, allSunk, chooseShot, knowledge, label, around };
+  const api = { SIZE, N, FLEET, cellsOf, fits, place, nearestFit, rotateAt, forcePlace, rotateFleet, randomFleet, validFleet, result, sunkShips, allSunk, chooseShot, knowledge, label, around };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ZEE = api;
 })(typeof window !== 'undefined' ? window : globalThis);

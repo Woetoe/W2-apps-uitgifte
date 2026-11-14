@@ -51,6 +51,7 @@ h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01e
 .lbl span{font-weight:500;color:var(--muted);font-size:14px}
 .sea{border-radius:10px;overflow:hidden;box-shadow:0 10px 30px #000a,0 0 0 1px var(--line)}
 .sea svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.sea.setup svg{touch-action:none}
 .mini{display:grid;grid-template-columns:44% 1fr;gap:12px;align-items:start}
 .fleet{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted)}
 .fleet div{display:flex;align-items:center;gap:6px}
@@ -175,23 +176,83 @@ function setupFor(pl) {
   if (!ui.setup || ui.setup.pl !== pl || ui.setup.gid !== G.gid) ui.setup = { pl, gid: G.gid, ships: Z.randomFleet(Math.random, G.touch) };
   return ui.setup;
 }
+// Sleep een schip om het te verplaatsen, tik erop om het te draaien. Past het niet precies, dan schuift het naar de
+// dichtstbijzijnde plek waar het wel past; zo krijg je bijna nooit een foutmelding.
+const selShip = () => ui.setup && ui.setup.ships.find(x => x.id === ui.sel);
+function putShip(s) { ui.setup.ships = ui.setup.ships.map(x => x.id === s.id ? s : x); buzz(8); }
+function putFleet(f) { ui.setup.ships = f; buzz(8); }
+function rotate(k) {
+  const s = selShip(); if (!s) return;
+  const f = Z.rotateFleet(ui.setup.ships, s, k == null ? (s.l - 1) >> 1 : k, G.touch);
+  if (f) putFleet(f); else { buzz([10, 30, 10]); ui.msg = 'Er is nergens plek om dit schip te draaien. Probeer Husselen.'; }
+}
+function moveTo(i) {
+  // gekozen schip naar een leeg vak: het midden van het schip komt op dat vak (of zo dichtbij als het past)
+  const s = selShip(); if (!s) return;
+  const half = (s.l - 1) >> 1;
+  const m = Z.nearestFit(ui.setup.ships, s, Math.floor(i / 10) - (s.dir === 'v' ? half : 0), i % 10 - (s.dir === 'h' ? half : 0), s.dir, G.touch, 2);
+  if (m) putShip(m); else { buzz([10, 30, 10]); ui.msg = 'Daar is geen plek voor de ' + s.naam.toLowerCase() + '.'; }
+}
 function tapSetup(i) {
-  const st = ui.setup;
-  const at = st.ships.find(s => s.cells.includes(i));
-  if (at) { if (ui.sel === at.id) rotate(); else ui.sel = at.id; render(); return; }
-  if (!ui.sel) return;
-  const s = st.ships.find(x => x.id === ui.sel);
-  const moved = Z.place(s, i, s.dir);
-  if (Z.fits(st.ships, moved.cells, s.id, G.touch)) { st.ships = st.ships.map(x => x.id === s.id ? moved : x); buzz(8); }
-  else { buzz([10, 30, 10]); ui.msg = 'Daar past hij niet.'; }
+  const at = ui.setup.ships.find(s => s.cells.includes(i));
+  if (at) { ui.sel = at.id; rotate(at.cells.indexOf(i)); }
+  else if (ui.sel) moveTo(i);
   render();
 }
-function rotate() {
-  const st = ui.setup, s = st.ships.find(x => x.id === ui.sel); if (!s) return;
-  const r = Z.place(s, s.start, s.dir === 'h' ? 'v' : 'h');
-  if (Z.fits(st.ships, r.cells, s.id, G.touch)) { st.ships = st.ships.map(x => x.id === s.id ? r : x); buzz(8); }
-  else { buzz([10, 30, 10]); ui.msg = 'Draaien kan hier niet.'; }
+
+// slepen: tijdens het slepen niets opnieuw tekenen, alleen een 'schaduw' van het schip verschuiven
+let drag = null;
+function seaPoint(svg, e) { const b = svg.getBoundingClientRect(), k = (CS * 10 + 24) / b.width; return [(e.clientX - b.left) * k - 24, (e.clientY - b.top) * k - 24]; }
+function dragShip() { return ui.setup && drag && ui.setup.ships.find(x => x.id === drag.id); }
+function ghostAt(s, start, okay) {
+  const NS = 'http://www.w3.org/2000/svg';
+  if (!drag.ghost) {
+    drag.ghost = document.createElementNS(NS, 'rect');
+    drag.ghost.setAttribute('rx', CS / 2 - 4); drag.ghost.setAttribute('stroke-width', 4); drag.ghost.setAttribute('pointer-events', 'none');
+    drag.svg.insertBefore(drag.ghost, drag.svg.querySelector('[data-setup]'));
+    const own = drag.svg.querySelector(`[data-ship="${s.id}"]`); if (own) own.setAttribute('opacity', '.3');
+  }
+  const w = s.dir === 'h' ? s.l * CS : CS, h = s.dir === 'h' ? CS : s.l * CS;
+  const g = drag.ghost;
+  g.setAttribute('x', 24 + (start % 10) * CS + 4); g.setAttribute('y', 24 + Math.floor(start / 10) * CS + 4);
+  g.setAttribute('width', w - 8); g.setAttribute('height', h - 8);
+  g.setAttribute('fill', okay ? 'var(--ship)' : 'rgba(255,138,107,.35)');
+  g.setAttribute('stroke', okay ? 'var(--accent)' : 'var(--warn)');
 }
+app.addEventListener('pointerdown', e => {
+  const cell = e.target.closest('[data-setup]');
+  if (!cell || !ui.setup || drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const i = +cell.dataset.setup, s = ui.setup.ships.find(x => x.cells.includes(i)), svg = cell.ownerSVGElement;
+  const [x, y] = seaPoint(svg, e);
+  drag = { pid: e.pointerId, i, x, y, svg, id: s ? s.id : null, moved: false, cand: null, key: '' };
+  if (s) { drag.ox = x - (s.start % 10) * CS; drag.oy = y - Math.floor(s.start / 10) * CS; }
+  try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+});
+app.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.pid || !drag.id) return;
+  const s = dragShip(); if (!s) return;
+  const [x, y] = seaPoint(drag.svg, e);
+  if (!drag.moved && Math.hypot(x - drag.x, y - drag.y) < 12) return;
+  drag.moved = true;
+  const row = Math.round((y - drag.oy) / CS), col = Math.round((x - drag.ox) / CS);
+  const key = row + ',' + col; if (key === drag.key) return; drag.key = key;
+  // eerst een vrije plek vlakbij; anders hier neerleggen en de schepen die in de weg liggen laten opschuiven
+  const near = Z.nearestFit(ui.setup.ships, s, row, col, s.dir, G.touch, 1.5);
+  drag.cand = near ? ui.setup.ships.map(x => x.id === s.id ? near : x) : Z.forcePlace(ui.setup.ships, s, row, col, s.dir, G.touch);
+  const mine = drag.cand && drag.cand.find(x => x.id === s.id);
+  const rr = Math.max(0, Math.min(10 - (s.dir === 'v' ? s.l : 1), row)), cc = Math.max(0, Math.min(10 - (s.dir === 'h' ? s.l : 1), col));
+  ghostAt(s, mine ? mine.start : rr * 10 + cc, !!mine);
+});
+app.addEventListener('pointerup', e => {
+  if (!drag || e.pointerId !== drag.pid) return;
+  const d = drag; drag = null;
+  if (!ui.setup) return;
+  if (!d.moved) return tapSetup(d.i);
+  ui.sel = d.id;
+  if (d.cand) putFleet(d.cand); else { buzz([10, 30, 10]); ui.msg = 'Daar past hij niet, dus hij ligt weer op zijn oude plek.'; }
+  render();
+});
+app.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.pid) { drag = null; render(); } });
 function ready() {
   const pl = ui.setup.pl;
   G.fleets[pl] = ui.setup.ships.map(s => ({ id: s.id, naam: s.naam, l: s.l, start: s.start, dir: s.dir, cells: s.cells }));
@@ -267,8 +328,9 @@ function seaSVG(opts) {
   const drawShip = (sh, sunk, sel) => {
     const xs = sh.cells.map(at), x0 = Math.min(...xs.map(p => p[0])), y0 = Math.min(...xs.map(p => p[1]));
     const w = sh.dir === 'h' ? sh.l * CS : CS, h = sh.dir === 'h' ? CS : sh.l * CS;
-    s += `<rect x="${x0 + 4}" y="${y0 + 4}" width="${w - 8}" height="${h - 8}" rx="${CS / 2 - 4}" fill="${sunk ? '#3b2a26' : 'var(--ship)'}" stroke="${sel ? 'var(--accent)' : sunk ? 'var(--hit)' : 'var(--ship-edge)'}" stroke-width="${sel ? 4 : 2}"/>`;
+    s += `<g data-ship="${sh.id}"><rect x="${x0 + 4}" y="${y0 + 4}" width="${w - 8}" height="${h - 8}" rx="${CS / 2 - 4}" fill="${sunk ? '#3b2a26' : 'var(--ship)'}" stroke="${sel ? 'var(--accent)' : sunk ? 'var(--hit)' : 'var(--ship-edge)'}" stroke-width="${sel ? 4 : 2}"/>`;
     if (!sunk) sh.cells.forEach(c => { const [x, y] = at(c); s += `<circle cx="${x + CS / 2}" cy="${y + CS / 2}" r="4" fill="var(--ship-edge)"/>`; });
+    s += '</g>';
   };
   (opts.ships || []).forEach(sh => drawShip(sh, (opts.sunkIds || new Set()).has(sh.id), sh.id === opts.sel));
   (opts.knownShips || []).forEach(sh => drawShip(sh, true));
@@ -330,8 +392,8 @@ function vSetup(pl) {
   const waiting = G.mode === 'net' && G.fleets[pl];
   if (waiting) return `<div class="wrap">${bar('Vloot neerleggen')}<div class="pass"><h2>Je vloot ligt klaar</h2><p class="muted">Wachten tot ${esc(G.names[opp(pl)])} ook klaar is…</p></div></div>`;
   return `<div class="wrap" style="gap:10px">${bar(G.mode === 'local' ? esc(G.names[pl]) + ': vloot neerleggen' : 'Vloot neerleggen')}
-    <p class="muted" style="text-align:center">${msg ? `<b style="color:var(--warn)">${esc(msg)}</b>` : ui.sel ? 'Tik op een vak om het schip te verplaatsen, of nog eens op het schip om te draaien.' : 'Tik op een schip om het te kiezen.'}${G.touch ? '' : ' Schepen mogen elkaar niet raken.'}</p>
-    <div class="sea">${seaSVG({ ships: st.ships, tap: 'setup', sel: ui.sel })}</div>
+    <p class="muted" style="text-align:center;min-height:4.35em;margin:0">${msg ? `<b style="color:var(--warn)">${esc(msg)}</b>` : 'Sleep een schip om het te verplaatsen, tik erop om het te draaien.' + (G.touch ? '' : ' Schepen mogen elkaar niet raken.')}</p>
+    <div class="sea setup">${seaSVG({ ships: st.ships, tap: 'setup', sel: ui.sel })}</div>
     <div class="btnrow"><button class="btn quiet" data-a="shuffle">Husselen</button><button class="btn quiet" data-a="rotate" ${ui.sel ? '' : 'disabled'}>Draaien</button></div>
     <button class="btn" data-a="ready">Klaar, ten strijde!</button></div>`;
 }
@@ -408,7 +470,7 @@ function startMode(mode) {
 app.addEventListener('click', e => {
   const el = e.target.closest('[data-a],[data-setup],[data-fire]');
   if (!el) return;
-  if (el.dataset.setup !== undefined) return tapSetup(+el.dataset.setup);
+  if (el.dataset.setup !== undefined) return;   // vloot neerleggen gaat via pointerdown/-up (tikken én slepen)
   if (el.dataset.fire !== undefined) return tapEnemy(+el.dataset.fire);
   if (net.handleClick(el)) return;
   const a = el.dataset.a;

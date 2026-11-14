@@ -15,7 +15,7 @@
   --table:#17244f; --table-2:#203165; --line:#34478a; --chalk:#f3f5ff; --muted:#a9b4da;
   --paper:#fbf7ee; --ink:#1a1d2b; --ink-soft:#5b6077;
   --accent:#ffc83d; --accent-deep:#c9961c; --good:#2fbf71; --good-soft:#d6f4e3; --bad:#ff5a4f;
-  --c-mensen:#ff6b5b; --c-plekken:#22b5a4; --c-film:#a76bdc; --c-sport:#3f8cff; --c-alles:#ff9d2e; --c-eigen:#ee5fa7;
+  --c-mensen:#ff6b5b; --c-plekken:#22b5a4; --c-film:#a76bdc; --c-sport:#3f8cff; --c-alles:#ff9d2e; --c-eigen:#ee5fa7; --c-dieren:#5cb85c; --c-feest:#e8c22c;
   --t1:#ff5a4f; --t2:#3f8cff; --t3:#ffc83d; --t4:#36c47a; --t5:#b27ae6; --t6:#ff8a2a;
   --f-display:"Dela Gothic One","Arial Black",Impact,sans-serif;
   --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -46,6 +46,10 @@ h1,h2,.display{font-family:var(--f-display);font-weight:400;letter-spacing:.01em
 .logo h1{font-size:46px;line-height:.95;color:var(--chalk)}
 .logo h1 span{color:var(--accent)}
 .logo p{margin:0;color:var(--muted);font-size:15px}
+.genres{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.genres button{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--table-2);color:var(--muted);border-radius:999px;padding:8px 12px;font-weight:600;opacity:.55}
+.genres button i{width:12px;height:12px;border-radius:50%;display:block}
+.genres button[aria-pressed="true"]{background:var(--chalk);color:var(--ink);opacity:1}
 .chips{display:flex;gap:6px;margin-top:6px}
 .chips i{width:28px;height:8px;border-radius:4px;display:block}
 
@@ -185,6 +189,8 @@ mensen:"Max Verstappen|André Hazes|Johan Cruijff|Anne Frank|Rembrandt|Vincent v
 plekken:"Amsterdam|Rotterdam|Maastricht|Giethoorn|Texel|Ameland|Schiermonnikoog|Zandvoort|Scheveningen|Keukenhof|Efteling|Kinderdijk|Afsluitdijk|De Veluwe|Domtoren|Erasmusbrug|Rijksmuseum|Anne Frank Huis|Schiphol|Madurodam|Zaanse Schans|Volendam|Markthal|Waddenzee|Vaalserberg|Deltawerken|Binnenhof|Paleis op de Dam|Parijs|Londen|New York|Rome|Barcelona|Tokio|Sydney|Dubai|Las Vegas|Hollywood|Eiffeltoren|Vrijheidsbeeld|Big Ben|Colosseum|Toren van Pisa|Chinese Muur|Piramides van Gizeh|Taj Mahal|Mount Everest|Sahara|Amazone|Niagarawatervallen|Grand Canyon|Antarctica|IJsland|Noorwegen|Venetië|Disneyland Parijs|Kremlin|Witte Huis|Vaticaanstad|Machu Picchu|Bali|Curaçao|Suriname|Mallorca|Ibiza|Zwitserland|Australië|Kaapstad|Hawaii|Noordpool|De maan|Mars|Atlantis|Brussel|Berlijn|Lapland|Gardameer|Ardennen|Kanaaltunnel|Stonehenge",
 film:"Titanic|Harry Potter|Star Wars|Frozen|De Leeuwenkoning|Jurassic Park|Toy Story|Shrek|James Bond|Pirates of the Caribbean|In de ban van de ring|Home Alone|Mamma Mia!|Grease|Top Gun|Rocky|Jaws|E.T.|Finding Nemo|Minions|Barbie|Friends|Game of Thrones|Squid Game|Stranger Things|The Simpsons|Goede Tijden, Slechte Tijden|Wie is de Mol?|Boer zoekt Vrouw|Heel Holland Bakt|Het Klokhuis|Sesamstraat|Jeugdjournaal|Pippi Langkous|Nijntje|Kabouter Plop|Bassie en Adriaan|Sinterklaasjournaal|Eurovisiesongfestival|Lowlands|Pinkpop|Zwarte Cross|Top 2000|Bohemian Rhapsody|The Beatles|ABBA|Rolling Stones|Coldplay|K3|BLØF|Golden Earring|Netflix|Spotify|TikTok|YouTube|Oscar|Studio Sport|Ik hou van Holland|Expeditie Robinson|Spider-Man|Batman|Superman|Mickey Mouse|Kuifje|Asterix en Obelix|Suske en Wiske|Donald Duck|Dikkie Dik|Paw Patrol|Peppa Pig|Bambi|Sneeuwwitje|Assepoester|De Kleine Zeemeermin|Avatar|The Matrix|Indiana Jones|Back to the Future|Ghostbusters|Karate Kid|Dirty Dancing|Mean Girls",
 sport:"Elfstedentocht|Tour de France|Wimbledon|Olympische Spelen|WK voetbal|Champions League|Formule 1|Dakar Rally|Marathon|Schaatsen|Korfbal|Hockey|Judo|Darts|Snooker|Golf|Tennis|Padel|Wielrennen|Zwemmen|Turnen|Paardrijden|Skiën|Snowboarden|Surfen|Kitesurfen|Boksen|Sumoworstelen|Karate|Rugby|Basketbal|Volleybal|Beachvolleybal|Handbal|Honkbal|Waterpolo|Roeien|Zeilen|Bowlen|Jeu de boules|Klaverjassen|Schaken|Dammen|Monopoly|Mens-erger-je-niet|Ganzenbord|Stratego|Kolonisten van Catan|Twister|Jenga|Uno|Rummikub|Pictionary|Tetris|Super Mario|Minecraft|Fortnite|Pokémon|Rubiks kubus|Sjoelen|Penalty|Buitenspel|Hattrick|Gele kaart|VAR|Ajax|PSV|Feyenoord|Het Nederlands elftal|Scheidsrechter|Keeper|Ippon|Zwarte band|Gouden medaille|Estafette|Polsstokhoogspringen|Fierljeppen|Kaatsen|Trampolinespringen|Bungeejumpen|Parachutespringen|Klimmen|Yoga|Fitness|Hardlopen|Verstoppertje|Tikkertje|Hinkelen",
+dieren:"Olifant|Giraf|Leeuw|Tijger|Zebra|Nijlpaard|Neushoorn|Krokodil|Pinguïn|IJsbeer|Panda|Koala|Kangoeroe|Luiaard|Kameleon|Flamingo|Papegaai|Uil|Adelaar|Ooievaar|Zwaan|Eend|Kip|Haan|Koe|Varken|Schaap|Geit|Paard|Ezel|Pony|Hond|Kat|Konijn|Cavia|Hamster|Goudvis|Egel|Eekhoorn|Vos|Wolf|Das|Bever|Hert|Ree|Wild zwijn|Mol|Muis|Rat|Vleermuis|Kikker|Pad|Slak|Regenworm|Spin|Mier|Bij|Wesp|Vlinder|Rups|Lieveheersbeestje|Mug|Vlieg|Libel|Sprinkhaan|Haai|Walvis|Dolfijn|Zeehond|Octopus|Kwal|Krab|Kreeft|Zeepaardje|Zeester|Schildpad|Slang|Hagedis|Gorilla|Chimpansee|Orang-oetan|Kameel|Lama|Alpaca|Struisvogel|Pauw|Kolibrie|Toekan|Specht|Merel|Mus|Meeuw|Reiger|Ekster|Kraai|Wasbeer|Stinkdier|Bruine beer|Jachtluipaard|Hyena|Gnoe|Okapi|Miereneter|Gordeldier|Bidsprinkhaan|Dinosaurus|Eenhoorn",
+feest:"Kerstmis|Kerstboom|Kerstman|Kerstdiner|Kerstpakket|Kerstmarkt|Gourmetten|Sinterklaas|Zwarte Piet|Pepernoten|Chocoladeletter|Schoencadeau|Surprise|Sinterklaasgedicht|Pakjesavond|Stoomboot|Oud en nieuw|Oliebol|Appelflap|Vuurwerk|Champagne|Aftellen|Goede voornemens|Nieuwjaarsduik|Pasen|Paasei|Paashaas|Paasontbijt|Eieren zoeken|Palmpasen|Koningsdag|Vrijmarkt|Oranje tompouce|Bevrijdingsdag|Dodenherdenking|Twee minuten stilte|Carnaval|Prins Carnaval|Elfde van de elfde|Halloween|Pompoen snijden|Trick or treat|Sint-Maarten|Lampion|Valentijnsdag|Moederdag|Vaderdag|Verjaardag|Slingers|Taart|Kaarsjes uitblazen|Er is er een jarig|Abraham|Sarah|Bruiloft|Bruidstaart|Huwelijksreis|Babyshower|Beschuit met muisjes|Kraamvisite|Prinsjesdag|Hoedjesdag|Dierendag|Pinksteren|Hemelvaartsdag|Ramadan|Suikerfeest|Chinees Nieuwjaar|Thanksgiving|Kalkoen|Diwali|Chanoeka|Keti Koti|Sint-Patricksdag|Oktoberfest|Kermis|Zomerfeest|Barbecue|Vakantie|Kerstvakantie|Mistletoe|Advent|Adventskalender|Kerststal|Engeltje|Rendier|Sneeuwpop|Kerstlied|Wenslijstje|Cadeaupapier|Feestmuts|Toeter|Confetti|Ballonnen|Polonaise",
 alles:"Stroopwafel|Bitterbal|Kroket|Haring|Hagelslag|Drop|Poffertjes|Erwtensoep|Stamppot|Oliebol|Frikandel|Patatje oorlog|Kaasschaaf|Klompen|Tulp|Windmolen|Bakfiets|Gracht|Woonboot|Koningsdag|Sinterklaas|Pepernoten|Carnaval|Oud en nieuw|Vuurwerk|Paasei|Kerstboom|Verjaardagskalender|Tandarts|Brandweer|Ambulance|Brievenbus|Paraplu|Zonnebrand|Smartphone|Wifi|Oplader|Selfie|Emoji|Wekker|Stofzuiger|Wasmachine|Magnetron|Koelkast|Trampoline|Glijbaan|Achtbaan|Reuzenrad|Suikerspin|Vuurtoren|Dijk|Polder|Sluis|Regenboog|Onweer|Sneeuwpop|Pinguïn|Giraf|Olifant|Kangoeroe|Eenhoorn|Draak|Spook|Vampier|Robot|Ufo|Astronaut|Piraat|Ridder|Tovenaar|Koekoeksklok|Verrekijker|Microscoop|Kompas|Tent|Caravan|Slaapzak|Barbecue|Picknick|Sauna|Kapper|Bruiloft|Huwelijksaanzoek|Rijbewijs|Belastingdienst|File|OV-chipkaart|Tijdmachine|Schatkaart|Kampvuur|Hangmat|Kerstman|Tandenfee|Paashaas|Pindakaas|Ontbijt op bed|Fietsenrek|Lekke band|Wachtrij|Statiegeld"
 };
 const CATS = [
@@ -192,6 +198,8 @@ const CATS = [
   {id:'plekken', name:'Plekken'},
   {id:'film', name:'Film, tv & muziek'},
   {id:'sport', name:'Sport & spel'},
+  {id:'dieren', name:'Dieren'},
+  {id:'feest', name:'Feestdagen'},
   {id:'alles', name:'Van alles'},
   {id:'eigen', name:'Eigen woorden'}
 ];
@@ -206,7 +214,7 @@ function shuffle(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function tc(c){return 'var('+TEAMS[c][1]+')';}
 
-function defaults(){return {screen:'setup',settings:{teams:[{name:'Team Rood',c:0},{name:'Team Blauw',c:1}],time:30,length:30,sound:true,dice:true},custom:'',used:{},game:null};}
+function defaults(){return {screen:'setup',settings:{teams:[{name:'Team Rood',c:0},{name:'Team Blauw',c:1}],time:30,length:30,sound:true,dice:true,genres:['mensen','plekken','film','sport','alles']},custom:'',used:{},game:null};}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);const s=Object.assign(defaults(),d);s.settings=Object.assign(defaults().settings,d.settings||{});return s;}}catch(e){}return null;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
@@ -224,11 +232,16 @@ function nextWord(id){
   const w=avail[rand(avail.length)];
   used.push(w); S.used[id]=used; return w;
 }
+const BASE=['mensen','plekken','film','sport','dieren','feest','alles'];
+function genres(){const g=(S.settings.genres||[]).filter(id=>WORDS[id]);return g.length?g:BASE.slice(0,1);}
+function pool(){const p=BASE.filter(id=>genres().includes(id));if(customWords().length>=5)p.push('eigen');return p;}
 function drawCard(){
-  const pool=['mensen','plekken','film','sport','alles'];
-  if(customWords().length>=5) pool.push('eigen');
-  const pick=shuffle(pool).slice(0,5);
-  return pool.filter(id=>pick.includes(id)).map(id=>({cat:id,word:nextWord(id)}));
+  const p=pool(); let cats;
+  if(p.length>=5){const pick=shuffle(p).slice(0,5);cats=p.filter(id=>pick.includes(id));}
+  else{cats=p.slice();while(cats.length<5)cats.push(p[rand(p.length)]);cats.sort((a,b)=>p.indexOf(a)-p.indexOf(b));}
+  const seen=new Set(), out=[];
+  for(const id of cats){let w,n=0;do{w=nextWord(id);n++;}while(seen.has(w)&&n<20);seen.add(w);out.push({cat:id,word:w});}
+  return out;
 }
 
 /* ---------- Geluid, trillen, scherm aan ---------- */
@@ -316,7 +329,7 @@ function dieHTML(face,rolling){
   return `<div id="die" class="die ${face===0?'blank':''} ${rolling?'rolling':''}" aria-label="Dobbelsteen: ${face}">${pos.map(p=>`<i style="grid-area:${p.split('/')[0]}/${p.split('/')[1]}"></i>`).join('')}</div>`;
 }
 function boardHTML(animPos){
-  const g=S.game, N=g.length, cols=6, catCols=['--c-mensen','--c-plekken','--c-film','--c-sport','--c-alles'];
+  const g=S.game, N=g.length, cols=6, catCols=genres().map(c=>'--c-'+c);
   let out='';
   for(let i=0;i<=N;i++){
     const row=Math.floor(i/cols), k=i%cols, col=row%2===0?k+1:cols-k;
@@ -325,7 +338,7 @@ function boardHTML(animPos){
     const cls=i===0?'start':i===N?'finish':'';
     const lab=i===0?'Start':i===N?'Finish':i;
     const hit=ui.anim&&(animPos??ui.anim.pos)===i&&i>0?' hit':'';
-    out+=`<div class="cell ${cls}${hit}" style="grid-row:${row+1};grid-column:${col};border-bottom-color:var(${catCols[i%5]})"><span class="n">${lab}</span><span class="pawns">${pawns}</span></div>`;
+    out+=`<div class="cell ${cls}${hit}" style="grid-row:${row+1};grid-column:${col};border-bottom-color:var(${catCols[i%catCols.length]})"><span class="n">${lab}</span><span class="pawns">${pawns}</span></div>`;
   }
   return `<div class="board" id="board">${out}</div>`;
 }
@@ -339,11 +352,11 @@ function wordsHTML(compact){
 
 function vSetup(){
   const st=S.settings, cw=customWords().length;
-  const total=Object.values(WORDS).reduce((n,s)=>n+s.split('|').length,0)+cw;
+  const total=genres().reduce((n,id)=>n+WORDS[id].split('|').length,0)+cw;
   return `<div class="wrap">
   <a class="homelink" href="../index.html"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Spellen</a>
   <div class="logo"><h1>Leg ’t <span>Uit</span></h1><p>Vijf woorden. ${st.time} seconden. Jij legt uit, je team raadt.</p>
-    <div class="chips">${['mensen','plekken','film','sport','alles'].map(c=>`<i style="background:var(--c-${c})"></i>`).join('')}</div></div>
+    <div class="chips">${genres().map(c=>`<i style="background:var(--c-${c})"></i>`).join('')}</div></div>
 
   <section class="panel"><span class="label">Teams</span>
     <div class="teams">${st.teams.map((t,i)=>`<div class="team-row"><span class="dot" style="background:${tc(t.c)}"></span>
@@ -352,6 +365,11 @@ function vSetup(){
       <input class="players" id="players-${t.c}" data-in="players" data-i="${i}" value="${esc(t.players||'')}" placeholder="Spelers, bv. Wouter, Sanne, Tom" aria-label="Spelers team ${i+1}"></div>`).join('')}</div>
     <span class="small">Zet komma's tussen de namen. De app wisselt per beurt wie er uitlegt.</span>
     ${st.teams.length<6?`<button class="btn ghost add" data-a="addTeam">+ Team toevoegen</button>`:''}
+  </section>
+
+  <section class="panel"><span class="label">Genres</span>
+    <div class="genres">${BASE.map(id=>`<button data-a="genre" data-v="${id}" aria-pressed="${genres().includes(id)}"><i style="background:var(--c-${id})"></i>${esc(CAT[id].name)}</button>`).join('')}</div>
+    <span class="small">Kies welke soorten woorden op de kaartjes komen. Minstens één.</span>
   </section>
 
   <section class="panel"><span class="label">Tijd per beurt</span>
@@ -468,6 +486,7 @@ app.addEventListener('click',e=>{
     case 'rmTeam': if(st.teams.length>2)st.teams.splice(+el.dataset.i,1); break;
     case 'time': st.time=+el.dataset.v; break;
     case 'len': st.length=+el.dataset.v; break;
+    case 'genre':{const v=el.dataset.v;let g=genres().slice();if(g.includes(v)){if(g.length>1)g=g.filter(x=>x!==v);}else g.push(v);st.genres=g;break;}
     case 'dice': st.dice=!st.dice; break;
     case 'sound': st.sound=!st.sound; if(st.sound)beep(660,0.1); break;
     case 'start': startGame(); return;

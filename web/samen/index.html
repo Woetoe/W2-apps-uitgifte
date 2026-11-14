@@ -119,8 +119,6 @@ const SOORTEN = { boodschappen: 'Boodschappen', todo: 'To-do', lijst: 'Gewone li
 // ---------------------------------------------------------------- boodschappen (gedeeld met Recepten: boodschappen.js)
 const { CATS, CAT, guessCat, parseQty, cap, remember } = Boodschappen;
 
-// Regels voor de eigen Firebase-database (zelfde als tools/firebase/regels.json). Nieuwe onderdelen passen er vanzelf in.
-const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"g\": {\n      \"$kamer\": {\n        \".read\": \"$kamer.length == 32\",\n        \".write\": \"$kamer.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort == 'p' || $soort == 'm'\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 200000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 // ---------------------------------------------------------------- hulpjes
 const me = () => S.cfg && S.cfg.me;
@@ -604,8 +602,7 @@ function settingsSheet() {
   const ru = sh.el.querySelector('#s-rules');
   if (ru) ru.addEventListener('click', async e => {
     e.preventDefault();
-    try { await navigator.clipboard.writeText(REGELS); toast('Gekopieerd. Plak ze in Firebase › Realtime Database › Regels en kies Publiceren.', 6000); }
-    catch (err) { toast('Kopiëren lukte niet.'); }
+    toast(await W2.copyRules() ? 'Gekopieerd. Plak ze in Firebase › Realtime Database › Regels en kies Publiceren.' : 'Kopiëren lukte niet.', 6000);
   });
   const nt = sh.el.querySelector('#s-notif');
   if (nt) nt.addEventListener('click', async () => {

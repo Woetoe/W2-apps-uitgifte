@@ -122,6 +122,8 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
 .hint b{display:block;font:800 17px/1.25 var(--f-display);margin-bottom:4px}
 .hint span{color:#c9cbd8;font-size:15px}
 .hint button{margin-top:10px;border:1px solid var(--line);background:none;color:var(--muted);border-radius:10px;padding:8px 12px;font:600 14px var(--f-body);min-height:40px}
+.hint #ioscopy{background:#ffc83d;color:#211a05;border:0;margin-right:6px}
+.hint #ioscopy[hidden]{display:none}
 .state{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px}
 .state i{width:9px;height:9px;border-radius:5px;background:#5d627c}
 .state.ok i{background:#5ee07a}
@@ -136,7 +138,7 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
 
   <div class="hint" id="ioshint" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>
-    <div><b>Zet W2 op je beginscherm</b><span>Tik in Safari op <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Deel</b> en kies <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Zet op beginscherm</b>. Dan opent hij schermvullend als app en blijft alles bewaard, ook zonder internet.</span><br><button type="button" id="ioshide">Niet meer tonen</button></div>
+    <div><b>Zet W2 op je beginscherm</b><span id="ioshow">Tik in Safari rechtsonder op <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">···</b> (of op het Deel-icoon), kies <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Deel</b> › <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Zet op beginscherm</b> en laat <b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">Open als webapp</b> aan. Dan opent hij schermvullend als app en blijft alles bewaard, ook zonder internet.</span><br><button type="button" id="ioscopy" hidden>Link kopiëren</button> <button type="button" id="ioshide">Niet meer tonen</button></div>
   </div>
 
   <section class="panel" id="p-spellen" aria-label="Spellen">
@@ -353,6 +355,19 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   const hint = document.getElementById('ioshint');
   if (ios && !standalone && ls('w2web-hint') !== '0') hint.hidden = false;
+  // Geopend vanuit WhatsApp komt hij vaak in Chrome (of een andere browser) terecht: dan eerst naar Safari
+  const other = (/CriOS/.test(ua) && 'Chrome') || (/FxiOS/.test(ua) && 'Firefox') || (/EdgiOS/.test(ua) && 'Edge') || (/OPiOS|OPT\//.test(ua) && 'Opera') || '';
+  if (ios && other) {
+    const B = t => '<b style="display:inline;font:inherit;font-weight:700;color:#f2efe8">' + t + '</b>';
+    document.getElementById('ioshow').innerHTML = 'Je zit nu in ' + other + '. Werkt het best in ' + B('Safari') + ': tik op ' + B('Link kopiëren') + ', open Safari, plak de link en kies daar ' + B('···') + ' › ' + B('Deel') + ' › ' + B('Zet op beginscherm') + '.';
+    const cp = document.getElementById('ioscopy');
+    cp.hidden = false;
+    cp.addEventListener('click', () => {
+      const url = location.origin + location.pathname;
+      const done = ok => { cp.textContent = ok ? 'Gekopieerd, nu naar Safari' : url; };
+      try { navigator.clipboard.writeText(url).then(() => done(true), () => done(false)); } catch (e) { done(false); }
+    });
+  }
   document.getElementById('ioshide').addEventListener('click', () => { hint.hidden = true; ls('w2web-hint', '0'); });
 
   // Staat alles op het apparaat? Dan werkt het ook zonder internet.

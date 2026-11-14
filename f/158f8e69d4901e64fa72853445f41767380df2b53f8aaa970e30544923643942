@@ -1,0 +1,58 @@
+/* W2 Apps — Ontwikkeling: wat Wouter nog moet doen na een nieuwe versie, en een korte beschrijving van de app.
+
+   Voor Claude-sessies: voeg na een uitgave nieuwe taken toe aan `taken` (met een nieuw, uniek id; oude ids nooit
+   hergebruiken, want afgevinkt wordt per id onthouden) en werk `overzicht` bij als er onderdelen bij komen.
+   Wouters vinkjes, eigen taken en ideeën staan in localStorage (W2D 'ontwikkeling'). */
+window.W2Taken = {
+  taken: [
+    // ---- 12 november 2026 (Dampoe Wars)
+    { id: 'dampoe-1112', groep: 'Uitproberen en invullen', titel: 'Dampoe Wars uitproberen', uitleg: 'Spellen › Dampoe Wars. Kies je figuurtje, speel tegen de computer (makkelijk/normaal/sterk), met z\'n tweeën op één telefoon, of met een maat op zijn eigen telefoon (Meedoen). Laat weten wat er beter kan.', link: '../dampoe/index.html' },
+    // ---- 11 november 2026 (spelen via internet, spellen in de webversie voor de iPhone)
+    { id: 'firebase-regels-spel-1111', groep: 'Op je telefoon', titel: 'Database-regels in Firebase plakken (voor spelen via internet)', actie: 'regels', uitleg: 'Tik op "Regels kopiëren" (of Instellingen › Samen › Database-regels kopiëren). Dan in de Firebase-console › Realtime Database › Regels: alles vervangen, plakken, Publiceren. Zonder deze regels zegt een spel "Spelen via internet staat nog niet aan". Dichtbij (Bluetooth/wifi) werkt gewoon door.' },
+    { id: 'iphone-web-1111', groep: 'Uitproberen en invullen', titel: 'Op een iPhone zetten', uitleg: 'Open in Safari woetoe.github.io/W2-apps-uitgifte/web › Deel › "Zet op beginscherm". Open hem daarna één keer met internet (onderaan staat "werkt ook zonder internet" als alles binnen is). Lijsten koppel je in die app op het beginscherm, niet in Safari: Samen › Koppelen met je code.' },
+    { id: 'internet-spel-1111', groep: 'Uitproberen en invullen', titel: 'Een spel via internet proberen', uitleg: 'Na het plakken van de regels: in een spel "Twee telefoons" › tik op het knopje Dichtbij › Via internet › Spel maken. Je krijgt een spelcode; de ander kiest Meedoen en typt hem in (app, iPhone of laptop). Laat even weten hoe Kronkel via internet aanvoelt: dat is het enige spel waar vertraging uitmaakt.' },
+    // ---- 11 november 2026 (reizen verdwenen)
+    { id: 'reizen-terug-1111', groep: 'Op je telefoon', titel: 'Reizen terugzetten', uitleg: 'Eerst deze update installeren en de database-regels in Firebase plakken. Dan Instellingen › Back-up › Terugzetten (je laatste back-up van vóór 11 nov), of Reizen › Uit Excel laden met je invulbestand. Daarna Reizen één keer openen met internet aan, zodat ze in Firebase komen.' },
+    // ---- 10 november 2026 (1.0.26 / 1.0.27)
+    { id: 'update-partner-1027', groep: 'Op je telefoon', titel: 'Telefoon van je vriendin bijwerken', uitleg: 'Instellingen › Updates. Anders ziet zij Verzameling, Weekmenu en Kosten delen niet onder Samen.' },
+    { id: 'firebase-regels-1026', groep: 'Op je telefoon', titel: 'Nieuwe database-regels in Firebase plakken', actie: 'regels', uitleg: 'Tik op "Regels kopiëren" (of Instellingen › Samen › Database-regels kopiëren). Dan in de Firebase-console › Realtime Database › Regels: alles vervangen, plakken, Publiceren. Nodig om Weekmenu, Kosten delen en Verzameling te delen.', link: '../samen/index.html' },
+    { id: 'autobackup-1026', groep: 'Op je telefoon', titel: 'Automatische back-up aanzetten', uitleg: 'Instellingen › Back-up › Automatisch bewaren: bestand kiezen (bv. in Google Drive), wachtwoord van minstens 10 tekens, hoe vaak. Bewaar het wachtwoord goed.', link: '../instellingen/index.html#backup' },
+    { id: 'meldingen-1026', groep: 'Op je telefoon', titel: 'Meldingen toestaan', uitleg: 'Als de app erom vraagt "Toestaan" kiezen; anders geen melding als een klusje in Huis aan de beurt is.' },
+    { id: 'widgets-1026', groep: 'Op je telefoon', titel: 'Widgets op je startscherm zetten', uitleg: 'Lang drukken op het startscherm › Widgets › W2 Apps › "Aftellen" en/of "Boodschappen".' },
+    { id: 'verzameling-1027', groep: 'Uitproberen en invullen', titel: 'Verzameling uitproberen', uitleg: 'Eén keer openen (dan gaat wat je had mee naar Samen). Foto van een kaart en van een plaat proberen, en "Waardes bijwerken". Oude kaarten koppelen via het item › "Opzoeken bij Cardmarket".', link: '../verzameling/index.html' },
+    { id: 'huis-1026', groep: 'Uitproberen en invullen', titel: 'Huis invullen', uitleg: 'Je klusjes (met hoe vaak) en de meterstanden.', link: '../huis/index.html' },
+    { id: 'judo-1026', groep: 'Uitproberen en invullen', titel: 'Judo invullen', uitleg: 'Examendatum, trainingsrooster, en afvinken wat je al beheerst.', link: '../judo/index.html' },
+    { id: 'branches-1110', groep: 'Opruimen op GitHub', titel: 'Oude branches verwijderen in W2-apps', uitleg: 'GitHub › W2-apps › Branches › prullenbakje. Alles behalve main mag weg (als er niet net in een andere chat aan gewerkt wordt): dag-check, exp-ec-b, exp-rsa-a, exp-rsa-b, native7, native7-v2, native7-v3, native7-v4, organiseren, reizen-excel, reizen-excel-melding, reizen-tabbladen, robuust, samen, samen-2, samen-delen, test-diagnose, uitbreiding, updates-in-instellingen, verbeteringen, verbeteringen-2, verzameling-samen, ontwikkelpagina.' }
+  ],
+
+  // Korte beschrijving om te delen (WhatsApp-opmaak: *vet*)
+  overzicht: `*W2 Apps* – mijn eigen Android-app, alles in één 📱
+Geen account en geen reclame; alles staat op je eigen telefoon.
+
+*Overzicht*
+Aftellen naar reizen, toernooien en verjaardagen, klusjes die vandaag moeten, wat we vanavond eten en hardlopen deze week. Ook als widget op het startscherm.
+
+*Samen* (live gedeeld met je partner)
+🛒 Boodschappenlijsten en to-do's
+✈️ Reizen: tickets, boekingscodes, paklijst
+🍳 Recepten met foto's, porties omrekenen en kookmodus met timers
+📅 Aftellen en verjaardagen, met cadeau-ideeën
+🍲 Weekmenu, met in één tik alles op de boodschappenlijst
+💶 Kosten delen (vakantie of huishouden, ook in andere valuta)
+🃏 Verzameling: foto van een Pokémon-kaart of plaat, de app herkent hem en zoekt op wat hij waard is
+
+*Persoonlijk*
+🔒 Kluis voor belangrijke documenten (versleuteld, met vingerafdruk)
+🏃 Hardlopen: schema's van 0 naar 5 en 5 naar 10 km, met gesproken aanwijzingen
+🥋 Judo: trainingslogboek en de eisen voor mijn 2e dan
+🏠 Huis: terugkerende klusjes met een melding, en meterstanden
+
+*Spellen* (tegen de computer, samen op één telefoon, of met meerdere telefoons: dichtbij zonder internet of via internet met een spelcode)
+Backgammon, schaken, dammen, Chinees dammen, klaverjassen, Woordbord (soort Scrabble), Tegelrummy (soort Rummikub), Zeeslag, Kronkel (slangen-race tot 8 telefoons), Dampoe Wars (scheten leggen en wegrennen, tot 4 spelers), Leg 't Uit (soort 30 Seconds) en Vingerspel (wie mag beginnen?)
+
+Geen Android? De spellen en de gedeelde lijsten werken ook op een iPhone of laptop, als web-app op je beginscherm (ook zonder internet).
+
+Verder: automatische versleutelde back-up naar Google Drive en updates gewoon in de app.
+
+*Wat mis jij nog?* Welke app, tool of welk spel zou jij erin willen? 💡`
+};

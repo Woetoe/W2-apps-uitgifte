@@ -29,8 +29,29 @@
     if (NET_EVENTS.has(ev.type)) drawBadges();
   };
 
+  // ------------------------------------------------------------------ database-regels
+  // De regels voor Wouters eigen Firebase-database (zelfde als tools/firebase/regels.json; een test bewaakt dat).
+  // Te kopiëren vanuit Instellingen, Ontwikkeling, Samen en het blad dat een spel laat zien als ze nog ontbreken.
+const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,\n    \"r\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort.matches(/^[a-z]{3,16}$/)\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 1000000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"g\": {\n      \"$kamer\": {\n        \".read\": \"$kamer.length == 32\",\n        \".write\": \"$kamer.length == 32\",\n        \"$soort\": {\n          \".validate\": \"$soort == 'p' || $soort == 'm'\",\n          \"$id\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 200000 && newData.child('t').isNumber()\"\n          }\n        }\n      }\n    },\n    \"s\": {\n      \"$ruimte\": {\n        \".read\": \"$ruimte.length == 32\",\n        \".write\": \"$ruimte.length == 32\",\n        \"$bestand\": {\n          \"$deel\": {\n            \".validate\": \"newData.child('v').isString() && newData.child('v').val().length < 3000000\"\n          }\n        }\n      }\n    }\n  }\n}\n";
+  /** Tekst naar het klembord; geeft een Promise met true als het lukte. */
+  function copy(text) {
+    const old = () => {
+      let ok = false;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+      } catch (e) {}
+      return ok;
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => true, () => old());
+    } catch (e) {}
+    return Promise.resolve(old());
+  }
+
   // ------------------------------------------------------------------ dichtbij of via internet
-  const GAME_NAMES = { schaken: 'Schaken', halma: 'Chinees dammen', backgammon: 'Backgammon', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy', dammen: 'Dammen', zeeslag: 'Zeeslag', klaverjassen: 'Klaverjassen', verbinding: 'Verbinding testen' };
+  const GAME_NAMES = { dampoe: 'Dampoe Wars', schaken: 'Schaken', halma: 'Chinees dammen', backgammon: 'Backgammon', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy', dammen: 'Dammen', zeeslag: 'Zeeslag', klaverjassen: 'Klaverjassen', verbinding: 'Verbinding testen' };
   const pageDir = (function () { const p = location.pathname.split('/').filter(Boolean); if (p.length && !/\.html?$/.test(p[p.length - 1])) return p[p.length - 1]; return p.length > 1 ? p[p.length - 2] : ''; })();
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -52,7 +73,8 @@
     if (via !== 'inet') return;
     if (ev.type === 'error' && (ev.where === 'host' || ev.where === 'join')) {
       via = null;
-      if (ev.where === 'join' && sheet.kind === 'code') showCodeError(explain(ev)); else closeSheet();
+      if (ev.code === 'inet-rules') showRulesSheet();
+      else if (ev.where === 'join' && sheet.kind === 'code') showCodeError(explain(ev)); else closeSheet();
     }
     if (ev.type === 'connecting' || ev.type === 'connected') { if (sheet.kind === 'code') closeSheet(); }
     if (ev.type === 'connected' && !multi && sheet.kind === 'host') closeSheet();
@@ -226,6 +248,33 @@
     const ok = el.querySelector('[data-w=ok]'); if (ok) ok.focus();
   }
 
+  /** De database kent spelen via internet nog niet: uitleggen wat er moet gebeuren, met de regels meteen te kopiëren. */
+  function showRulesSheet() {
+    const link = native ? '<b>console.firebase.google.com</b>' : '<a href="https://console.firebase.google.com/project/w2-samen/database/w2-samen-default-rtdb/rules" target="_blank" rel="noopener" style="color:#ffc83d">console.firebase.google.com</a>';
+    const el = openSheet('rules', `
+      <h2 id="w2n-title">Spelen via internet staat nog niet aan</h2>
+      <p>De database van W2 (Firebase) moet de nieuwe regels nog krijgen. Dat hoeft maar één keer${native ? '' : ', en alleen door wie de database beheert'}.</p>
+      <ol style="margin:0;padding-left:22px;color:#c9cbd8">
+        <li>Tik hieronder op <b>Regels kopiëren</b>.</li>
+        <li>Open ${link} › project <b>w2-samen</b> › <b>Realtime Database</b> › tabblad <b>Regels</b>.</li>
+        <li>Vervang alles door wat je gekopieerd hebt en kies <b>Publiceren</b>.</li>
+        <li>Kom terug en probeer het opnieuw.</li>
+      </ol>
+      <button type="button" class="w2n-btn" data-w="copy">Regels kopiëren</button>
+      <p class="w2n-note" id="w2n-msg" aria-live="polite"></p>
+      ${nearOK(multi) ? '<button type="button" class="w2n-btn alt" data-w="near">Nu dichtbij spelen (Bluetooth en wifi)</button>' : ''}
+      <button type="button" class="w2n-btn txt" data-w="x">Sluiten</button>`);
+    el.addEventListener('click', e => {
+      const b = e.target.closest('[data-w]');
+      if (!b) return;
+      if (b.dataset.w === 'x') closeSheet();
+      else if (b.dataset.w === 'near') { lsSet('w2-net-via', 'near'); closeSheet(); if (last) start(last.fn, last.multi, last.name, 'near'); }
+      else if (b.dataset.w === 'copy') copy(REGELS).then(ok => {
+        el.querySelector('#w2n-msg').textContent = ok ? 'Gekopieerd. Plak ze nu in Firebase en kies Publiceren.' : 'Kopiëren lukte niet. Kopieer ze in de app via Instellingen › Samen.';
+      });
+    });
+  }
+
   function cancelJoin() {
     if (INET) INET.stop(true);
     via = null;
@@ -306,7 +355,7 @@
     if (c === 'nearby-timeout') return 'De verbinding in de buurt reageert niet. Probeer het nog eens; helpt dat niet, zet Bluetooth even uit en aan of herstart de telefoon.';
     if (c === 'too-big') return 'Er ging iets mis bij het versturen (bericht te groot). Meld dit even.';
     if (c === 'inet-offline') return 'Geen internet, dus via internet spelen kan nu niet.' + (native ? ' Zit je bij elkaar? Kies dan Dichtbij (Bluetooth en wifi).' : ' Samen op één telefoon of tegen de computer kan wel.');
-    if (c === 'inet-rules') return 'Spelen via internet staat nog niet aan: de database-regels in Firebase moeten eerst worden bijgewerkt (in de app: Samen › tandwiel › database-regels kopiëren).';
+    if (c === 'inet-rules') return 'Spelen via internet staat nog niet aan: de database-regels in Firebase moeten eerst worden bijgewerkt (in de app: Instellingen › Samen › Database-regels kopiëren).';
     if (c === 'inet-nohost') return 'Geen spel gevonden met deze code. Klopt de code, en staat het spel bij de ander nog open?';
     if (c === 'inet-busy') return 'Dat spel is al begonnen of zit vol.';
     if (c === 'inet-other') return 'Deze code is van een ander spel' + (GAME_NAMES[ev.game] ? ' (' + GAME_NAMES[ev.game] + ')' : '') + '. Open hetzelfde spel als de ander en probeer het daar.';
@@ -362,6 +411,10 @@
       peers() { if (via === 'inet') return INET.peers(); try { return JSON.parse(native.peers()); } catch (e) { return []; } },
       /** Hoe loopt de verbinding nu ('near' | 'inet' | null), en wat kan er op dit apparaat. */
       via: () => via,
+      /** Welke manier gekozen is, ook als er nu niets loopt (bv. na een fout): 'near' | 'inet'. */
+      mode: () => via || pref(multi),
+      /** Uitleg tonen als de database-regels nog ontbreken. */
+      showRules: showRulesSheet,
       can: () => ({ near: !!native, inet: inetOK() }),
       /** Knopje voor in de lobby: laat de manier van verbinden of de spelcode zien; tikken opent de keuze. '' als er niets te kiezen valt. */
       badge,
@@ -378,6 +431,10 @@
       note(t) { try { native && native.logNote && native.logNote(String(t)); } catch (e) {} },
       explain
     },
+    /** Database-regels (voor Firebase) en ze kopiëren. */
+    regels: REGELS,
+    copy,
+    copyRules: () => copy(REGELS),
     // Updates: nieuwe spelbestanden ophalen zonder nieuwe APK (zie Updater.java)
     update: {
       available: () => !!(native && native.checkUpdate),

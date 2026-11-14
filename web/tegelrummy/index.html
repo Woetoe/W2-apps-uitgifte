@@ -787,7 +787,7 @@ function vHost() {
   let status;
   if (!multiOK()) status = `<div class="status"><span class="pulse off"></span><div><b>Alleen tegen de computer</b><span class="note">${NET && NET.available() ? 'Voor meer telefoons is een nieuwe versie van de app nodig. Zoek naar updates via Instellingen (tandwiel op het startscherm).' : 'Andere telefoons kunnen hier niet meedoen.'}</span></div></div>`;
   else if (net.status === 'hosting') status = `<div class="status"><span class="pulse"></span><div><b>Anderen kunnen nu meedoen</b><span class="note">Laat ze Tegelrummy openen en op Meedoen tikken.${phones ? ` ${phones} telefoon${phones > 1 ? 's' : ''} verbonden.` : ''}</span></div></div>`;
-  else status = `<div class="status"><span class="pulse off"></span><div><b>Niet zichtbaar voor anderen</b><span class="note">${NET.via() === 'inet' || !nearby() ? 'Zonder internet kunnen anderen niet meedoen. Tegen de computer kan gewoon.' : 'Zet Bluetooth en wifi aan.'}</span></div><button class="btn quiet small" data-a="readvertise">Opnieuw</button></div>`;
+  else status = `<div class="status"><span class="pulse off"></span><div><b>Niet zichtbaar voor anderen</b><span class="note">${(NET.mode ? NET.mode() : NET.via()) === 'inet' || !nearby() ? (navigator.onLine === false ? 'Zonder internet kunnen anderen niet meedoen.' : 'Via internet lukt het nu niet.') + ' Tegen de computer kan gewoon.' : 'Zet Bluetooth en wifi aan.'}</span></div><button class="btn quiet small" data-a="readvertise">Opnieuw</button></div>`;
   return `<div class="wrap">
     <div class="top"><button class="back" data-a="home">${IC.back} Tegelrummy</button></div>
     <h1 style="font-size:34px">Spel maken</h1>

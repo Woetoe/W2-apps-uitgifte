@@ -1,0 +1,149 @@
+/* Startscherm: tabbladen onderin en het overzicht (dashboard).
+   Het overzicht leest alleen samenvattingen die de tools zelf bijhouden (w2d-dash-*), zodat het ook
+   werkt als Reizen of de Kluis op slot zit. */
+(function () {
+  const D = window.W2D;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  let peekAt = 0;
+  const NAMES = { backgammon: 'Backgammon', schaken: 'Schaken', halma: 'Chinees dammen', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy',
+    legtuit: "Leg 't Uit", vingerspel: 'Vingerspel', samen: 'Samen', reizen: 'Reizen', kluis: 'Kluis', aftellen: 'Aftellen', recepten: 'Recepten', hardlopen: 'Hardlopen',
+    judo: 'Judo', verzameling: 'Verzameling', huis: 'Huis', weekmenu: 'Weekmenu', kosten: 'Kosten delen', klaverjassen: 'Klaverjassen', dammen: 'Dammen', zeeslag: 'Zeeslag', dampoe: 'Dampoe Wars', ontwikkeling: 'Ontwikkeling' };
+  const COLORS = { backgammon: '#e3b04b', schaken: '#7f93a8', halma: '#3b82f6', woordbord: '#2fbf71', kronkel: '#ff4d4d', tegelrummy: '#22b5a4',
+    legtuit: '#ffc83d', vingerspel: '#5ee07a', samen: '#ff7eb6', reizen: '#2ec4b6', kluis: '#f2b53a', aftellen: '#ff6b6b', recepten: '#ff8a3d', hardlopen: '#a7e35a',
+    judo: '#5b9bff', verzameling: '#c58cff', huis: '#7fd1ff', weekmenu: '#ffb347', kosten: '#4fd1a5', klaverjassen: '#e05252', dammen: '#d9b38c', zeeslag: '#3fa7ff', dampoe: '#b6e04a', ontwikkeling: '#ffc83d' };
+  const TABS = ['overzicht', 'samen', 'persoonlijk', 'spellen'];
+  // Oude tabbladen (van voor de indeling Samen / Persoonlijk / Spellen)
+  const OLD = { tools: 'samen', koken: 'samen', sport: 'persoonlijk' };
+
+  // ---------------------------------------------------------------- tabbladen
+  function show(tab, push) {
+    tab = OLD[tab] || tab;
+    if (!TABS.includes(tab)) tab = 'overzicht';
+    TABS.forEach(t => {
+      document.getElementById('p-' + t).classList.toggle('on', t === tab);
+      const b = document.querySelector(`nav.tabs [data-tab="${t}"]`);
+      b.classList.toggle('on', t === tab);
+      b.setAttribute('aria-current', t === tab ? 'page' : 'false');
+    });
+    try { localStorage.setItem('w2-tab', tab); } catch (e) {}
+    if (push !== false) history.replaceState(null, '', '#' + tab);
+    window.scrollTo(0, 0);
+    if (tab === 'overzicht') { renderDash(); peekSamen(renderDash); }
+    if (tab === 'samen') { renderSamen(); peekSamen(renderSamen, true); }
+  }
+  document.querySelector('nav.tabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]');
+    if (b) show(b.dataset.tab);
+  });
+  // Koude start: overzicht. Terug uit een spel of tool: het tabblad waar je was.
+  let first = true;
+  try { first = !sessionStorage.getItem('w2-started'); sessionStorage.setItem('w2-started', '1'); } catch (e) {}
+  let start = (location.hash || '').slice(1);
+  if (!start) { try { start = first ? 'overzicht' : (localStorage.getItem('w2-tab') || 'overzicht'); } catch (e) { start = 'overzicht'; } }
+  show(start, true);
+  // Android-terugknop: eerst terug naar het overzicht, pas daarna de app uit.
+  window.__w2back = () => {
+    const cur = TABS.find(t => document.getElementById('p-' + t).classList.contains('on'));
+    if (cur && cur !== 'overzicht') { show('overzicht'); return true; }
+    return false;
+  };
+  // Gebruikte onderdelen onthouden voor "Snel naar"
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a.tile');
+    if (a && D) D.recent(a.getAttribute('href').split('/')[0]);
+  });
+
+  // ---------------------------------------------------------------- overzicht
+
+  function renderDash() {
+    const host = document.getElementById('dash');
+    if (!host || !D) return;
+    const t = D.date.today();
+    document.getElementById('today').textContent = D.date.parse(t).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const items = D.dash.items();
+
+    // widget op het startscherm (vanaf native 9)
+    D.dash.publish(items);
+    if (!items.length) {
+      host.innerHTML = `<div class="dempty"><b>Nog niets om naar uit te kijken</b>Zet een reis, toernooi of verjaardag erin, dan tel je hier af.
+        <div class="quick" style="justify-content:center;margin-top:12px"><a href="reizen/index.html#nieuw"><i style="--c:#2ec4b6"></i>Reis toevoegen</a><a href="aftellen/index.html#nieuw"><i style="--c:#ff6b6b"></i>Evenement</a></div></div>`;
+    } else {
+      host.innerHTML = items.slice(0, 8).map(it => `
+        <a class="dcard" href="${it.href}" style="--c:${it.c};--ci:${it.ci}">
+          <div class="big">${it.big}</div>
+          <div class="tx"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span>
+            ${it.meter != null ? `<div class="meter"><i style="width:${Math.round(it.meter * 100)}%"></i></div>` : ''}
+            ${it.chips.length ? `<div class="chips">${it.chips.map(c => `<em>${esc(c)}</em>`).join('')}</div>` : ''}
+          </div></a>`).join('');
+    }
+
+    // Ontwikkeling: wat je zelf nog moet regelen na een nieuwe versie
+    if (window.W2Taken) {
+      const og = D.get('ontwikkeling', null) || {}, klaar = og.klaar || {};
+      const open = W2Taken.taken.filter(x => !klaar[x.id]).length + (og.eigen || []).filter(x => !x.klaar).length;
+      if (open) host.insertAdjacentHTML('beforeend', `<a class="dcard" href="ontwikkeling/index.html" style="--c:#ffc83d;--ci:#2b1f00">
+        <div class="big"><b>${open}</b><small>te doen</small></div><div class="tx"><b>🛠 Te doen voor de app</b><span>Na de laatste versie nog zelf te regelen</span></div></a>`);
+    }
+
+    // Hardlopen deze week
+    const hl = D.get('hardlopen', null);
+    const rc = document.getElementById('runcard');
+    if (hl && (hl.log || []).length) {
+      const now = D.date.parse(t), dow = (now.getDay() + 6) % 7;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+      const week = hl.log.filter(r => D.date.parse(r.datum) >= monday);
+      const km = week.reduce((s, r) => s + (+r.km || 0), 0);
+      const goal = hl.doel || 3;
+      const last = hl.log.slice().sort((a, b) => (b.datum > a.datum ? 1 : -1))[0];
+      rc.innerHTML = `<a class="dcard" href="hardlopen/index.html" style="--c:#a7e35a;--ci:#1d2c12;display:block">
+        <div class="tx"><b>🏃 Hardlopen deze week</b><span>Laatste run: ${esc(D.date.rel(D.date.days(last.datum)))}${last.km ? ', ' + String(last.km).replace('.', ',') + ' km' : ''}</span>
+        <div class="run"><div><b>${week.length}/${goal}</b><span>runs</span></div><div><b>${km.toFixed(1).replace('.', ',')}</b><span>km</span></div><div><b>${hl.log.length}</b><span>totaal</span></div></div>
+        <div class="meter"><i style="width:${Math.min(100, Math.round(week.length / goal * 100))}%"></i></div></div></a>`;
+    } else rc.innerHTML = '';
+
+    // Snel naar
+    const rec = (D.get('recent', []) || []).filter(k => NAMES[k]).slice(0, 6);
+    document.getElementById('quickwrap').hidden = !rec.length;
+    document.getElementById('quick').innerHTML = rec.map(k => `<a href="${k}/index.html"><i style="--c:${COLORS[k]}"></i>${NAMES[k]}</a>`).join('');
+  }
+  // ---------------------------------------------------------------- samen
+  function renderSamen() {
+    const host = document.getElementById('samenwrap');
+    if (!host) return;
+    const S = window.Samen;
+    if (!S || !S.cfg) {
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppel met je partner</b><span>Boodschappenlijst, to-do's, reizen, recepten en aftellen: jullie zien en vullen allebei hetzelfde aan, live op je telefoon en laptop.</span><em>Beginnen of koppelen</em></a>`;
+      return;
+    }
+    const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };
+    host.innerHTML = `${(sm.leden || []).length ? `<p class="who2">Gedeeld met ${esc(sm.leden.join(' & '))}</p>` : ''}<div class="sl">${(sm.lijsten || []).map(l => {
+      const sub = l.soort === 'boodschappen' ? (l.open ? `${l.open} te halen` : 'Alles in huis') : (l.open ? `${l.open} open` : 'Alles af') + (l.laat ? ` · ${l.laat} te laat` : '');
+      return `<a class="dcard" href="samen/index.html#l=${esc(l.id)}" style="--c:${esc(l.kleur || '#ff7eb6')}"><div class="big em">${esc(l.emoji || '📝')}</div>
+        <div class="tx"><b>${esc(l.naam)}${l.nieuw ? `<span class="new">${l.nieuw} nieuw</span>` : ''}</b><span>${esc(sub)}</span></div>
+        <div class="cnt">${l.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
+    }).join('')}</div><a class="alle" href="samen/index.html">Alle lijsten en uitnodigen ›</a>`;
+  }
+  // Eenmalig bijwerken met wat de ander intussen heeft gedaan (geen live verbinding op het startscherm)
+  function peekSamen(after, force) {
+    const S = window.Samen;
+    if (!S || !S.cfg || (!force && Date.now() - peekAt < 60000)) return;
+    peekAt = Date.now();
+    S.peek().then(ok => { if (ok) after(); });
+  }
+
+  // Automatische back-up: even na het openen, en alleen als het weer tijd is (de app houdt dat bij)
+  setTimeout(() => { try { D && D.backup.auto(false); } catch (e) {} }, 4000);
+  // Melding als de automatische back-up niet lukte
+  if (window.W2 && W2.net) W2.net.on(ev => {
+    if (ev.type === 'autobackup' && ev.state === 'error') {
+      const f = document.getElementById('ver');
+      if (f) f.innerHTML = 'Automatische back-up lukte niet. <a href="instellingen/index.html#backup" style="color:inherit">Bekijk</a>';
+    }
+  });
+
+  addEventListener('pageshow', () => {
+    if (document.getElementById('p-overzicht').classList.contains('on')) { renderDash(); peekSamen(renderDash); }
+    if (document.getElementById('p-samen').classList.contains('on')) { renderSamen(); peekSamen(renderSamen, true); }
+  });
+})();

@@ -327,6 +327,140 @@
     set('recent', r.slice(0, 8));
   }
 
+  // ---------------------------------------------------------------- overzicht en de widget Aftellen
+  // Wat er op het overzicht staat, gemaakt uit de samenvattingen die de onderdelen zelf bijhouden (dash-*).
+  // Hier en niet in start.js, zodat de widget op het startscherm ook bijwerkt als je iets afvinkt in een
+  // onderdeel en de app daarna dichtdoet (zonder eerst terug naar het overzicht te gaan).
+  const DASH_KEYS = new Set(['dash-reizen', 'aftellen', 'cadeaus', 'dash-kluis', 'dash-samen', 'dash-judo', 'dash-huis', 'weekmenu']);
+  const dash = {
+    items() {
+      const D = window.W2D;
+      const t = D.date.today();
+      const items = [];
+      // Reizen
+      (D.get('dash-reizen', []) || []).forEach(r => {
+        const dv = D.date.days(r.van), dt = D.date.days(r.tot || r.van);
+        if (dt == null || dt < 0) return;
+        const pack = r.pack || [0, 0];
+        const chips = [];
+        if (pack[1]) chips.push(`${pack[0]}/${pack[1]} ingepakt`);
+        if (r.docs) chips.push(`${r.docs} document${r.docs === 1 ? '' : 'en'}`);
+        if (r.todo && r.todo[1]) chips.push(`${r.todo[0]}/${r.todo[1]} geregeld`);
+        if (r.late) chips.push(`${r.late} te regelen te laat`);
+        else if (r.next) {
+          const nd = D.date.days(r.next.dl), tx = r.next.t.length > 34 ? r.next.t.slice(0, 32) + '…' : r.next.t;
+          chips.push(`${nd === 0 ? 'Vandaag' : nd === 1 ? 'Morgen' : 'Uiterlijk ' + D.date.nice(r.next.dl, { day: 'numeric', month: 'short' })}: ${tx}`);
+        }
+        const now = dv <= 0;
+        const len = D.date.days(r.tot) - D.date.days(r.van) + 1;
+        items.push({
+          days: now ? 0 : dv, href: 'reizen/index.html#' + r.id, c: '#2ec4b6', ci: '#06231f',
+          big: now ? `<b>${1 - dv}</b><small>van ${len}</small>` : `<b>${dv}</b><small>${dv === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `${r.emoji || '✈️'} ${r.naam}`,
+          sub: now ? 'Nu op reis · tot ' + D.date.nice(r.tot) : D.date.nice(r.van, { weekday: 'long', day: 'numeric', month: 'long' }) + (r.tot && r.tot !== r.van ? ' – ' + D.date.nice(r.tot, { day: 'numeric', month: 'short' }) : ''),
+          meter: pack[1] ? pack[0] / pack[1] : null, chips
+        });
+      });
+      // Aftellen: evenementen en verjaardagen
+      const af = D.get('aftellen', { events: [], jarigen: [] }) || {};
+      (af.events || []).forEach(ev => {
+        const d = D.date.days(ev.datum);
+        if (d == null || d < 0) return;
+        const done = (ev.lijst || []).filter(x => x.ok).length, tot = (ev.lijst || []).length;
+        items.push({
+          days: d, href: 'aftellen/index.html#' + ev.id, c: ev.kleur || '#ff6b6b', ci: '#fff',
+          big: d === 0 ? '<b>!</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `${ev.emoji || '📅'} ${ev.naam}`,
+          sub: D.date.nice(ev.datum, { weekday: 'long', day: 'numeric', month: 'long' }) + (ev.waar ? ' · ' + ev.waar : ''),
+          meter: tot ? done / tot : null, chips: tot ? [`${done}/${tot} klaar`] : []
+        });
+      });
+      const cad = (D.get('cadeaus', null) || {}).ideeen || [];
+      (af.jarigen || []).forEach(j => {
+        const nb = D.date.nextBirthday(j.datum);
+        if (!nb) return;
+        const d = D.date.days(nb.date);
+        if (d > 30) return;
+        const ideeen = cad.filter(i => String(i.voor || '').trim().toLowerCase() === String(j.naam).trim().toLowerCase() && i.status !== 'gegeven');
+        items.push({
+          days: d, href: 'aftellen/index.html#jarigen', c: '#ffb3c7', ci: '#3d0f1c',
+          big: d === 0 ? '<b>🎉</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `🎂 ${j.naam}${nb.age ? ' wordt ' + nb.age : ' is jarig'}`,
+          sub: d === 0 ? 'Vandaag jarig!' : D.date.nice(nb.date, { weekday: 'long', day: 'numeric', month: 'long' }),
+          chips: ideeen.length ? [ideeen.some(i => i.status === 'gekocht') ? '🛍️ cadeau gekocht' : `💡 ${ideeen.length} cadeau-idee${ideeen.length === 1 ? '' : 'ën'}`] : (d <= 14 ? ['nog geen cadeau-idee'] : [])
+        });
+      });
+      // Kluis: documenten die bijna verlopen
+      (D.get('dash-kluis', []) || []).forEach(k => {
+        const d = D.date.days(k.verloopt);
+        if (d == null || d > 60) return;
+        items.push({
+          days: Math.max(d, 0), href: 'kluis/index.html', c: '#f2b53a', ci: '#2b2414',
+          big: d < 0 ? '<b>!</b><small>verlopen</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `🔐 ${k.titel}`, sub: d < 0 ? 'Verlopen op ' + D.date.nice(k.verloopt) : 'Verloopt ' + D.date.nice(k.verloopt, { day: 'numeric', month: 'long', year: 'numeric' }), chips: []
+        });
+      });
+      // Samen: to-do's met een datum (voor mij, samen of niemand in het bijzonder)
+      const sm = D.get('dash-samen', null);   // weg na ontkoppelen
+      ((sm && sm.todo) || []).forEach(td => {
+        const d = D.date.days(td.datum);
+        if (d == null || d > 7) return;
+        const l = (sm.lijsten || []).find(x => x.id === td.lijst) || {};
+        items.push({
+          days: Math.max(d, 0), href: 'samen/index.html#l=' + td.lijst, c: l.kleur || '#4d8dff', ci: '#0c1530',
+          big: d < 0 ? '<b>!</b><small>te laat</small>' : d === 0 ? '<b>✓</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `${l.emoji || '✅'} ${td.tekst}`, sub: (l.naam || 'To-do') + (td.wie === 'samen' ? ' · samen' : ''), chips: []
+        });
+      });
+      // Judo: examen
+      const ju = D.get('dash-judo', null);
+      if (ju && ju.examen) {
+        const d = D.date.days(ju.examen);
+        if (d != null && d >= 0) items.push({
+          days: d, href: 'judo/index.html', c: '#5b9bff', ci: '#06122a',
+          big: d === 0 ? '<b>🥋</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `🥋 Examen ${ju.naam}`, sub: D.date.nice(ju.examen, { weekday: 'long', day: 'numeric', month: 'long' }),
+          meter: ju.pct, chips: [`${ju.klaar}/${ju.tot} zit erin`, ju.week + '/' + ju.doel + ' trainingen deze week']
+        });
+      }
+      // Huis: klusjes die (bijna) moeten
+      (D.get('dash-huis', []) || []).forEach(k => {
+        const d = D.date.days(k.datum);
+        if (d == null || d > 3) return;
+        items.push({
+          days: Math.max(d, 0), href: 'huis/index.html', c: '#7fd1ff', ci: '#04202e',
+          big: d < 0 ? '<b>!</b><small>te laat</small>' : d === 0 ? '<b>✓</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: `${k.emoji} ${k.naam}`, sub: d < 0 ? `${-d} ${d === -1 ? 'dag' : 'dagen'} te laat` : 'Klusje in huis', chips: []
+        });
+      });
+      // Vanavond op het menu
+      const wmd = ((D.get('weekmenu', null) || {}).dagen || {})[t];
+      const wm = wmd ? { titel: wmd.recept ? wmd.titel : String(wmd.tekst || '').replace(/^\S{1,2}\s/, ''), id: wmd.recept } : null;
+      if (wm && wm.titel) items.push({ days: 0.5, href: wm.id ? 'recepten/index.html#' + wm.id : 'weekmenu/index.html', c: '#ffb347', ci: '#2b1500', big: '<b>🍲</b><small>vanavond</small>', title: wm.titel, sub: 'Op het weekmenu', chips: [] });
+      items.sort((a, b) => a.days - b.days);
+      return items;
+    },
+    /** De eerstvolgende dingen doorgeven aan de widget (vanaf native 9; daarvoor doet het niets). */
+    publish(items) {
+      try {
+        if (!(window.W2 && W2.publish)) return;
+        items = items || dash.items();
+        const base = date.parse(date.today());
+        const iso = d => { const x = new Date(base.getFullYear(), base.getMonth(), base.getDate() + d); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+        const w = items.filter(it => Number.isInteger(it.days)).slice(0, 6).map(it => ({ titel: it.title, datum: iso(it.days), open: it.href }));
+        const sig = JSON.stringify(w);
+        if (sig !== dash.last) { dash.last = sig; W2.publish('overzicht', w); }
+      } catch (e) {}
+    },
+    last: null
+  };
+  let dashT = 0;
+  const dashSoon = () => { clearTimeout(dashT); dashT = setTimeout(() => { dashT = 0; dash.publish(); }, 250); };
+  /** Opslaan; verandert er iets wat op het overzicht staat, dan gaat de widget mee. */
+  function setPub(k, v) { const r = set(k, v); if (DASH_KEYS.has(k)) dashSoon(); return r; }
+
   backup.MIN_PASS = MIN_PASS;
-  window.W2D = { inApp, native, outdated, get, set, uid, idb, lock, secret, files, saveAs, backup, date, recent, Locked, mimeOf, toB64 };
+  window.W2D = { inApp, native, outdated, get, set: setPub, uid, idb, lock, secret, files, saveAs, backup, date, recent, Locked, mimeOf, toB64, dash };
+  // Bij het verlaten van een pagina (terug, app dicht) niet op de vertraging wachten
+  addEventListener('pagehide', () => { if (dashT) { clearTimeout(dashT); dashT = 0; dash.publish(); } });
 })();

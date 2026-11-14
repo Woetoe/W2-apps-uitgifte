@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Klaverjassen</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Kroegtafel: groen laken, houten rand, roomwitte kaarten. Roem in goud. */
+:root{
+  --room:#0f1712; --room-2:#17231b; --panel:#1f2f24; --line:#2f4636;
+  --felt:#1f6b45; --felt-2:#18573a; --wood:#5a3a22;
+  --card:#fbf8f1; --card-line:#d8d0bf; --red:#d23a35; --black:#1d1f24; --diam:#d23a35; --club:#1d1f24;
+  --accent:#e05252; --accent-ink:#fff; --gold:#f2c14e;
+  --text:#eef4ef; --muted:#a3b8a8; --good:#8fe0a6; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body.c4{--diam:#e07a1f;--club:#1f8a4c}
+body{background:var(--room);color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+.wrap{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:12px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+h1,h2{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--room-2);display:grid;place-items:center;flex:none}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:50px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:4px}
+.hero h1{font-size:44px;line-height:.95}
+.hero svg{width:96px;height:96px;flex:none}
+.choice{display:flex;align-items:center;gap:14px;text-align:left;background:var(--room-2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:74px}
+.choice .ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--panel);color:var(--accent)}
+.choice .ic svg{width:26px;height:26px}
+.resume{display:flex;gap:8px}
+.resume .btn{flex:1;min-height:44px;padding:10px;font-size:15px}
+.bar{display:flex;align-items:center;gap:8px}
+.score{flex:1;display:flex;justify-content:center;gap:16px;font-family:var(--f-display);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.score span small{display:block;font:600 11px var(--f-body);color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.info{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);gap:8px}
+.trumpchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--text);font-weight:700}
+.table{position:relative;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-2) 75%);border-radius:28px;box-shadow:inset 0 0 0 8px var(--wood),inset 0 0 40px #0006,0 12px 30px #0008;aspect-ratio:1/0.9;min-height:290px}
+.seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#e9f5ec;text-shadow:0 1px 2px #0008}
+.seat.top{top:12px;left:50%;transform:translateX(-50%)}
+.seat.left{left:12px;top:50%;transform:translateY(-50%)}
+.seat.right{right:12px;top:50%;transform:translateY(-50%)}
+.seat.bottom{bottom:12px;left:50%;transform:translateX(-50%)}
+.seat .nm{background:#0006;border-radius:999px;padding:3px 10px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.seat.turn .nm{background:var(--gold);color:#2a1f00;text-shadow:none}
+.seat .bk{display:flex}
+.seat .bk i{width:16px;height:24px;border-radius:3px;background:repeating-linear-gradient(45deg,#7a1f1f 0 3px,#a33 3px 6px);border:1.5px solid #f3e6d0;margin-left:-9px;box-shadow:0 1px 2px #0006}
+.seat .bk i:first-child{margin-left:0}
+.seat .tag{font-size:11px;background:var(--accent);color:#fff;border-radius:6px;padding:1px 6px}
+.trick{position:absolute;inset:0;pointer-events:none}
+.trick .card{position:absolute;width:19%;left:50%;top:50%}
+.trick .p0{transform:translate(-50%,-8%)}
+.trick .p1{transform:translate(-118%,-50%) rotate(-8deg)}
+.trick .p2{transform:translate(-50%,-92%)}
+.trick .p3{transform:translate(18%,-50%) rotate(8deg)}
+.trick .win{filter:drop-shadow(0 0 8px var(--gold))}
+.card{display:block;aspect-ratio:5/7;border-radius:8%/5.7%;background:var(--card);box-shadow:0 2px 6px #0007;position:relative}
+.card svg{width:100%;height:100%;display:block}
+.hand{display:flex;justify-content:center;padding:18px 4px 4px;min-height:120px}
+.hand button{border:0;padding:0;background:none;width:clamp(52px,17vw,88px);margin-left:calc(clamp(52px,17vw,88px) * -0.42);transition:transform .12s}
+.hand button:first-child{margin-left:0}
+.hand button.lift{transform:translateY(-18px)}
+.hand button.no .card{filter:brightness(.55)}
+.status{text-align:center;font-weight:700;min-height:24px}
+.status.wait{color:var(--muted);font-weight:500}
+.bids{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bids button{border:1px solid var(--line);background:var(--card);border-radius:14px;min-height:64px;font-size:30px;line-height:1}
+.bids button small{display:block;font-size:12px;font-weight:700;color:#555;margin-top:4px}
+.toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);background:#000c;color:var(--gold);font:800 26px var(--f-display);padding:12px 22px;border-radius:16px;z-index:30;pointer-events:none;animation:pop 1.6s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+.netlost{background:#4a1f1a;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:15px}
+.netlost button{border:0;background:var(--text);color:#0f1712;border-radius:10px;padding:9px 12px;font-weight:700}
+.scrim{position:fixed;inset:0;background:#050806c0;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--room-2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group>.t{font-weight:700}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--room);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:600;color:var(--muted);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .15s}
+.list{display:flex;flex-direction:column;gap:8px}
+.list .btn{width:100%}
+table.sc{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.sc th,table.sc td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line)}
+table.sc th:first-child,table.sc td:first-child{text-align:left;color:var(--muted);font-weight:600}
+table.sc .tot td{font:800 20px var(--f-display);border-bottom:0}
+.big{font:800 34px/1 var(--f-display);text-align:center}
+.seats{display:flex;flex-direction:column;gap:8px}
+.lseat{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-height:56px}
+.lseat .grow{flex:1;min-width:0}
+.lseat b{display:block}
+.lseat small{color:var(--muted)}
+.lseat .pos{width:62px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.ng-input{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:17px;color:inherit;width:100%;-webkit-user-select:text;user-select:text}
+.pulse{width:14px;height:14px;border-radius:50%;background:var(--accent);animation:pl 1.2s ease-in-out infinite;flex:none}
+@keyframes pl{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../inet.js"></script>
+<script src="../w2.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+const K = window.KJ, NET = window.W2 && W2.net;
+const app = document.getElementById('app');
+const GAME = 'klaverjassen';
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
+const uid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const TOK = store.get('kj-tok', null) || (() => { const t = uid(); store.set('kj-tok', t); return t; })();
+const myName = () => { try { return localStorage.getItem('w2-name') || ''; } catch (e) { return ''; } };
+const setName = n => { try { localStorage.setItem('w2-name', n); } catch (e) {} };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const S = Object.assign({ level: 'normal', variant: 'rotterdams', rounds: 16, oneTap: false, c4: false, sound: true, vibrate: true }, store.get('kj-settings', {}));
+const saveS = () => store.set('kj-settings', S);
+const LEVELS = { easy: 'Makkelijk', normal: 'Normaal', strong: 'Sterk' };
+const SYM = { h: '♥', r: '♦', s: '♠', k: '♣' };
+const GKEY = m => 'kj-game-' + m;
+
+let M = null, view = 'home', role = null, L = null;
+const ui = { sheet: null, lift: null, hold: null, busy: false, token: 0, lostHost: false };
+const net = { status: 'idle', err: '', peers: new Map(), found: new Map(), lobby: null, hostName: '' };
+document.body.classList.toggle('c4', !!S.c4);
+
+// ---------------------------------------------------------------- geluid
+let ac = null;
+function tone(f, d, type, vol, delay) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) {}
+}
+const sCard = () => { tone(1400, 0.03, 'triangle', 0.05); tone(500, 0.05, 'sine', 0.06, 0.01); };
+const sRoem = () => { tone(784, 0.1, 'triangle', 0.1); tone(988, 0.1, 'triangle', 0.1, 0.09); tone(1319, 0.25, 'triangle', 0.1, 0.18); };
+const sWin = () => { tone(523, 0.15, 'triangle', 0.12); tone(659, 0.15, 'triangle', 0.12, 0.13); tone(784, 0.35, 'triangle', 0.14, 0.26); };
+function buzz(p) { if (S.vibrate && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
+function flash(text) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = text; document.body.appendChild(d); setTimeout(() => d.remove(), 1700); }
+
+// ---------------------------------------------------------------- spel
+function newMatch(mode, players, opts) {
+  const m = { v: 1, gid: uid(), mode, seq: 0, players, variant: opts.variant, nRounds: opts.rounds, rounds: [], total: [0, 0], dealer: Math.floor(Math.random() * 4), over: false };
+  m.R = K.newRound(m.dealer, Math.random, { variant: m.variant });
+  return m;
+}
+const mySeat = () => M ? (M.mode === 'cpu' ? 0 : Math.max(0, M.players.findIndex(p => p.tok === TOK))) : 0;
+const isCpu = p => M.players[p].type === 'cpu' || (M.players[p].away && role === 'host');
+const isMine = p => p === mySeat() && M.players[p].type === 'human';
+const turnKey = () => M ? `${M.rounds.length}:${M.R.bids.length}:${M.R.tricks.length}:${M.R.trick.length}` : '';
+const tName = t => t === K.team(mySeat()) ? 'Wij' : 'Zij';
+
+function commit() {
+  M.seq++;
+  store.set(GKEY(M.mode), M);
+  if (M.mode === 'net' && role === 'host') M.players.forEach(p => { if (p.ep && !p.away) sendTo(p.ep, { t: 'st', s: M }); });
+  render(); schedule();
+}
+/** Een zet (troef/pas of kaart) toepassen; alleen de host (of het toestel bij spelen tegen de computer) doet dit. */
+function apply(p, mv) {
+  const R = M.R;
+  if (mv.kind === 'bid') { if (!K.bid(R, p, mv.v)) return false; }
+  else if (mv.kind === 'card') {
+    const before = R.tricks.length;
+    if (!K.play(R, p, mv.v)) return false;
+    if (R.tricks.length > before) {
+      const t = R.tricks[R.tricks.length - 1];
+      ui.hold = { cards: t.cards, winner: t.winner, roem: t.roem, until: Date.now() + 1300 };
+    }
+    if (R.phase === 'done') endRound();
+  } else return false;
+  commit();
+  return true;
+}
+function endRound() {
+  const sc = K.score(M.R);
+  M.rounds.push(Object.assign({ dealer: M.R.dealer }, sc));
+  M.total = [M.total[0] + sc.total[0], M.total[1] + sc.total[1]];
+  if (M.rounds.length >= M.nRounds) M.over = true;
+  ui.sheet = 'round';
+}
+function nextRound() {
+  if (M.over) return;
+  M.dealer = (M.dealer + 1) % 4;
+  M.R = K.newRound(M.dealer, Math.random, { variant: M.variant });
+  ui.sheet = null; ui.hold = null;
+  commit();
+}
+
+// ---------------------------------------------------------------- computer
+let worker = null, workerOk = true, cpuTimer = null;
+function cpuCard(R, p, level, cb) {
+  const id = ++ui.token;
+  if (level === 'strong' && workerOk) {
+    try {
+      worker = worker || new Worker('ai-worker.js');
+      worker.onmessage = e => { if (e.data.id === id) cb(e.data.c); };
+      worker.onerror = () => { workerOk = false; cb(K.chooseCard(R, p, 'normal')); };
+      worker.postMessage({ R, p, level, id });
+      return;
+    } catch (e) { workerOk = false; }
+  }
+  setTimeout(() => { if (id === ui.token) cb(K.chooseCard(R, p, level)); }, 10);
+}
+function schedule() {
+  if (!M || view !== 'game' || M.over || ui.sheet === 'round') return;
+  if (M.mode === 'net' && role !== 'host') return;
+  const R = M.R, p = R.turn;
+  if (R.phase === 'done' || !isCpu(p) || ui.busy) return;
+  ui.busy = true;
+  const key = turnKey(), wait = Math.max(R.trick.length === 0 && ui.hold ? ui.hold.until - Date.now() : 0, 0) + 650;
+  clearTimeout(cpuTimer);
+  cpuTimer = setTimeout(() => {
+    if (!M || turnKey() !== key) { ui.busy = false; return; }
+    const lvl = M.players[p].level || 'normal';
+    if (R.phase === 'bid') { ui.busy = false; apply(p, { kind: 'bid', v: K.chooseBid(R, p, lvl) }); return; }
+    cpuCard(JSON.parse(JSON.stringify(R)), p, lvl, c => {
+      ui.busy = false;
+      if (!M || turnKey() !== key) return;
+      apply(p, { kind: 'card', v: c || K.legal(R.hands[p], R.trick, R.trump, R.variant)[0] });
+    });
+  }, wait);
+}
+// mijn eigen zet: zelf toepassen (computer/host) of naar de host sturen
+function myMove(mv) {
+  const p = mySeat();
+  if (M.R.turn !== p) return;
+  if (M.mode === 'net' && role === 'join') {
+    if (ui.sent) return;
+    ui.sent = turnKey();
+    // alvast laten zien
+    send({ t: 'mv', gid: M.gid, k: turnKey(), mv });
+    if (mv.kind === 'card') sCard();
+    render();
+    return;
+  }
+  apply(p, mv);
+  if (mv.kind === 'card') sCard();
+}
+
+// ---------------------------------------------------------------- netwerk (zelfde opzet als Tegelrummy)
+const multiOK = () => !!(NET && NET.multiAvailable && NET.multiAvailable());
+const netBadge = () => (NET && NET.badge ? NET.badge() : '');
+const nearby = () => !!(NET && NET.can && NET.can().near);
+const send = m => { if (NET && role) { m.game = GAME; NET.send(m); } };
+const sendTo = (id, m) => { if (NET) { m.game = GAME; NET.sendTo(id, m); } };
+if (NET) NET.on(ev => {
+  if (!role) return;
+  switch (ev.type) {
+    case 'hosting': if (role === 'host') net.status = 'hosting'; break;
+    case 'searching': if (role === 'join') net.status = 'searching'; break;
+    case 'found': net.found.set(ev.id, ev.name); break;
+    case 'lost': net.found.delete(ev.id); break;
+    case 'connecting': if (role === 'join') { net.status = 'connecting'; net.hostName = ev.name || net.hostName; } break;
+    case 'connected':
+      if (role === 'host') net.peers.set(ev.id, { name: ev.name || 'Speler', tok: null });
+      else { net.status = 'connected'; net.hostName = ev.name || net.hostName; net.found.clear(); net.err = ''; ui.lostHost = false; send({ t: 'hi', name: myName() || 'Speler', tok: TOK }); }
+      break;
+    case 'disconnected': if (role === 'host') peerGone(ev.id); else { net.status = 'lost'; if (view === 'game') ui.lostHost = true; buzz([80, 60, 80]); } break;
+    case 'error': net.err = NET.explain(ev); if (role === 'join' && net.status !== 'connected') net.status = 'idle'; if (role === 'host' && ev.where === 'host') net.status = 'idle'; break;
+    case 'stopped': net.status = 'idle'; break;
+    case 'message': {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.game !== GAME) return;
+      if (role === 'host') hostMsg(ev.id, m); else clientMsg(m);
+      return;
+    }
+    default: return;
+  }
+  render();
+});
+const SEAT_NAME = ['Jij (onder)', 'Links', 'Maat (boven)', 'Rechts'];
+function openHost() {
+  role = 'host'; view = 'host'; net.err = ''; net.peers.clear(); M = null;
+  L = { seats: [{ name: myName() || 'Jij', type: 'human', tok: TOK }, { name: 'Computer', type: 'cpu', level: S.level }, { name: 'Computer', type: 'cpu', level: S.level }, { name: 'Computer', type: 'cpu', level: S.level }] };
+  advertise();
+}
+function advertise() { if (!multiOK()) return; if (!myName().trim()) setName('Speler'); net.status = 'hosting'; NET.hostMulti(myName()); }
+function lobbyChanged() { if (!M && L) send({ t: 'lobby', host: myName(), seats: L.seats.map(s => ({ name: s.name, type: s.type, tok: s.tok })) }); render(); }
+function hostMsg(id, m) {
+  if (m.t === 'hi') {
+    const peer = net.peers.get(id) || {};
+    peer.name = String(m.name || peer.name || 'Speler').slice(0, 16); peer.tok = m.tok; net.peers.set(id, peer);
+    if (M) {
+      const i = M.players.findIndex(q => q.tok === m.tok);
+      if (i >= 0) { const gp = M.players[i]; gp.ep = id; gp.away = false; gp.name = peer.name; commit(); }
+      else sendTo(id, { t: 'busy' });
+      return;
+    }
+    if (!L) return;
+    let s = L.seats.find(q => q.tok === m.tok);
+    if (s) { s.ep = id; s.name = peer.name; }
+    else {
+      // vrije plek: eerst als maat, daarna links en rechts
+      const order = [2, 1, 3].filter(i => L.seats[i].type === 'cpu');
+      if (!order.length) { sendTo(id, { t: 'full' }); setTimeout(() => NET.disconnect(id), 400); return; }
+      L.seats[order[0]] = { name: peer.name, type: 'human', tok: m.tok, ep: id };
+    }
+    lobbyChanged();
+  } else if (m.t === 'mv') {
+    if (!M || m.gid !== M.gid || m.k !== turnKey()) { if (M) sendTo(id, { t: 'st', s: M }); return; }
+    const i = M.players.findIndex(q => q.ep === id);
+    if (i !== M.R.turn || !apply(i, m.mv)) sendTo(id, { t: 'st', s: M, rej: 1 });
+  } else if (m.t === 'next') {
+    if (M && ui.sheet === 'round' && !M.over) nextRound();
+  } else if (m.t === 'bye') { peerGone(id); NET.disconnect(id); }
+}
+function peerGone(id) {
+  net.peers.delete(id);
+  if (L && !M) L.seats = L.seats.map(s => s.ep === id ? { name: 'Computer', type: 'cpu', level: S.level } : s);
+  if (M) { const gp = M.players.find(p => p.ep === id); if (gp) { gp.ep = null; gp.away = true; advertise(); commit(); } }
+  lobbyChanged();
+}
+function startNet() {
+  if (!L) return;
+  M = newMatch('net', L.seats.map(s => ({ name: s.type === 'cpu' ? 'Computer' : s.name, type: s.type, level: s.level || S.level, tok: s.tok || null, ep: s.ep || null })), { variant: S.variant, rounds: S.rounds });
+  let n = 0; M.players.forEach(p => { if (p.type === 'cpu') p.name = 'Computer ' + (++n); });
+  if (multiOK()) NET.stopSearching();
+  view = 'game'; ui.sheet = null; ui.hold = null;
+  commit();
+}
+function openJoin() { role = 'join'; view = 'join'; net.err = ''; net.lobby = null; net.status = 'idle'; net.found.clear(); M = null; }
+function search() {
+  if (!multiOK()) return;
+  if (!myName().trim()) { net.err = 'Vul eerst je naam in.'; render(); return; }
+  net.err = ''; net.status = 'searching'; net.found.clear(); NET.joinMulti(myName());
+}
+function clientMsg(m) {
+  switch (m.t) {
+    case 'lobby': net.lobby = m; net.hostName = m.host || net.hostName; break;
+    case 'busy': net.err = 'Dit spel is al begonnen zonder jou.'; break;
+    case 'full': net.err = 'Dit spel zit al vol.'; break;
+    case 'st': {
+      const prev = M;
+      M = m.s; ui.sent = null; ui.lostHost = false;
+      if (view !== 'game') { view = 'game'; ui.sheet = null; }
+      if (prev && prev.gid === M.gid) {
+        const roundEnded = M.rounds.length > prev.rounds.length;
+        const newTrick = roundEnded || (M.rounds.length === prev.rounds.length && M.R.tricks.length > prev.R.tricks.length);
+        if (newTrick) { const t = M.R.tricks[M.R.tricks.length - 1]; if (t) { ui.hold = { cards: t.cards, winner: t.winner, roem: t.roem, until: Date.now() + 1300 }; sCard(); afterTrick(t); } }
+        else if (M.R.trick.length > prev.R.trick.length) sCard();
+        if (roundEnded) ui.sheet = 'round';
+        else if (prev.R.dealer !== M.R.dealer && ui.sheet === 'round') ui.sheet = null;   // volgende ronde begonnen
+      } else if (M.R.phase === 'done') ui.sheet = 'round';
+      else ui.sheet = null;
+      if (M.R.turn === mySeat() && M.R.phase !== 'done') buzz(20);
+      if (m.rej) flash('Niet toegestaan');
+      break;
+    }
+    default: return;
+  }
+  render();
+}
+function leaveNet() {
+  if (!role) return;
+  try { if (role === 'join') send({ t: 'bye' }); } catch (e) {}
+  if (NET) NET.stop();
+  role = null; net.status = 'idle'; net.peers.clear(); L = null;
+}
+
+// ---------------------------------------------------------------- kaarten tekenen
+function cardSVG(c) {
+  const s = K.suit(c), r = K.rank(c), col = s === 'h' ? 'var(--red)' : s === 'r' ? 'var(--diam)' : s === 'k' ? 'var(--club)' : 'var(--black)';
+  const rk = r === '10' ? '10' : r;
+  const face = { B: 'B', V: 'V', H: 'H' }[r];
+  let mid = '';
+  if (face) mid = `<rect x="16" y="22" width="68" height="96" rx="6" fill="none" stroke="${col}" stroke-width="2" opacity=".5"/><text x="50" y="86" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="46" fill="${col}">${face}</text><text x="50" y="112" text-anchor="middle" font-size="20" fill="${col}">${SYM[s]}</text>`;
+  else if (r === 'A') mid = `<text x="50" y="96" text-anchor="middle" font-size="58" fill="${col}">${SYM[s]}</text>`;
+  else mid = `<text x="50" y="92" text-anchor="middle" font-size="40" fill="${col}">${SYM[s]}</text>`;
+  return `<div class="card"><svg viewBox="0 0 100 140" aria-label="${esc(K.name(c))}"><rect x="1" y="1" width="98" height="138" rx="9" fill="var(--card)" stroke="var(--card-line)" stroke-width="2"/>
+    <text x="8" y="26" font-family="Figtree" font-weight="800" font-size="${rk.length > 1 ? 21 : 24}" fill="${col}">${rk}</text><text x="9" y="46" font-size="18" fill="${col}">${SYM[s]}</text>
+    <g transform="rotate(180 50 70)"><text x="8" y="26" font-family="Figtree" font-weight="800" font-size="${rk.length > 1 ? 21 : 24}" fill="${col}">${rk}</text><text x="9" y="46" font-size="18" fill="${col}">${SYM[s]}</text></g>${mid}</svg></div>`;
+}
+// plek op tafel ten opzichte van mij
+const rel = p => (p - mySeat() + 4) % 4;   // 0 onder, 1 links, 2 boven, 3 rechts
+const POS = ['bottom', 'left', 'top', 'right'];
+
+function tableHTML() {
+  const R = M.R;
+  const showHold = ui.hold && Date.now() < ui.hold.until;
+  const trick = showHold ? ui.hold.cards : R.trick;
+  const wi = showHold ? trick.findIndex(t => t.p === ui.hold.winner) : -1;
+  let h = `<div class="table">`;
+  for (let p = 0; p < 4; p++) {
+    const r = rel(p);
+    if (r === 0) continue;
+    const n = R.hands[p].length - 0;
+    h += `<div class="seat ${POS[r]}${R.turn === p && R.phase !== 'done' && !showHold ? ' turn' : ''}"><span class="nm">${esc(M.players[p].name)}${M.players[p].away ? ' (weg)' : ''}</span>
+      <span class="bk">${'<i></i>'.repeat(n)}</span>${R.speler === p ? '<span class="tag">speelt</span>' : p === R.dealer && R.phase === 'bid' ? '<span class="tag" style="background:#555">deelt</span>' : ''}</div>`;
+  }
+  h += `<div class="seat bottom${R.turn === mySeat() && R.phase !== 'done' && !showHold ? ' turn' : ''}"><span class="nm">${esc(M.players[mySeat()].name)}</span>${R.speler === mySeat() ? '<span class="tag">speelt</span>' : ''}</div>`;
+  h += `<div class="trick">${trick.map((t, i) => `<div class="card p${rel(t.p)}${i === wi ? ' win' : ''}" style="z-index:${i + 1}">${cardSVG(t.c).replace(/^<div class="card">|<\/div>$/g, '')}</div>`).join('')}</div>`;
+  return h + `</div>`;
+}
+function handHTML() {
+  const R = M.R, me = mySeat(), hand = R.hands[me];
+  const myTurn = R.phase === 'play' && R.turn === me && !(ui.hold && Date.now() < ui.hold.until) && !ui.sent;
+  const ok = myTurn ? new Set(K.legal(hand, R.trick, R.trump, R.variant)) : new Set(hand);
+  return `<div class="hand">${hand.map(c => `<button data-card="${c}" class="${ui.lift === c ? 'lift' : ''} ${myTurn && !ok.has(c) ? 'no' : ''}" aria-label="${esc(K.name(c))}">${cardSVG(c)}</button>`).join('')}</div>`;
+}
+function statusHTML() {
+  const R = M.R, me = mySeat();
+  if (ui.sent) return `<div class="status wait">Verstuurd…</div>`;
+  if (R.phase === 'bid') {
+    const pass = R.bids.filter(b => b.b === 'pas').map(b => esc(M.players[b.p].name));
+    if (R.turn === me) {
+      const forced = K.mustChoose(R);
+      return `<div class="status">${forced ? 'Iedereen paste: jij moet troef kiezen.' : 'Wil je spelen? Kies troef of pas.'}</div>
+        <div class="bids">${K.SUITS.map(s => `<button data-bid="${s}" style="color:${s === 'h' ? 'var(--red)' : s === 'r' ? 'var(--diam)' : s === 'k' ? 'var(--club)' : 'var(--black)'}">${SYM[s]}<small>${K.SUIT_NAME[s]}</small></button>`).join('')}</div>
+        ${forced ? '' : `<button class="btn quiet" data-bid="pas">Pas</button>`}`;
+    }
+    return `<div class="status wait">${pass.length ? pass.join(', ') + ' past. ' : ''}${esc(M.players[R.turn].name)} denkt na over troef…</div>`;
+  }
+  if (R.phase === 'done') return `<div class="status">Ronde voorbij</div>`;
+  if (R.turn === me) return `<div class="status">${R.trick.length ? 'Jouw beurt' : 'Jij komt uit'}${S.oneTap ? '' : ': tik een kaart, nog eens om te spelen'}.</div>`;
+  return `<div class="status wait">${esc(M.players[R.turn].name)} is aan de beurt…</div>`;
+}
+function afterTrick(t) {
+  if (t.roem) { setTimeout(() => { flash(`Roem ${t.roem}!`); sRoem(); buzz([30, 30, 60]); }, 250); }
+  setTimeout(render, 1350);
+}
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5h5"/></svg>',
+  host: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="2"/><path d="M5 9a9 9 0 0 0 0 8M19 9a9 9 0 0 1 0 8"/></svg>',
+  join: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M10.5 10.5c.8-.6 2.2-.6 3 0M10 13.5c1-.8 3-.8 4 0" stroke-linecap="round"/></svg>'
+};
+function vHome() {
+  const cpu = store.get(GKEY('cpu'), null);
+  const going = cpu && !cpu.over;
+  const why = !NET || !NET.available() ? 'Werkt alleen in de geïnstalleerde app' : !multiOK() ? 'Werk eerst de app bij' : 'Met 2 tot 4 telefoons; lege plekken speelt de computer';
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-a="exit">${IC.back} Spellen</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <div class="hero"><div><h1>Klaver&shy;jassen</h1><p class="muted" style="margin-top:8px">${S.variant === 'rotterdams' ? 'Rotterdams' : 'Amsterdams'} · ${S.rounds} rondes · computer ${LEVELS[S.level].toLowerCase()}</p></div>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-12 50 50)"><rect x="18" y="14" width="44" height="62" rx="5" fill="#fbf8f1" stroke="#d8d0bf" stroke-width="2"/><text x="40" y="58" text-anchor="middle" font-size="32" fill="#1d1f24">♣</text></g>
+        <g transform="rotate(10 50 50)"><rect x="40" y="22" width="44" height="62" rx="5" fill="#fbf8f1" stroke="#d8d0bf" stroke-width="2"/><text x="62" y="66" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="30" fill="#d23a35">B</text></g></svg></div>
+    <div class="choices">
+      <button class="choice" data-a="${going ? 'resume' : 'newcpu'}"><span class="ic">${IC.cpu}</span><span><b>Met de computer</b><span>Jij en je computermaat tegen twee computers</span></span></button>
+      ${going ? `<div class="resume"><button class="btn quiet" data-a="resume">Doorgaan · ronde ${cpu.rounds.length + 1} van ${cpu.nRounds}</button><button class="btn quiet" data-a="newcpu">Nieuw potje</button></div>` : ''}
+      <button class="choice" data-a="host" ${multiOK() ? '' : 'disabled'}><span class="ic">${IC.host}</span><span><b>Tafel maken</b><span>${why}</span></span></button>
+      <button class="choice" data-a="join" ${multiOK() ? '' : 'disabled'}><span class="ic">${IC.join}</span><span><b>Aanschuiven</b><span>Bij iemand die een tafel maakte</span></span></button>
+      <button class="btn quiet" data-a="rules">Spelregels</button>
+    </div></div>`;
+}
+function vHost() {
+  const st = net.status;
+  return `<div class="wrap"><div class="top"><button class="back" data-a="home">${IC.back} Klaverjassen</button></div><h1 style="font-size:34px">Tafel maken</h1>
+    ${net.err ? `<p style="color:var(--warn)">${esc(net.err)}</p>` : ''}
+    <div style="display:flex;gap:12px;align-items:center">${st === 'hosting' ? '<span class="pulse"></span><div><b>Anderen kunnen aanschuiven</b><div class="muted" style="font-size:14px">Laat ze in Klaverjassen op Aanschuiven tikken.</div></div>' : `<div class="muted">${(NET.mode ? NET.mode() : NET.via()) === 'inet' || !nearby() ? (navigator.onLine === false ? 'Zonder internet kunnen anderen niet aanschuiven.' : 'Via internet lukt het nu niet. Tegen de computer kan gewoon.') : 'Zichtbaar maken lukt niet. Check Bluetooth en wifi.'}</div>`}</div>
+    ${netBadge()}
+    <div class="seats">${L.seats.map((s, i) => `<div class="lseat"><span class="pos">${SEAT_NAME[i].split(' ')[0]}</span><div class="grow"><b>${esc(s.type === 'cpu' ? 'Computer' : s.name)}</b><small>${i === 0 ? 'jij' : i === 2 ? 'jouw maat' : 'tegenstander'}${s.type === 'cpu' ? ' · ' + LEVELS[s.level || S.level].toLowerCase() : ''}</small></div>${i > 0 ? `<button class="btn quiet" data-a="swap" data-i="${i}" style="min-height:40px;padding:6px 12px">Wissel</button>` : ''}</div>`).join('')}</div>
+    <p class="muted" style="font-size:14px">Wissel zet iemand op de volgende plek, zodat je zelf kiest wie je maat is.</p>
+    <button class="btn" data-a="startnet">Beginnen</button></div>`;
+}
+function vJoin() {
+  const st = net.status, lb = net.lobby;
+  let body = '';
+  if (st === 'idle' || st === 'lost') body = `<label style="display:flex;flex-direction:column;gap:6px;font-weight:700">Jouw naam<input class="ng-input" data-in="name" value="${esc(myName())}" maxlength="16" placeholder="bijv. Wouter" autocomplete="off"></label><button class="btn" data-a="search">Zoeken</button>`;
+  else if (st === 'searching') body = `<div style="display:flex;gap:12px;align-items:center"><span class="pulse"></span><b>${NET.via() === 'inet' ? 'Verbinden via internet…' : 'Tafels zoeken…'}</b></div>${[...net.found.entries()].map(([id, n]) => `<button class="btn" data-a="connect" data-id="${esc(id)}">Aanschuiven bij ${esc(n)}</button>`).join('')}<button class="btn quiet" data-a="stopsearch">Stoppen</button>`;
+  else if (st === 'connecting') body = `<div style="display:flex;gap:12px;align-items:center"><span class="pulse"></span><b>Verbinden met ${esc(net.hostName)}…</b></div>`;
+  else body = `<div style="display:flex;gap:12px;align-items:center"><span class="pulse"></span><b>Aan tafel bij ${esc(net.hostName)}. Wachten tot die begint…</b></div>
+    ${lb ? `<div class="seats">${lb.seats.map((s, i) => `<div class="lseat"><span class="pos">${SEAT_NAME[i].split(' ')[0]}</span><div class="grow"><b>${esc(s.type === 'cpu' ? 'Computer' : s.name)}${s.tok === TOK ? ' (jij)' : ''}</b></div></div>`).join('')}</div>` : ''}`;
+  return `<div class="wrap"><div class="top"><button class="back" data-a="home">${IC.back} Klaverjassen</button></div><h1 style="font-size:34px">Aanschuiven</h1>${net.err ? `<p style="color:var(--warn)">${esc(net.err)}</p>` : ''}${st === 'idle' || st === 'lost' || st === 'searching' ? netBadge() : ''}${body}</div>`;
+}
+function vGame() {
+  const R = M.R, me = mySeat(), t = K.team(me);
+  const lost = M.mode === 'net' && role === 'join' && ui.lostHost ? `<div class="netlost"><span>Verbinding met ${esc(net.hostName || 'de tafel')} is weg.</span><button data-a="rejoin">Opnieuw</button></div>` : '';
+  return `<div class="wrap" style="gap:10px">
+    <div class="bar"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button>
+      <div class="score"><span><small>Wij</small>${M.total[t]}</span><span><small>Zij</small>${M.total[1 - t]}</span></div>
+      <button class="iconbtn" data-a="menu" aria-label="Menu">${IC.menu}</button></div>
+    ${lost}
+    <div class="info"><span>Ronde ${Math.min(M.rounds.length + 1, M.nRounds)} van ${M.nRounds}</span>${R.trump ? `<span class="trumpchip">Troef <b style="color:${R.trump === 'h' ? 'var(--red)' : R.trump === 'r' ? 'var(--diam)' : R.trump === 'k' ? 'var(--club)' : '#fff'};font-size:18px">${SYM[R.trump]}</b> · ${esc(M.players[R.speler].name)}</span>` : '<span>Troef kiezen</span>'}<span>${tricksWon(t)}–${tricksWon(1 - t)} slagen</span></div>
+    ${tableHTML()}
+    ${statusHTML()}
+    ${handHTML()}
+  </div>`;
+}
+const tricksWon = t => M.R.tricks.filter(x => K.team(x.winner) === t).length;
+
+function segBtns(key, opts) { return `<div class="seg">${opts.map(([v, l]) => `<button data-a="set" data-k="${key}" data-v="${v}" aria-pressed="${String(S[key]) === String(v)}">${l}</button>`).join('')}</div>`; }
+function tog(key, title, desc) { return `<div class="row"><div><b>${title}</b>${desc ? `<div class="d">${desc}</div>` : ''}</div><button class="toggle" data-a="tog" data-k="${key}" aria-pressed="${!!S[key]}" aria-label="${title}"></button></div>`; }
+const close = l => `<button class="btn quiet" style="min-height:40px;padding:8px 14px" data-a="close">${l}</button>`;
+function sheetSettings() {
+  return `<div class="sheet-head"><h2>Instellingen</h2>${close('Klaar')}</div>
+    <div class="group"><span class="t">Variant</span>${segBtns('variant', [['rotterdams', 'Rotterdams'], ['amsterdams', 'Amsterdams']])}<p class="note">Amsterdams: heeft je maat de slag, dan hoef je niet te troeven.</p></div>
+    <div class="group"><span class="t">Potje</span>${segBtns('rounds', [[8, '8 rondes'], [16, '16 rondes']])}</div>
+    <div class="group"><span class="t">Computer</span>${segBtns('level', [['easy', 'Makkelijk'], ['normal', 'Normaal'], ['strong', 'Sterk']])}<p class="note">Geldt vanaf een nieuw potje.</p></div>
+    <div class="group">${tog('oneTap', 'Eén tik speelt', 'Anders: tik om op te tillen, nog eens om te spelen')}${tog('c4', 'Vier kleuren', 'Ruiten oranje en klaveren groen')}${tog('sound', 'Geluid')}${tog('vibrate', 'Trillen')}</div>`;
+}
+function sheetRules() {
+  return `<div class="sheet-head"><h2>Spelregels</h2>${close('Klaar')}</div><div class="list" style="gap:10px;color:var(--muted)">
+    <p>Je speelt met je maat (tegenover je) tegen de andere twee. 32 kaarten, ieder 8. Om de beurt kiest iemand troef of past; past iedereen, dan moet de eerste (voorhand) spelen.</p>
+    <p><b style="color:var(--text)">Bekennen</b> is verplicht. Kun je niet bekennen, dan moet je <b style="color:var(--text)">troeven</b>, en is er al getroefd, dan <b style="color:var(--text)">overtroeven</b>. Ondertroeven mag alleen als je niets anders hebt. Amsterdams: heeft je maat de slag, dan mag je alles bijgooien.</p>
+    <p><b style="color:var(--text)">Troef</b>: boer 20, nel (9) 14, aas 11, tien 10, heer 4, vrouw 3. <b style="color:var(--text)">Anders</b>: aas 11, tien 10, heer 4, vrouw 3, boer 2. Laatste slag +10. Samen 162.</p>
+    <p><b style="color:var(--text)">Roem</b> in een slag: drie op een rij 20, vier op een rij 50, stuk (troefheer en -vrouw) 20, vier gelijke 100, vier boeren 200. Alle slagen = pit: +100.</p>
+    <p>Wie speelt moet méér halen dan de tegenpartij (punten plus roem). Anders is het <b style="color:var(--text)">nat</b> en krijgt de tegenpartij alles.</p></div>`;
+}
+function sheetMenu() {
+  return `<div class="sheet-head"><h2>Menu</h2>${close('Sluiten')}</div><div class="list">
+    <button class="btn quiet" data-a="settings">Instellingen</button><button class="btn quiet" data-a="rules">Spelregels</button><button class="btn quiet" data-a="scores">Stand per ronde</button>
+    ${M.mode === 'cpu' ? `<button class="btn quiet" data-a="newcpu">Nieuw potje</button>` : ''}
+    ${M.mode === 'net' ? `<button class="btn quiet" data-a="leave">Van tafel</button>` : ''}</div>`;
+}
+function scoreTable() {
+  const t = K.team(mySeat());
+  return `<table class="sc"><tr><th>Ronde</th><th>Wij</th><th>Zij</th></tr>${M.rounds.map((r, i) => `<tr><td>${i + 1} ${SYM[r.trump]}${r.nat ? ' nat' : r.pit != null ? ' pit' : ''}</td><td>${r.total[t]}</td><td>${r.total[1 - t]}</td></tr>`).join('')}
+    <tr class="tot"><td>Totaal</td><td>${M.total[t]}</td><td>${M.total[1 - t]}</td></tr></table>`;
+}
+function sheetRound() {
+  const r = M.rounds[M.rounds.length - 1]; if (!r) return '';
+  const t = K.team(mySeat()), st = K.team(r.speler);
+  const head = r.nat ? (st === t ? 'Nat…' : 'Zij gaan nat!') : r.pit != null ? (r.pit === t ? 'Pit! Alle slagen' : 'Zij halen pit') : (st === t ? 'Gehaald!' : 'Zij halen het');
+  const host = M.mode !== 'net' || role === 'host';
+  return `<div class="sheet-head"><h2>${head}</h2></div>
+    <p class="muted">${esc(M.players[r.speler].name)} speelde ${K.SUIT_NAME[r.trump].toLowerCase()}.</p>
+    <table class="sc"><tr><th></th><th>Wij</th><th>Zij</th></tr><tr><td>Punten</td><td>${r.pts[t]}</td><td>${r.pts[1 - t]}</td></tr><tr><td>Roem</td><td>${r.roem[t]}</td><td>${r.roem[1 - t]}</td></tr>
+      <tr class="tot"><td>Deze ronde</td><td>${r.total[t]}</td><td>${r.total[1 - t]}</td></tr></table>
+    ${M.over ? `<div class="big">${M.total[t] > M.total[1 - t] ? 'Jullie winnen het potje!' : M.total[t] === M.total[1 - t] ? 'Gelijkspel' : 'Zij winnen het potje'}</div><div class="big" style="font-size:22px">${M.total[t]} – ${M.total[1 - t]}</div>
+      <div class="list">${M.mode === 'cpu' ? `<button class="btn" data-a="newcpu">Nieuw potje</button>` : host ? `<button class="btn" data-a="startnet2">Nieuw potje</button>` : ''}<button class="btn quiet" data-a="home">Stoppen</button></div>`
+      : `<p class="muted">Stand: wij ${M.total[t]} – zij ${M.total[1 - t]} · nog ${M.nRounds - M.rounds.length} rondes</p><button class="btn" data-a="next">${host ? 'Volgende ronde' : 'Oké'}</button>${host ? '' : '<p class="note">De maker van de tafel deelt de volgende ronde.</p>'}`}`;
+}
+function sheetScores() { return `<div class="sheet-head"><h2>Stand</h2>${close('Sluiten')}</div>${scoreTable()}`; }
+function render() {
+  let html = view === 'host' && L ? vHost() : view === 'join' ? vJoin() : view === 'game' && M ? vGame() : vHome();
+  const holding = ui.hold && Date.now() < ui.hold.until;
+  if (ui.sheet && !(ui.sheet === 'round' && holding)) {
+    const inner = { settings: sheetSettings, rules: sheetRules, menu: sheetMenu, round: sheetRound, scores: sheetScores }[ui.sheet];
+    if (inner && (['settings', 'rules'].includes(ui.sheet) || M)) html += `<div class="scrim" data-a="scrim"><div class="sheet" data-stop>${inner()}</div></div>`;
+  }
+  const f = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.in ? document.activeElement.selectionStart : null;
+  app.innerHTML = html;
+  if (f !== null) { const el = app.querySelector('[data-in]'); if (el) { el.focus(); try { el.setSelectionRange(f, f); } catch (e) {} } }
+  if (ui.hold && Date.now() < ui.hold.until) { clearTimeout(render.t); render.t = setTimeout(() => { render(); schedule(); }, ui.hold.until - Date.now() + 20); }
+}
+
+function startCpu() {
+  const nm = myName() || 'Jij';
+  M = newMatch('cpu', [{ name: nm, type: 'human', tok: TOK }, { name: 'Links', type: 'cpu', level: S.level }, { name: 'Maat', type: 'cpu', level: S.level }, { name: 'Rechts', type: 'cpu', level: S.level }], { variant: S.variant, rounds: S.rounds });
+  view = 'game'; ui.sheet = null; ui.hold = null; ui.lift = null; ui.busy = false;
+  commit();
+}
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-a],[data-card],[data-bid]');
+  if (!el) return;
+  if (el.dataset.card) {
+    const R = M.R, c = el.dataset.card;
+    if (R.phase !== 'play' || R.turn !== mySeat() || ui.sent || (ui.hold && Date.now() < ui.hold.until)) { ui.lift = ui.lift === c ? null : c; render(); return; }
+    if (!K.legal(R.hands[mySeat()], R.trick, R.trump, R.variant).includes(c)) { buzz([10, 30, 10]); flash(R.trick.length && R.hands[mySeat()].some(x => K.suit(x) === K.suit(R.trick[0].c)) ? 'Bekennen!' : 'Troeven!'); return; }
+    if (S.oneTap || ui.lift === c) { ui.lift = null; myMove({ kind: 'card', v: c }); return; }
+    ui.lift = c; render(); return;
+  }
+  if (el.dataset.bid) { myMove({ kind: 'bid', v: el.dataset.bid }); return; }
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target.closest('[data-stop]')) return; if (ui.sheet !== 'round') { ui.sheet = null; render(); } return; }
+  switch (a) {
+    case 'exit': location.href = '../index.html#spellen'; return;
+    case 'home': if (role) leaveNet(); view = 'home'; ui.sheet = null; ui.token++; clearTimeout(cpuTimer); ui.busy = false; break;
+    case 'settings': ui.sheet = 'settings'; break;
+    case 'rules': ui.sheet = 'rules'; break;
+    case 'menu': ui.sheet = 'menu'; break;
+    case 'scores': ui.sheet = 'scores'; break;
+    case 'close': ui.sheet = null; break;
+    case 'set': S[el.dataset.k] = el.dataset.k === 'rounds' ? +el.dataset.v : el.dataset.v; saveS(); break;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); document.body.classList.toggle('c4', !!S.c4); break;
+    case 'newcpu': startCpu(); return;
+    case 'resume': M = store.get(GKEY('cpu'), null); view = 'game'; ui.sheet = M.R.phase === 'done' ? 'round' : null; ui.busy = false; render(); schedule(); return;
+    case 'host': openHost(); break;
+    case 'join': openJoin(); break;
+    case 'search': search(); break;
+    case 'stopsearch': NET.stop(); net.status = 'idle'; break;
+    case 'connect': net.status = 'connecting'; net.hostName = net.found.get(el.dataset.id) || ''; NET.connect(el.dataset.id); break;
+    case 'rejoin': NET && NET.stop(); role = 'join'; M = null; ui.lostHost = false; view = 'join'; net.status = 'idle'; search(); break;
+    case 'swap': {
+      const i = +el.dataset.i, j = i === 3 ? 1 : i + 1;
+      [L.seats[i], L.seats[j]] = [L.seats[j], L.seats[i]]; lobbyChanged(); return;
+    }
+    case 'startnet': startNet(); return;
+    case 'startnet2': L = { seats: M.players.map(p => p.type === 'cpu' ? { name: 'Computer', type: 'cpu', level: p.level } : { name: p.name, type: 'human', tok: p.tok, ep: p.ep }) }; startNet(); return;
+    case 'leave': ui.sheet = null; leaveNet(); view = 'home'; M = null; break;
+    case 'next':
+      if (M.mode === 'net' && role === 'join') { ui.sheet = null; break; }   // de maker van de tafel deelt opnieuw
+      nextRound(); return;
+  }
+  render();
+});
+app.addEventListener('input', e => { if (e.target.dataset.in === 'name') setName(e.target.value); });
+window.__w2back = function () {
+  if (ui.sheet && ui.sheet !== 'round') { ui.sheet = null; render(); return true; }
+  if (view !== 'home') { if (role) leaveNet(); view = 'home'; ui.sheet = null; ui.token++; clearTimeout(cpuTimer); ui.busy = false; render(); return true; }
+  return false;
+};
+// na een complete slag: roem laten zien (ook bij spelen tegen de computer)
+const _apply = apply;
+apply = function (p, mv) {
+  const n = M.R.tricks.length, r = M.rounds.length;
+  const ok = _apply(p, mv);
+  if (ok && (M.R.tricks.length > n || M.rounds.length > r)) { const t = M.R.tricks[M.R.tricks.length - 1]; if (t) afterTrick(t); if (M.rounds.length > r) setTimeout(sWin, 1300); }
+  return ok;
+};
+render();
+})();
+</script>
+</body>
+</html>

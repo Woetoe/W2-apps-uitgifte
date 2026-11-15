@@ -306,14 +306,14 @@ function lijstSheet(l) {
   l = l || { naam: '', soort: 'boodschappen', emoji: '🛒', kleur: KLEUREN[lijsten().length % KLEUREN.length] };
   const sh = sheet(nieuw ? 'Nieuwe lijst' : 'Lijst aanpassen', `
     <label class="f">Naam<input class="in" name="naam" value="${esc(l.naam)}" maxlength="40" placeholder="bv. Albert Heijn, Klusjes, Cadeaus"></label>
-    ${nieuw ? `<div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600">Soort<div class="seg" id="soort">${Object.entries(SOORTEN).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === l.soort ? 'on' : ''}">${v}</button>`).join('')}</div></div>
-      <div class="muted small" id="soortuitleg"></div>` : ''}
+    <div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600">Soort<div class="seg" id="soort">${Object.entries(SOORTEN).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === l.soort ? 'on' : ''}">${v}</button>`).join('')}</div></div>
+      <div class="muted small" id="soortuitleg"></div>
     <div class="emojis" id="emo">${EMOJI.map(e => `<button type="button" class="${e === l.emoji ? 'on' : ''}">${e}</button>`).join('')}</div>
     <div class="colors" id="col">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === l.kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>`,
   [...(nieuw ? [] : [{ label: 'Verwijderen', value: 'del', kind: 'danger' }]), { label: 'Annuleren', value: null, kind: 'q' }, { label: nieuw ? 'Maken' : 'Bewaren', value: 'ok', check: f => f.naam.trim() ? '' : 'Geef de lijst een naam.' }], { focus: nieuw });
   const st = { soort: l.soort, emoji: l.emoji, kleur: l.kleur };
   const uitleg = { boodschappen: 'Op winkelvolgorde gesorteerd, afvinken gaat naar het mandje.', todo: 'Met wie het doet en wanneer het af moet.', lijst: 'Gewoon een lijstje om af te vinken.' };
-  const setU = () => { const u = $('#soortuitleg', sh.el); if (u) u.textContent = uitleg[st.soort]; };
+  const setU = () => { const u = $('#soortuitleg', sh.el); if (u) u.textContent = uitleg[st.soort] + (!nieuw && st.soort !== l.soort ? ' De items gaan mee' + (st.soort === 'boodschappen' ? ' en komen op hun afdeling.' : '.') : ''); };
   setU();
   sh.el.addEventListener('click', e => {
     const s = e.target.closest('#soort [data-v]');
@@ -332,13 +332,32 @@ function lijstSheet(l) {
         const pos = lijsten().reduce((m, x) => Math.max(m, x.pos || 0), 0) + 1;
         S.put('lijsten', id, { naam, soort: st.soort, emoji: st.emoji, kleur: st.kleur, pos, door: me().id, gemaakt: Date.now() });
         location.hash = 'l=' + id;
-      } else S.update('lijsten', l.id, { naam, emoji: st.emoji, kleur: st.kleur });
+      } else {
+        const anders = st.soort !== l.soort;
+        if (anders) zetSoortOm(l, st.soort);
+        S.update('lijsten', l.id, Object.assign({ naam, emoji: st.emoji, kleur: st.kleur }, anders ? { soort: st.soort } : {}));
+        if (anders && view && view.kind === 'lijst' && view.id === l.id) renderLijst(true);
+      }
     } else if (r.value === 'del') {
       const n = itemsVan(l.id).length;
       if (!await confirm(`Lijst “${esc(l.naam)}” verwijderen${n ? ` met ${n} item${n === 1 ? '' : 's'}` : ''}? Hij verdwijnt ook bij de ander.`, 'Verwijderen', true)) return;
       itemsVan(l.id).forEach(i => S.del('items', i.id));
       S.del('lijsten', l.id);
       location.hash = '';
+    }
+  });
+}
+
+// Andere soort voor een bestaande lijst: de items gaan mee. Naar boodschappen: "10 kilo pangas" wordt
+// tekst + aantal en krijgt een afdeling. Van boodschappen af: het aantal gaat weer vooraan in de tekst.
+function zetSoortOm(l, soort) {
+  itemsVan(l.id).forEach(i => {
+    if (soort === 'boodschappen') {
+      const q = parseQty(i.tekst || '');
+      const tekst = cap(q.tekst);
+      S.update('items', i.id, { tekst, aantal: i.aantal || q.aantal, cat: i.cat || guessCat(tekst) });
+    } else if (l.soort === 'boodschappen' && i.aantal) {
+      S.update('items', i.id, { tekst: i.aantal + ' ' + i.tekst, aantal: '' });
     }
   });
 }

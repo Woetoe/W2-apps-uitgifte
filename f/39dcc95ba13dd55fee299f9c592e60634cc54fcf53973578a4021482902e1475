@@ -1,0 +1,48 @@
+/* W2 Apps — RAI: story mode. Jij bent de nieuwe Head of AI Risk bij de (verzonnen) Polder Bank N.V.
+   Per hoofdstuk een aflevering, per eindbaas een tekst, en losse "case files" voor de herhaaldagen. */
+(function (G) {
+  const S = G.RaiStory = {
+    hero: 'Head of AI Risk, Polder Bank N.V.',
+    intro: `Monday, 08:30. Your badge still smells of fresh plastic. Polder Bank N.V. has 40 AI models in production, three chatbots nobody fully understands and a supervisor visit in April. The CEO hands you a coffee: "You're our new Head of AI Risk. Make sure nothing blows up." Your mission: master every corner of AI risk before the exam on the 3rd of April — and survive the monsters hiding in the model inventory.`,
+    episodes: {
+      m1: { t: 'Episode 1 · The Oracle in the Basement', s: `In the basement server room you find "ORACLE", a 1990s expert system that still approves small business loans. Upstairs, the trading desk worships a deep learning model nobody can explain. Before you can fix anything, you need to understand where AI came from — and why it can go so wrong.` },
+      m2c1: { t: 'Episode 2 · The Data Swamp', s: `The data lake turns out to be a swamp: duplicated clients, incomes in three currencies and a column called "misc_final_v2". The modelling team wants to start training tomorrow. You insist on cleaning first.` },
+      m2c2: { t: 'Episode 3 · Segments in the Fog', s: `Marketing has grouped customers into "clusters" by gut feeling. You propose K-means. The head of marketing asks: "So how many segments are there, really?" Time to find out.` },
+      m2c3: { t: 'Episode 4 · The Regression Room', s: `The credit team still runs on regressions and a logistic scorecard. They are solid, explainable — and quietly misspecified. A supervisor's letter mentions "heteroskedasticity". Nobody knows what to reply.` },
+      m2c4: { t: 'Episode 5 · The Forest of Trees', s: `A fintech partner proposes replacing the scorecard with a gradient-boosted forest and a neural network "with 99% accuracy". You've heard that number before. You open the hood.` },
+      m2c5: { t: 'Episode 6 · The Unlabelled Millions', s: `The fraud team has 30 million transactions and just 4,000 confirmed fraud cases. "Can't we use the rest somehow?" asks the head of fraud. Semi-supervised learning enters the chat.` },
+      m2c6: { t: 'Episode 7 · The Learning Trader', s: `The execution desk built a reinforcement learning agent that learns how to slice large orders. In the simulator it is brilliant. In production... it found a loophole. Rewards, policies and exploration are now your problem.` },
+      m2c7: { t: 'Episode 8 · Inside the Training Loop', s: `The neural network team keeps saying "it just needs more epochs". Validation loss says otherwise. You sit with them to dissect estimation, gradients and the bias–variance trade-off.` },
+      m2c8: { t: 'Episode 9 · The Scoreboard', s: `Three teams claim their model is "the best". One reports accuracy, one AUC, one F1 — all on different data. The CRO asks you for one honest comparison and a sensible threshold.` },
+      m2c9: { t: 'Episode 10 · Reading the Complaints', s: `Customer complaints arrive in the thousands, in free text. Conduct risk wants early warnings. You build an NLP pipeline — and discover that "not bad" means something very different from "bad".` },
+      m2c10: { t: 'Episode 11 · The Talking Machine', s: `The board wants "a ChatGPT for the whole bank" by summer. The pilot chatbot already invented a mortgage product. Time to understand transformers, prompts, temperature — and agents that act on their own.` },
+      m3: { t: 'Episode 12 · The Risk Map', s: `A journalist calls: your credit model seems to give lower limits in certain neighbourhoods. Meanwhile, a deepfake of the CEO is circulating. You draw a map of every AI risk the bank faces.` },
+      m4: { t: 'Episode 13 · The Ethics Council', s: `The board sets up an AI Ethics Council and asks you to chair it. First agenda item: should the bank use customers' payment data to predict life events? Utilitarians, duty ethicists and virtue ethicists all have a seat at the table.` },
+      m5: { t: 'Episode 14 · Inspection Day', s: `The supervisor's model risk team arrives in six weeks. They want the model inventory, validation reports, data lineage and your GenAI policy. Some models are not in the inventory at all. The final battle for order has begun.` }
+    },
+    bosses: {
+      b1: { naam: 'The Black Box Oracle', emoji: '🔮', units: ['m1'], taunt: 'I have approved loans since 1994. Nobody knows why. Explain ME, if you can!', win: 'The Oracle flickers and prints its last rule. The basement is quiet again.', lose: 'The Oracle cackles and approves another mystery loan. Study and come back!' },
+      b2: { naam: 'The Data Kraken', emoji: '🐙', units: ['m2c1', 'm2c2', 'm2c3'], taunt: 'Missing values, outliers, the wrong K… my tentacles are in every table!', win: 'The Kraken sinks back into a clean, well-documented data lake.', lose: 'The Kraken drags your features into the swamp. Clean up and try again.' },
+      b3: { naam: 'The Overfit Hydra', emoji: '🐉', units: ['m2c4', 'm2c5', 'm2c6', 'm2c7'], taunt: 'Cut off one head and I grow two more parameters! My training accuracy is 100%!', win: 'Regularised, pruned and cross-validated: the Hydra finally generalises — to the exit.', lose: 'The Hydra memorises your every move. Review and strike again.' },
+      b4: { naam: 'The Hallucinating Hive-Mind', emoji: '🤖', units: ['m2c8', 'm2c9', 'm2c10'], taunt: 'I am 99.9% confident that your bank owns the moon. Temperature: 2.0!', win: 'Grounded, evaluated and properly thresholded, the Hive-Mind stops making things up.', lose: 'The Hive-Mind invents a new regulation and you believe it. Back to study!' },
+      b5: { naam: 'The Bias Basilisk', emoji: '🐍', units: ['m3'], taunt: 'One look from me and your model discriminates. Can you even measure fairness?', win: 'With fairness metrics in hand and explanations ready, you stare the Basilisk down.', lose: 'The Basilisk\'s gaze hits a proxy variable. Recover and return.' },
+      b6: { naam: 'The Ethics Sphinx', emoji: '🦁', units: ['m4'], taunt: 'Answer my riddles on duty, consequences and virtue — or be devoured by regulation!', win: 'The Sphinx bows: your reasoning is principled and your privacy controls are sound.', lose: 'The Sphinx is not convinced. Sharpen your arguments.' },
+      b7: { naam: 'The Shadow Model', emoji: '👻', units: ['m5'], taunt: 'I am not in your inventory. I have never been validated. I run the bonus calculation.', win: 'Registered, tiered, validated and monitored, the Shadow Model steps into the light.', lose: 'The Shadow Model slips back into a spreadsheet. Hunt it down again.' }
+    },
+    cases: [
+      { t: 'Case file · The midnight chatbot', s: 'At 23:40 the customer chatbot promised a client a 0% mortgage. Screenshots are on social media. What went wrong, and what controls were missing?' },
+      { t: 'Case file · The disappearing segment', s: 'After a data migration, one customer segment vanished from the training data. The new model looks better than ever. Too good?' },
+      { t: 'Case file · The vendor update', s: 'The AML vendor silently pushed a new model version on Friday. On Monday, alerts dropped by 40%. Who is accountable?' },
+      { t: 'Case file · The perfect backtest', s: 'A quant shows a trading model with a Sharpe ratio of 4. It was tuned on 200 parameter combinations — on the test set.' },
+      { t: 'Case file · Postcode lottery', s: 'Two applicants with identical incomes and histories got different limits. The only difference: their postcode.' },
+      { t: 'Case file · The voice of the CFO', s: 'Treasury received a call from "the CFO" requesting an urgent transfer. The voice was perfect. The CFO was on a plane.' },
+      { t: 'Case file · Drift in the fog', s: 'Since the rate hikes, the PD model\'s predictions are steady, but actual defaults have doubled.' },
+      { t: 'Case file · Shadow spreadsheets', s: 'An internal auditor finds an Excel file with a neural network add-in that sets branch bonuses. It is in no inventory.' },
+      { t: 'Case file · The confident summary', s: 'An LLM summary of a new regulation cites Article 87. The regulation has 85 articles.' },
+      { t: 'Case file · Fraud whack-a-mole', s: 'Fraudsters adapt within weeks of each model release. The fraud team wants the model to learn by itself, every day.' },
+      { t: 'Case file · The ethics vote', s: 'Marketing wants to predict pregnancies from card spending to offer baby insurance. The Ethics Council must decide.' },
+      { t: 'Case file · Inspection rehearsal', s: 'Mock inspection: the supervisor asks for the validation report, data lineage and fairness tests of your most material model. You have one hour.' }
+    ]
+  };
+  if (typeof module !== 'undefined') module.exports = S;
+})(typeof window !== 'undefined' ? window : globalThis);

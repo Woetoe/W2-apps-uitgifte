@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RAI Quest</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#9d8cff;--acc-ink:#120b33;--c-act:#3987e5;--c-plan:#d95926;--good:#5ee07a;--warn:#ffc83d;--bad:#ff6b5b}
+.hero{display:flex;gap:14px;align-items:center}
+.lvl{width:64px;height:64px;border-radius:20px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;flex:none;text-align:center;line-height:1}
+.lvl b{font:800 26px/1 var(--f-display);display:block}.lvl small{font-size:11px;font-weight:800;text-transform:uppercase}
+.hero .t{flex:1;min-width:0}.hero .t b{display:block;font:800 18px/1.2 var(--f-display)}
+.xpbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:8px}.xpbar i{display:block;height:100%;background:var(--acc);border-radius:4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--panel2);border-radius:14px;padding:8px 10px;text-align:center}
+.stat b{display:block;font:800 20px/1.1 var(--f-display)}.stat span{font-size:12px;color:var(--muted);font-weight:700}
+.tone{display:flex;align-items:center;gap:10px}
+.tone .dot{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:none}
+.tone.ok .dot,.tone.ahead .dot{background:color-mix(in srgb,var(--good) 22%,transparent)}
+.tone.warn .dot{background:color-mix(in srgb,var(--warn) 22%,transparent)}
+.tone.bad .dot{background:color-mix(in srgb,var(--bad) 22%,transparent)}
+.tone b{font:800 17px/1.2 var(--f-display)}
+.meter{position:relative;height:12px;border-radius:6px;background:var(--line);margin:10px 0 4px}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--c-act)}
+.meter u{position:absolute;top:-4px;bottom:-4px;width:3px;border-radius:2px;background:var(--c-plan)}
+.meter s{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--text);opacity:.55}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted)}
+.leg span::before{content:"";display:inline-block;width:14px;height:3px;border-radius:2px;background:var(--c);margin-right:6px;vertical-align:3px}
+.leg span.d::before{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.chal{position:relative;overflow:hidden}
+.chal .big{font-size:40px;line-height:1;float:right;margin-left:10px}
+.chal h3{margin:2px 0 4px;font:800 20px/1.2 var(--f-display)}
+.story{font-size:15px;color:var(--text);opacity:.9;margin:8px 0 12px;border-left:3px solid var(--acc);padding-left:10px}
+.kicker{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--acc)}
+.unit{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.unit>.hd{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.unit>.hd .grow{flex:1;min-width:0}.unit>.hd b{display:block;font:800 16px/1.25 var(--f-display)}
+.unit>.hd span{color:var(--muted);font-size:13px}
+.unit .body{display:none;padding:0 12px 10px}.unit.open .body{display:block}
+.mini{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}.mini i{display:block;height:100%;background:var(--c-act)}
+.lo{display:flex;gap:10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line);cursor:pointer}
+.lo .ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--panel2);flex:none;font-size:15px}
+.lo .grow{flex:1;min-width:0}.lo .grow b{display:block;font-weight:700;font-size:15px}.lo .grow span{display:block;color:var(--muted);font-size:12px}
+.boss-row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;border:1.5px dashed var(--line);cursor:pointer}
+.boss-row .em{font-size:30px}.boss-row.won{border-style:solid;border-color:color-mix(in srgb,var(--good) 50%,var(--line))}
+.boss-row.ready{border-style:solid;border-color:var(--acc)}
+.lesson{font-size:16px;line-height:1.55}.lesson p{margin:0 0 12px}.lesson ul{margin:0 0 12px;padding-left:20px}.lesson li{margin:3px 0}
+.keys{background:var(--panel2);border-radius:14px;padding:10px 14px;margin-top:6px}
+.keys h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;color:var(--acc);letter-spacing:.04em}
+.keys ul{margin:0;padding-left:18px}.keys li{margin:2px 0;font-size:15px}
+.prog{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog .bar{flex:1}
+.qtext{font:700 18px/1.4 var(--f-body);margin:4px 0 14px}
+.opt{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--panel);color:var(--text);border-radius:14px;padding:13px 14px;margin:0 0 10px;font-size:16px;cursor:pointer;line-height:1.35}
+.opt:active{background:var(--panel2)}
+.opt.sel{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--panel))}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--panel))}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--panel))}
+.opt .k{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--panel2);font-weight:800;font-size:13px;margin-right:10px}
+.fb{border-radius:14px;padding:12px 14px;margin:4px 0 12px;font-size:15px}
+.fb.ok{background:color-mix(in srgb,var(--good) 14%,var(--panel))}.fb.no{background:color-mix(in srgb,var(--bad) 13%,var(--panel))}
+.fb b{display:block;margin-bottom:4px}
+.pop{position:fixed;left:50%;top:38%;transform:translate(-50%,0);font:800 30px var(--f-display);color:var(--acc);pointer-events:none;animation:pop 1s ease-out forwards;z-index:20}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-50px) scale(1)}}
+.arena{text-align:center;padding:6px 0 10px}
+.arena .em{font-size:64px;line-height:1;display:inline-block}
+.arena .em.hit{animation:hit .45s}
+@keyframes hit{0%,100%{transform:none}25%{transform:translateX(-8px) rotate(-6deg)}50%{transform:translateX(8px) rotate(6deg)}75%{transform:translateX(-4px)}}
+.hp{height:12px;border-radius:6px;background:var(--line);overflow:hidden;margin:8px 0}.hp i{display:block;height:100%;background:var(--bad);transition:width .4s}
+.hearts{font-size:22px;letter-spacing:4px}
+.clock{font:800 15px var(--f-display);color:var(--muted)}.clock.low{color:var(--bad)}
+.res{text-align:center}.res .big{font:800 54px/1 var(--f-display);color:var(--acc)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.badge{background:var(--panel2);border-radius:14px;padding:10px 6px;text-align:center;font-size:12px;color:var(--muted)}
+.badge b{display:block;font-size:13px;color:var(--text);margin-top:4px}.badge .e{font-size:28px;line-height:1}
+.badge.no{opacity:.38;filter:grayscale(1)}
+.chart{position:relative;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;top:0;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:12px;white-space:nowrap;display:none;z-index:2}
+.tip strong{font-size:14px}.tip .k{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
+.hbar{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;font-size:14px;margin:8px 0}
+.hbar .tr{height:12px;border-radius:6px;background:var(--line);overflow:hidden}.hbar .tr i{display:block;height:100%;background:var(--c-act);border-radius:0 4px 4px 0}
+.hbar .v{text-align:right;font-weight:800}
+.hbar span small{display:block;color:var(--muted);font-size:11px}
+.heat{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;grid-template-rows:repeat(7,1fr);gap:3px}
+.heat i{width:100%;aspect-ratio:1;border-radius:3px;background:var(--panel2);display:block}
+.mile{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.mile:first-child{border-top:0}
+.mile .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);flex:none;display:grid;place-items:center;cursor:pointer;background:transparent;color:var(--acc-ink)}
+.mile.on .box{background:var(--acc);border-color:var(--acc)}
+.mile .grow b{display:block}.mile .grow span{display:block;color:var(--muted);font-size:13px}
+.mile.on .grow b{text-decoration:line-through;opacity:.6}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer;color:var(--text)}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+table.tv{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}table.tv td,table.tv th{padding:5px 4px;border-top:1px solid var(--line);text-align:right}table.tv th:first-child,table.tv td:first-child{text-align:left}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:8px}
+.session .seghide{display:none}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#persoonlijk" aria-label="Back"></a><h1 id="ttl">RAI Quest</h1><button class="ib" id="menu" type="button" aria-label="Settings"></button></div>
+<main class="page">
+  <div class="seg" id="seg"><button type="button" data-v="today">Today</button><button type="button" data-v="path">Path</button><button type="button" data-v="progress">Progress</button><button type="button" data-v="practice">Practice</button></div>
+  <div id="app"></div>
+</main>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="stof1.js"></script>
+<script src="stof2.js"></script>
+<script src="stof3.js"></script>
+<script src="stof4.js"></script>
+<script src="story.js"></script>
+<script src="engine.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, E = RaiEngine, ST = RaiStory, app = $('#app');
+const idx = E.index(RaiStof);
+$('#back').innerHTML = icon('back');
+$('#menu').innerHTML = icon('gear');
+D.recent('rai');
+
+const T = () => E.today();
+let set = D.get('rai-set', null);
+if (!set) { set = E.defaults(); D.set('rai-set', set); }
+set = Object.assign(E.defaults(), set);
+let st = Object.assign(E.newState(), D.get('rai', null) || {});
+st.hist = st.hist || {};
+let plan = E.makePlan(idx, ST, set, st);
+let run = st.run || null;           // lopende sessie (blijft bewaard als je de app sluit)
+if (run) run.live = false;          // na opnieuw openen: eerst de kaart "Resume" op Today
+let view = !run && ['#path', '#progress', '#practice'].includes(location.hash) ? location.hash.slice(1) : 'today';
+const openUnits = {};
+
+const pct = x => Math.round((x || 0) * 100) + '%';
+const nice = (d, o) => { const x = E.parse(d); return x ? x.toLocaleDateString('en-GB', o || { weekday: 'short', day: 'numeric', month: 'short' }) : ''; };
+const rel = n => n == null ? '' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : n === -1 ? 'yesterday' : n > 1 ? (n < 60 ? `in ${n} days` : `in ${Math.round(n / 7)} weeks`) : `${-n} days ago`;
+function save() {
+  st.run = run;
+  st.hist[T()] = Math.round(E.readiness(st, idx) * 1000) / 1000;
+  D.set('rai', st);
+  dash();
+}
+function replan() { plan = E.makePlan(idx, ST, set, st); }
+
+// ---------------------------------------------------------------- tekst
+function md(s) {
+  const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  return s.split(/\n\s*\n/).map(block => {
+    const lines = block.split('\n');
+    if (lines.every(l => l.startsWith('• '))) return '<ul>' + lines.map(l => `<li>${fmt(l.slice(2))}</li>`).join('') + '</ul>';
+    const head = [], items = [];
+    lines.forEach(l => (l.startsWith('• ') ? items : (items.length ? items : head)).push(l));
+    return (head.length ? `<p>${head.map(fmt).join('<br>')}</p>` : '') + (items.length ? '<ul>' + items.map(l => `<li>${fmt(l.replace(/^• /, ''))}</li>`).join('') + '</ul>' : '');
+  }).join('');
+}
+const unitOf = id => E.UNIT[idx.lo[id].unit];
+const bossOf = id => ST.bosses[id];
+const TYPES = {
+  learn: { em: '📘', t: 'Lesson day' }, review: { em: '🗂️', t: 'Case file review' }, boss: { em: '⚔️', t: 'Boss battle' },
+  mock: { em: '📝', t: 'Mock exam' }, drill: { em: '🎯', t: 'Weak-spot drill' }, light: { em: '🧘', t: 'Light review' },
+  exam: { em: '🎓', t: 'Exam day' }, done: { em: '🏁', t: 'After the exam' }
+};
+
+// ---------------------------------------------------------------- weergave
+function setView(v) {
+  view = v;
+  $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  history.replaceState(null, '', '#' + v);
+  render();
+}
+$('#seg').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { if (run && run.live) return; setView(b.dataset.v); } };
+function render() {
+  document.body.classList.toggle('session', !!(run && run.live));
+  $('#seg').style.display = run && run.live ? 'none' : '';
+  $('#ttl').textContent = run && run.live ? run.title : 'RAI Quest';
+  if (run && run.live) return renderRun();
+  ({ today: renderToday, path: renderPath, progress: renderProgress, practice: renderPractice })[view]();
+  scrollTo(0, 0);
+}
+
+function statusCard(s) {
+  const ic = { ahead: '🚀', ok: '✅', warn: '⚠️', bad: '⏰' }[s.tone];
+  const lead = s.delta === 0 ? 'Exactly on plan' : s.delta > 0 ? `${s.delta} lesson${s.delta === 1 ? '' : 's'} ahead` : `${-s.delta} lesson${s.delta === -1 ? '' : 's'} behind (≈ ${Math.max(1, -s.daysDelta)} study day${s.daysDelta === -1 ? '' : 's'})`;
+  return `<div class="card"><div class="tone ${s.tone}"><span class="dot">${ic}</span><div class="grow"><b>${esc(s.label)}</b><div class="muted small">${lead} · ${s.done}/${s.total} objectives studied, ${s.planned} planned so far</div></div></div>
+    <div class="meter" aria-label="Readiness ${pct(s.ready)}, expected ${pct(s.exp)}, target ${pct(set.target)}"><i style="width:${Math.min(100, s.ready * 100)}%"></i><u style="left:calc(${Math.min(100, s.exp * 100)}% - 1px)"></u><s style="left:${set.target * 100}%"></s></div>
+    <div class="leg"><span style="--c:var(--c-act)">Readiness <b style="color:var(--text)">${pct(s.ready)}</b></span><span style="--c:var(--c-plan)">Expected today ${pct(s.exp)}</span><span style="--c:var(--text)">Target ${pct(set.target)}</span></div></div>`;
+}
+
+// ---------------------------------------------------------------- TODAY
+function renderToday() {
+  const d = T(), s = E.status(st, plan, idx, set, d), lv = E.level(st.xp), sk = E.streak(st, d);
+  const ses = E.session(st, plan, idx, ST, set, d, seedOf(d));
+  const L = st.log[d] || {};
+  const info = TYPES[ses.type] || TYPES.review;
+  const back = E.backlog(st, plan, idx, d);
+  let body = '';
+  if (d < set.start) body = `<p class="muted">Your path starts on ${esc(nice(set.start, { weekday: 'long', day: 'numeric', month: 'long' }))}. You can already study ahead below.</p>`;
+  else if (ses.type === 'exam') body = `<p>Today is the day. Sleep well, eat breakfast, bring your ID, trust your preparation. Readiness: <b>${pct(s.ready)}</b>. Good luck, ${esc(ST.hero.split(',')[0])}! 🍀</p>`;
+  else if (ses.type === 'done') body = `<p>The exam date has passed. Change it in settings (⚙️) if you are taking the next sitting (October 2027).</p>`;
+  else {
+    let sub = '';
+    if (ses.type === 'learn') sub = ses.los.map(id => `<div class="small">• ${esc(idx.lo[id].t)}</div>`).join('') + `<div class="small muted" style="margin-top:6px">${ses.qids.length} questions · ≈ ${Math.max(10, ses.los.length * 8 + ses.qids.length * 1.5 | 0)} min</div>`;
+    else if (ses.type === 'boss') { const b = bossOf(ses.boss); sub = `<div style="font-size:15px"><b>${b.emoji} ${esc(b.naam)}</b> — “${esc(b.taunt)}”</div><div class="small muted" style="margin-top:6px">12 questions · 3 hearts · 3 min per question (exam pace)</div>`; }
+    else if (ses.type === 'mock') sub = `<div class="small">80 questions weighted like the real exam · 4 hours · you can pause and continue later.</div>`;
+    else sub = (ses.blocked ? `<div class="small" style="margin-bottom:6px">⚔️ Today's boss unlocks after ${ses.blocked} more lesson${ses.blocked === 1 ? '' : 's'} — review instead.</div>` : '') + `<div class="small muted">${ses.qids.length} questions from what you've studied, weakest and due first.</div>`;
+    const ep = ses.type === 'learn' ? episodeFor(ses.los) : null;
+    const story = ep ? ST.episodes[ep] : ses.case;
+    body = `${story ? `<div class="kicker">${esc(story.t)}</div><div class="story">${esc(story.s)}</div>` : ''}${sub}
+      <div class="btns" style="margin-top:12px">${L.done ? `<button class="btn q wide" data-act="start" type="button">${icon('refresh')}Do it again (no streak XP)</button>` : `<button class="btn wide" data-act="start" type="button" ${ses.qids.length || ses.los.length ? '' : 'disabled'}>${icon('play')}Start today's challenge</button>`}</div>`;
+  }
+  app.innerHTML = `
+    ${run ? `<div class="card acc"><b>Session in progress</b><div class="muted small">${esc(run.title)} · ${Math.min(run.qi, run.qids.length)}/${run.qids.length} answered</div><div class="btns" style="margin-top:10px"><button class="btn" data-act="resume" type="button">${icon('play')}Resume</button><button class="btn q" data-act="drop" type="button">Stop</button></div></div>` : ''}
+    <div class="card"><div class="hero"><div class="lvl"><div><small>Lvl</small><b>${lv.lvl}</b></div></div><div class="t"><b>${esc(lv.titel)}</b><span class="muted small">${st.xp} XP · ${lv.to - st.xp} to level ${lv.lvl + 1}${lv.next ? ` · next title at ${lv.next.lvl}: ${esc(lv.next.titel)}` : ''}</span><div class="xpbar"><i style="width:${lv.pct * 100}%"></i></div></div></div>
+      <div class="stats"><div class="stat"><b>${sk.n}${sk.today ? '🔥' : ''}</b><span>day streak${sk.shields ? ' · ' + '🛡️'.repeat(sk.shields) : ''}</span></div><div class="stat"><b>${Math.max(0, s.daysLeft)}</b><span>days to exam</span></div><div class="stat"><b>${s.due}</b><span>reviews due</span></div></div></div>
+    ${statusCard(s)}
+    <div class="card chal${L.done ? '' : ' acc'}"><span class="big">${L.done ? '✅' : info.em}</span><div class="kicker">${esc(nice(d, { weekday: 'long', day: 'numeric', month: 'long' }))}${L.done ? ' · completed' : ''}</div><h3>${esc(info.t)}</h3>${body}</div>
+    ${back.length ? `<div class="card"><b>Catch up</b><div class="muted small">${back.length} planned lesson${back.length === 1 ? '' : 's'} not studied yet, oldest: ${esc(idx.lo[back[0]].t)}.</div><div class="btns" style="margin-top:10px"><button class="btn" data-act="catch" type="button">${icon('play')}Catch up 2 lessons</button></div></div>` : ''}
+    ${!back.length && (L.done || !(ses.qids.length || ses.los.length)) && E.nextLos(st, idx, 1).length ? `<div class="card"><b>Feeling strong?</b><div class="muted small">Study ahead: ${esc(idx.lo[E.nextLos(st, idx, 1)[0]].t)}</div><div class="btns" style="margin-top:10px"><button class="btn q" data-act="ahead" type="button">${icon('plus')}Next lesson</button></div></div>` : ''}
+    ${mileCard(d)}
+    ${!Object.keys(st.lo).length ? `<div class="card"><div class="kicker">Your story</div><div class="story">${esc(ST.intro)}</div></div>` : ''}`;
+}
+const seedOf = d => +d.replace(/-/g, '') + Object.keys(st.lo).length;
+function episodeFor(los) {
+  const u = idx.lo[los[0]].unit;
+  return idx.unitLos[u][0] === los[0] || !Object.keys(st.lo).some(id => idx.lo[id].unit === u) ? u : null;
+}
+function mileCard(d) {
+  const open = E.MIJLPALEN.filter(m => !st.mijl[m.id] && D.date.days(m.d) <= 45);
+  if (!open.length) return '';
+  return `<div class="card"><b>Milestones</b>${open.map(m => mileRow(m)).join('')}</div>`;
+}
+const mileRow = m => `<div class="mile${st.mijl[m.id] ? ' on' : ''}"><button class="box" data-mile="${m.id}" type="button" aria-label="Done">${st.mijl[m.id] ? icon('check') : ''}</button><div class="grow"><b>${esc(m.t)}</b><span>${esc(m.sub)}</span><span>${st.mijl[m.id] ? 'Done ' + esc(nice(st.mijl[m.id])) : 'Before ' + esc(nice(m.d, { day: 'numeric', month: 'long', year: 'numeric' })) + ' · ' + esc(rel(D.date.days(m.d)))}</span></div></div>`;
+
+// ---------------------------------------------------------------- PATH
+function renderPath() {
+  const d = T(), um = E.unitMastery(st, idx);
+  const bossAfter = {}; E.BOSSES.forEach(b => { const us = bossOf(b).units; bossAfter[us[us.length - 1]] = b; });
+  let cur = E.nextLos(st, idx, 1)[0];
+  const curUnit = cur ? idx.lo[cur].unit : null;
+  if (curUnit && openUnits[curUnit] == null) openUnits[curUnit] = true;
+  app.innerHTML = `
+    <div class="card"><b>Milestones</b>${E.MIJLPALEN.map(mileRow).join('')}</div>
+    ${Object.keys(E.MODS).map(m => {
+      const units = E.UNITS.filter(u => u.mod === m);
+      return `<h2>${esc(m)} · ${esc(E.MODS[m].naam)} <small>${E.MODS[m].band} of exam</small></h2>` + units.map(u => {
+        const ids = idx.unitLos[u.id] || [], done = ids.filter(id => st.lo[id]).length;
+        const first = plan.loDate[ids[0]], last = plan.loDate[ids[ids.length - 1]];
+        const b = bossAfter[u.id];
+        return `<div class="unit${openUnits[u.id] ? ' open' : ''}"><div class="hd" data-unit="${u.id}"><div class="grow"><b>${esc(u.naam)}</b><span>${done}/${ids.length} studied · mastery ${pct(um[u.id])} · ${esc(nice(first, { day: 'numeric', month: 'short' }))}${last !== first ? ' – ' + esc(nice(last, { day: 'numeric', month: 'short' })) : ''}</span><div class="mini"><i style="width:${um[u.id] * 100}%"></i></div></div></div>
+          <div class="body">${ids.map(id => loRow(id, d)).join('')}</div></div>${b ? bossRow(b) : ''}`;
+      }).join('');
+    }).join('')}
+    <div class="card" style="text-align:center"><div style="font-size:40px">🎓</div><b>RAI Exam</b><div class="muted small">${esc(nice(set.exam, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))} · ${esc(rel(D.date.days(set.exam)))}</div></div>`;
+}
+function loRow(id, d) {
+  const l = idx.lo[id], s = st.lo[id], m = E.loMastery(st, idx, id), pd = plan.loDate[id];
+  const ic = s ? (m >= 0.8 ? '⭐' : '✓') : pd < d ? '⚠️' : pd === d ? '👉' : '·';
+  const sub = s ? `Studied ${nice(s.d, { day: 'numeric', month: 'short' })} · mastery ${pct(m)}` : (pd < d ? 'Overdue · planned ' : pd === d ? 'Today' : 'Planned ') + (pd === d ? '' : nice(pd));
+  return `<div class="lo" data-lo="${id}"><span class="ic">${ic}</span><div class="grow"><b>${esc(l.t)}</b><span>${esc(sub)}</span></div></div>`;
+}
+function bossRow(b) {
+  const B = bossOf(b), r = st.boss[b] || {}, miss = E.bossReady(st, idx, ST, b).length;
+  const cls = r.won ? 'won' : !miss ? 'ready' : '';
+  const sub = r.won ? `Defeated ${nice(r.won, { day: 'numeric', month: 'short' })} · best ${r.best}/12` : miss ? `🔒 Unlocks after ${miss} more lesson${miss === 1 ? '' : 's'} · planned ${nice(plan.bossDate[b] || set.exam)}` : `Ready to fight!${r.tries ? ' · ' + r.tries + ' tr' + (r.tries === 1 ? 'y' : 'ies') : ''}`;
+  return `<div class="boss-row ${cls}" data-boss="${b}"><span class="em">${r.won ? '👑' : B.emoji}</span><div class="grow"><b>${esc(B.naam)}</b><div class="muted small">${esc(sub)}</div></div></div>`;
+}
+function loSheet(id) {
+  const l = idx.lo[id], u = unitOf(id);
+  const n = idx.byLo[id].length;
+  sheet(l.t, `<div class="kicker">${esc(u.mod)} · ${esc(u.naam)}</div><div class="lesson" style="margin-top:8px">${md(l.learn)}</div><div class="keys"><h4>Remember</h4><ul>${l.keys.map(k => `<li>${esc(k)}</li>`).join('')}</ul></div>`,
+    [{ label: 'Close', value: null, kind: 'q' }, { label: `Practice (${n})`, value: 'go' }]).done.then(r => {
+    if (r.value !== 'go') return;
+    const fresh = !st.lo[id];
+    startRun({ kind: fresh ? 'ahead' : 'practice', title: fresh ? 'Lesson' : 'Practice', los: fresh ? [id] : [], qids: E.shuffle(idx.byLo[id], E.rng(Date.now())) });
+  });
+}
+
+// ---------------------------------------------------------------- PROGRESS
+function renderProgress() {
+  const d = T(), s = E.status(st, plan, idx, set, d), mm = E.modMastery(st, idx), lv = E.level(st.xp);
+  const h = s.hours, bad = E.badges(st, idx, d);
+  const weak = E.studied(st, idx).map(id => [id, E.loMastery(st, idx, id)]).sort((a, b) => a[1] - b[1]).slice(0, 5);
+  const totAns = Object.values(st.log).reduce((t, l) => t + l.n, 0), totOk = Object.values(st.log).reduce((t, l) => t + l.ok, 0);
+  app.innerHTML = `
+    ${statusCard(s)}
+    <h2>Lessons: plan vs actual</h2>
+    <div class="card"><div class="leg"><span style="--c:var(--c-act)">Studied</span><span class="d" style="--c:var(--c-plan)">Planned</span></div><div class="chart" id="ch1"></div>
+      <details><summary>Show as table</summary><div id="tb1"></div></details></div>
+    <h2>Readiness over time</h2>
+    <div class="card"><div class="leg"><span style="--c:var(--c-act)">Your readiness</span><span class="d" style="--c:var(--c-plan)">Expected on plan</span></div><div class="chart" id="ch2"></div>
+      <p class="muted small" style="margin:8px 0 0">Readiness = mastery of every learning objective (from your answers and review boxes), weighted by exam weight. Unstudied objectives count as zero. Target ${pct(set.target)} is a study goal, not GARP's official pass mark (which is not published).</p></div>
+    <h2>Mastery per module</h2>
+    <div class="card">${Object.keys(E.MODS).map(m => `<div class="hbar"><span>${esc(m)} ${esc(E.MODS[m].kort)}<small>${E.MODS[m].band} of exam</small></span><div class="tr"><i style="width:${mm[m] * 100}%"></i></div><span class="v">${pct(mm[m])}</span></div>`).join('')}</div>
+    ${weak.length ? `<h2>Weakest objectives</h2><div class="list">${weak.map(([id, m]) => `<button class="row" data-lo="${id}" type="button"><span class="ico">🎯</span><span class="grow"><b>${esc(idx.lo[id].t)}</b><span class="sub">${esc(unitOf(id).naam)} · mastery ${pct(m)}</span></span></button>`).join('')}</div>
+      <div class="btns"><button class="btn wide" data-act="drill" type="button">${icon('play')}Drill weak spots</button></div>` : ''}
+    <h2>Study time</h2>
+    <div class="card"><div class="hbar" style="grid-template-columns:96px 1fr 64px"><span>Total<small>target ${set.targetHours} h</small></span><div class="tr" style="position:relative"><i style="width:${Math.min(100, h.total / set.targetHours * 100)}%"></i></div><span class="v">${h.total.toFixed(1)} h</span></div>
+      <div class="muted small">In the app ${h.app.toFixed(1)} h · logged reading ${h.extra.toFixed(1)} h · on plan by today ≈ ${s.hTarget.toFixed(0)} h. GARP expects 100–130 hours in total, so also log time spent reading the curriculum.</div>
+      <div class="btns" style="margin-top:10px"><button class="btn q" data-act="logtime" type="button">${icon('timer')}Log study time</button></div></div>
+    <h2>Activity <small>last 12 weeks</small></h2>
+    <div class="card"><div class="heat" id="heat"></div><div class="muted small" style="margin-top:8px">${totAns} answers · ${totAns ? pct(totOk / totAns) : '–'} correct · ${Object.values(st.log).filter(l => l.done).length} daily challenges completed · best streak ${E.streak(st, d).best}</div></div>
+    ${st.mocks.length ? `<h2>Mock exams</h2><div class="card"><table class="tv"><tr><th>Date</th><th>Questions</th><th>Score</th><th>Time</th></tr>${st.mocks.slice().reverse().map(m => `<tr><td>${esc(nice(m.d))}</td><td>${m.n}</td><td><b>${pct(m.ok / m.n)}</b></td><td>${Math.round(m.sec / 60)} min</td></tr>`).join('')}</table></div>` : ''}
+    <h2>Badges <small>${bad.filter(b => b.got).length}/${bad.length} · level ${lv.lvl}</small></h2>
+    <div class="badges">${bad.map(b => `<div class="badge${b.got ? '' : ' no'}"><div class="e">${b.emoji}</div><b>${esc(b.t)}</b>${esc(b.sub)}</div>`).join('')}</div>`;
+  chartLessons($('#ch1'), $('#tb1'));
+  chartReady($('#ch2'));
+  heat($('#heat'));
+}
+
+/** Lijngrafiek met haarlijn en tooltip. series: [{name, color, dash, vals:[number|null]}], xs: datums. */
+function lineChart(host, xs, series, o) {
+  const W = 340, H = 180, P = { l: 30, r: 10, t: 10, b: 22 };
+  const n = xs.length, ymax = o.ymax;
+  const X = i => P.l + (W - P.l - P.r) * (n <= 1 ? 0 : i / (n - 1)), Y = v => H - P.b - (H - P.t - P.b) * (v / ymax);
+  const ticks = o.ticks;
+  const ti = xs.indexOf(T());
+  const months = []; xs.forEach((d, i) => { if (d.endsWith('-01') || i === 0) months.push(i); });
+  const path = s => { let p = '', pen = false; s.vals.forEach((v, i) => { if (v == null) { pen = false; return; } p += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; }); return p; };
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">
+    ${ticks.map(t => `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${P.l - 5}" y="${Y(t) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(o.fmt(t))}</text>`).join('')}
+    ${months.map(i => `<text x="${X(i)}" y="${H - 6}" font-size="10" fill="var(--muted)" text-anchor="${i === 0 ? 'start' : 'middle'}">${esc(nice(xs[i], { month: 'short' }))}</text>`).join('')}
+    ${o.refs ? o.refs.map(r => `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(r.v)}" y2="${Y(r.v)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/><text x="${W - P.r}" y="${Y(r.v) - 4}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(r.t)}</text>`).join('') : ''}
+    ${ti >= 0 ? `<line x1="${X(ti)}" x2="${X(ti)}" y1="${P.t}" y2="${H - P.b}" stroke="var(--text)" stroke-opacity=".35" stroke-width="1"/><text x="${X(ti)}" y="${P.t + 8}" font-size="10" fill="var(--muted)" text-anchor="${ti > n * 0.8 ? 'end' : 'start'}" dx="${ti > n * 0.8 ? -4 : 4}">today</text>` : ''}
+    ${series.map(s => `<path d="${path(s)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`).join('')}
+    <line class="xh" y1="${P.t}" y2="${H - P.b}" stroke="var(--text)" stroke-width="1" style="display:none"/>
+    ${series.map((s, k) => `<circle class="pt${k}" r="4" fill="${s.color}" stroke="var(--panel)" stroke-width="2" style="display:none"/>`).join('')}
+  </svg><div class="tip"></div>`;
+  const svg = $('svg', host), tip = $('.tip', host), xh = $('.xh', svg);
+  const move = e => {
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round((x - P.l) / (W - P.l - P.r) * (n - 1))));
+    xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i)); xh.style.display = '';
+    series.forEach((s, k) => { const c = $('.pt' + k, svg), v = s.vals[i]; if (v == null) { c.style.display = 'none'; return; } c.setAttribute('cx', X(i)); c.setAttribute('cy', Y(v)); c.style.display = ''; });
+    tip.innerHTML = '';
+    const hd = document.createElement('div'); hd.textContent = nice(xs[i], { weekday: 'short', day: 'numeric', month: 'short' }); hd.className = 'muted'; tip.appendChild(hd);
+    series.forEach(s => { const v = s.vals[i]; if (v == null) return; const row = document.createElement('div'); const k = document.createElement('span'); k.className = 'k'; k.style.background = s.color; const b = document.createElement('strong'); b.textContent = o.fmt(v); row.append(k, b, document.createTextNode(' ' + s.name)); tip.appendChild(row); });
+    tip.style.display = 'block';
+    const px = X(i) / W * r.width;
+    tip.style.left = Math.max(0, Math.min(r.width - tip.offsetWidth, px - tip.offsetWidth / 2)) + 'px';
+  };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerdown', move);
+  svg.addEventListener('pointerleave', () => { tip.style.display = 'none'; xh.style.display = 'none'; series.forEach((s, k) => { $('.pt' + k, svg).style.display = 'none'; }); });
+}
+function dates() { const xs = []; for (let x = set.start; x <= set.exam; x = E.add(x, 1)) xs.push(x); return xs; }
+function chartLessons(host, tbl) {
+  const xs = dates(), d = T();
+  const pc = {}, ac = {};
+  Object.values(plan.loDate).forEach(x => { pc[x] = (pc[x] || 0) + 1; });
+  Object.values(st.lo).forEach(x => { const k = x.d < set.start ? set.start : x.d; ac[k] = (ac[k] || 0) + 1; });
+  let p = 0, a = 0;
+  const pv = xs.map(x => (p += pc[x] || 0)), av = xs.map(x => { a += ac[x] || 0; return x <= d ? a : null; });
+  const tot = idx.los.length;
+  lineChart(host, xs, [{ name: 'planned', color: 'var(--c-plan)', dash: true, vals: pv }, { name: 'studied', color: 'var(--c-act)', vals: av }],
+    { ymax: tot, ticks: [0, 25, 50, 75, 100].filter(t => t <= tot), fmt: v => String(Math.round(v)), label: 'Learning objectives studied versus planned over time' });
+  const rows = [];
+  for (let i = 0; i < xs.length; i += 7) rows.push(`<tr><td>${esc(nice(xs[i], { day: 'numeric', month: 'short' }))}</td><td>${pv[i]}</td><td>${av[i] == null ? '–' : av[i]}</td></tr>`);
+  tbl.innerHTML = `<table class="tv"><tr><th>Week of</th><th>Planned</th><th>Studied</th></tr>${rows.join('')}</table>`;
+}
+function chartReady(host) {
+  const xs = dates(), d = T();
+  const ev = xs.map(x => E.expected(plan, idx, set, x));
+  let last = null;
+  const rv = xs.map(x => { if (x > d) return null; if (st.hist[x] != null) last = st.hist[x]; return last == null ? 0 : last; });
+  lineChart(host, xs, [{ name: 'expected', color: 'var(--c-plan)', dash: true, vals: ev }, { name: 'readiness', color: 'var(--c-act)', vals: rv }],
+    { ymax: 1, ticks: [0, 0.25, 0.5, 0.75, 1], fmt: v => pct(v), refs: [], label: 'Readiness versus expected readiness over time' });
+}
+function heat(host) {
+  const d = T(); let start = E.add(d, -83); while (E.dow(start) !== 1) start = E.add(start, -1);
+  const cells = [];
+  for (let x = start; x <= d; x = E.add(x, 1)) {
+    const l = st.log[x], xp = l ? l.xp : 0;
+    const a = xp <= 0 ? 0 : xp < 60 ? 0.35 : xp < 150 ? 0.6 : xp < 250 ? 0.8 : 1;
+    cells.push(`<i title="${esc(nice(x))}: ${xp} XP${l && l.done ? ' · challenge done' : ''}" style="${a ? `background:color-mix(in srgb,var(--c-act) ${a * 100}%,var(--panel2))` : ''}"></i>`);
+  }
+  host.innerHTML = cells.join('');
+}
+
+// ---------------------------------------------------------------- PRACTICE
+function renderPractice() {
+  const d = T(), due = E.dueQs(st, idx, d), n = E.studied(st, idx).length;
+  const bosses = E.BOSSES.filter(b => !E.bossReady(st, idx, ST, b).length);
+  app.innerHTML = `
+    <div class="list">
+      <button class="row" data-act="due" type="button" ${due.length ? '' : 'disabled'}><span class="ico">🔁</span><span class="grow"><b>Reviews due</b><span class="sub">${due.length ? due.length + ' questions ready for review' : 'Nothing due — nice!'}</span></span></button>
+      <button class="row" data-act="drill" type="button" ${n ? '' : 'disabled'}><span class="ico">🎯</span><span class="grow"><b>Weak-spot drill</b><span class="sub">10 questions from your weakest objectives</span></span></button>
+      <button class="row" data-act="topic" type="button"><span class="ico">🧩</span><span class="grow"><b>Practice by topic</b><span class="sub">Pick a chapter or module</span></span></button>
+    </div>
+    <h2>Mock exams <small>weighted like the real exam</small></h2>
+    <div class="list">
+      <button class="row" data-mock="20" type="button"><span class="ico">⏱️</span><span class="grow"><b>Mini mock</b><span class="sub">20 questions · 60 minutes</span></span></button>
+      <button class="row" data-mock="40" type="button"><span class="ico">📝</span><span class="grow"><b>Half mock</b><span class="sub">40 questions · 2 hours</span></span></button>
+      <button class="row" data-mock="80" type="button"><span class="ico">🎓</span><span class="grow"><b>Full mock</b><span class="sub">80 questions · 4 hours, like exam day</span></span></button>
+    </div>
+    <p class="muted small">Mocks draw from all ${Object.keys(idx.q).length} questions, also topics you haven't studied yet. No feedback until the end, just like the real exam.</p>
+    <h2>Boss arena</h2>
+    ${bosses.length ? bosses.map(bossRow).join('') : '<div class="empty"><b>No bosses unlocked yet</b>Finish the lessons of a chapter group to face its boss.</div>'}`;
+}
+function topicSheet() {
+  const units = E.UNITS.map(u => `<button class="chip" data-u="${u.id}" type="button">${esc(u.mod)} ${esc(u.naam.replace(/^Ch \d+ · /, ''))}</button>`).join('');
+  const s = sheet('Practice by topic', `<label class="toggle" style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><input type="checkbox" name="all"> Include topics I haven't studied yet</label><div class="chips">${units}</div>`, [{ label: 'Cancel', value: null, kind: 'q' }]);
+  s.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-u]'); if (!b) return;
+    const all = $('[name=all]', s.el).checked;
+    const los = (idx.unitLos[b.dataset.u] || []).filter(id => all || st.lo[id]);
+    if (!los.length) { toast('Study a lesson in this chapter first, or tick "include".'); return; }
+    s.close('x');
+    startRun({ kind: 'practice', title: E.UNIT[b.dataset.u].naam.replace(/^Ch \d+ · /, ''), qids: E.weakest(st, idx, los, 10, E.rng(Date.now())) });
+  });
+}
+
+// ---------------------------------------------------------------- SESSIES
+/* run = { live, kind: daily|catch|ahead|practice|drill|boss|mock, title, d, los, li (lesindex), qids, qi, picks:{}, ok, xp,
+           boss, hp, hearts, qsec, limit, el (seconden), seed, done } */
+function startRun(o) {
+  if (run && !run.done) { toast('Finish or stop the current session first.'); return; }
+  run = Object.assign({ live: true, d: T(), los: [], li: 0, qids: [], qi: 0, picks: {}, ok: 0, xp: 0, el: 0, seed: Date.now() % 1e9, phase: 'lessons', xp0: st.xp, badges0: E.badges(st, idx, T()).filter(b => b.got).map(b => b.id) }, o);
+  if (run.kind === 'boss') Object.assign(run, { hp: 100, hearts: 3, qsec: 0, phase: 'intro' });
+  if (run.kind === 'mock') Object.assign(run, { phase: 'intro' });
+  if (run.story) run.phase = 'story';
+  else if (!run.los.length && run.phase === 'lessons') run.phase = 'quiz';
+  save(); render();
+}
+function startDaily() {
+  const d = T(), ses = E.session(st, plan, idx, ST, set, d, seedOf(d));
+  const info = TYPES[ses.type] || TYPES.review;
+  if (ses.type === 'boss') return startBoss(ses.boss, true);
+  if (ses.type === 'mock') return startMock(80, true);
+  const ep = ses.type === 'learn' ? episodeFor(ses.los) : null;
+  startRun({ kind: 'daily', title: info.t, los: ses.los, qids: ses.qids, story: ep ? ST.episodes[ep] : ses.case });
+}
+function startBoss(b, daily) {
+  if (E.bossReady(st, idx, ST, b).length) { toast('Study all lessons of this boss\'s chapters first.'); return; }
+  startRun({ kind: 'boss', daily: !!daily, boss: b, title: bossOf(b).naam, qids: E.bossSet(st, idx, ST, b, 12, E.rng(Date.now())) });
+}
+function startMock(n, daily) {
+  startRun({ kind: 'mock', daily: !!daily, title: n === 80 ? 'Full mock exam' : n === 40 ? 'Half mock' : 'Mini mock', limit: n * 180, qids: E.mockSet(st, idx, n, E.rng(Date.now()), false) });
+}
+
+const curQ = () => { const q = idx.q[run.qids[run.qi]]; return q ? E.present(q, E.rng(run.seed + run.qi * 7919)) : null; };
+function popXp(n) { if (!n) return; const p = document.createElement('div'); p.className = 'pop'; p.textContent = '+' + n + ' XP'; document.body.appendChild(p); setTimeout(() => p.remove(), 1000); }
+
+function renderRun() {
+  const r = run;
+  if (r.phase === 'story') {
+    app.innerHTML = `<div class="card"><div class="kicker">${esc(r.story.t)}</div><div class="story" style="font-size:17px">${esc(r.story.s)}</div><div class="btns"><button class="btn wide" data-run="next" type="button">Let's go</button></div></div>`;
+    return;
+  }
+  if (r.phase === 'intro') {
+    if (r.kind === 'boss') { const B = bossOf(r.boss); app.innerHTML = `<div class="card arena"><div class="em">${B.emoji}</div><h3 style="font:800 22px var(--f-display);margin:8px 0">${esc(B.naam)}</h3><div class="story" style="text-align:left">“${esc(B.taunt)}”</div><p class="muted small">Answer 9 of 12 correctly to win. Each wrong answer (or running out of the 3 minutes) costs a heart; lose all 3 and the boss escapes.</p><div class="btns"><button class="btn wide" data-run="next" type="button">⚔️ Fight!</button></div></div>`; }
+    else app.innerHTML = `<div class="card"><h3 style="font:800 20px var(--f-display);margin:0 0 6px">${esc(r.title)}</h3><p>${r.qids.length} questions · ${Math.round(r.limit / 60)} minutes (3 minutes per question, like the real exam). No feedback until the end. You can leave and resume later; the clock only runs while this screen is open.</p><div class="btns"><button class="btn wide" data-run="next" type="button">${icon('play')}Start</button></div></div>`;
+    return;
+  }
+  if (r.phase === 'lessons') {
+    const id = r.los[r.li], l = idx.lo[id], u = unitOf(id);
+    app.innerHTML = `<div class="prog"><span class="pill acc">Lesson ${r.li + 1}/${r.los.length}</span><div class="bar xpbar"><i style="width:${(r.li) / r.los.length * 100}%"></i></div></div>
+      <div class="card"><div class="kicker">${esc(u.mod)} · ${esc(u.naam)}</div><h3 style="font:800 20px/1.25 var(--f-display);margin:6px 0 12px">${esc(l.t)}</h3><div class="lesson">${md(l.learn)}</div>
+      <div class="keys"><h4>Remember</h4><ul>${l.keys.map(k => `<li>${esc(k)}</li>`).join('')}</ul></div></div>
+      <div class="btns"><button class="btn wide" data-run="learned" type="button">${icon('check')}Got it${r.li + 1 < r.los.length ? ' — next lesson' : ' — to the questions'}</button></div>`;
+    return;
+  }
+  if (r.phase === 'quiz') {
+    const q = curQ();
+    if (!q) { r.phase = 'end'; return finish(); }
+    const pick = r.picks[r.qi];
+    const answered = pick != null && r.kind !== 'mock';
+    const head = r.kind === 'boss' ? bossHead() : `<div class="prog"><span class="pill acc">${r.qi + 1}/${r.qids.length}</span><div class="bar xpbar"><i style="width:${r.qi / r.qids.length * 100}%"></i></div>${r.kind === 'mock' ? `<span class="clock" id="clock"></span>` : `<span class="pill">+${r.xp} XP</span>`}</div>`;
+    const u = unitOf(q.lo);
+    app.innerHTML = `${head}<div class="kicker">${esc(u.mod)} · ${esc(idx.lo[q.lo].t)}</div><div class="qtext">${esc(q.q)}</div>
+      ${q.a.map((a, i) => `<button class="opt${answered ? (i === q.c ? ' right' : i === pick ? ' wrong' : '') : pick === i ? ' sel' : ''}" data-pick="${i}" type="button" ${answered ? 'disabled' : ''}><span class="k">${'ABCD'[i]}</span>${esc(a)}</button>`).join('')}
+      ${answered ? `<div class="fb ${pick === q.c ? 'ok' : 'no'}"><b>${pick === q.c ? pickPraise() : pick === -1 ? '⏰ Time\'s up.' : 'Not quite — the answer is ' + 'ABCD'[q.c] + '.'}</b>${esc(q.x)}</div><div class="btns"><button class="btn wide" data-run="nextq" type="button">${r.kind === 'boss' && (r.hp <= 0 || r.hearts <= 0) ? 'See the result' : r.qi + 1 < r.qids.length ? 'Next question' : 'Finish'}</button></div>` : ''}
+      ${r.kind === 'mock' ? `<div class="btns"><button class="btn wide" data-run="mocknext" type="button" ${pick == null ? 'disabled' : ''}>${r.qi + 1 < r.qids.length ? 'Next' : 'Hand in'}</button></div><div class="btns"><button class="btn q" data-run="pause" type="button">${icon('pause')}Pause</button><button class="btn danger" data-run="handin" type="button">Hand in now</button></div>` : ''}`;
+    tick(true);
+    return;
+  }
+  if (r.phase === 'end') finish();
+}
+const PRAISE = ['Correct! 🎯', 'Spot on.', 'Nailed it! 💪', 'Exactly right.', 'Yes! The supervisor would be impressed.', 'Correct — well reasoned.'];
+const pickPraise = () => PRAISE[(run.qi + run.seed) % PRAISE.length];
+function bossHead() {
+  const B = bossOf(run.boss);
+  return `<div class="arena"><div class="em" id="bem">${B.emoji}</div><div class="hp"><i style="width:${Math.max(0, run.hp)}%"></i></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="hearts">${'❤️'.repeat(run.hearts)}${'🖤'.repeat(3 - run.hearts)}</span><span class="clock" id="clock"></span><span class="pill">${run.qi + 1}/${run.qids.length}</span></div></div>`;
+}
+
+function choose(i) {
+  const r = run, q = curQ();
+  if (r.kind === 'mock') { r.picks[r.qi] = i; save(); renderRun(); return; }
+  if (r.picks[r.qi] != null) return;
+  r.picks[r.qi] = i;
+  const ok = i === q.c;
+  if (ok) r.ok++;
+  const gained = E.answer(st, q.id, ok, T());
+  r.xp += gained; popXp(ok ? gained : 0);
+  if (r.kind === 'boss') {
+    if (ok) { r.hp -= 12; const em = $('#bem'); if (em) em.classList.add('hit'); } else r.hearts--;
+    r.qsec = 0;
+  }
+  try { navigator.vibrate && navigator.vibrate(ok ? 20 : [40, 40, 40]); } catch (e) {}
+  save(); renderRun();
+}
+function nextQ() {
+  const r = run;
+  if (r.kind === 'boss' && (r.hp <= 0 || r.hearts <= 0)) { r.phase = 'end'; return finish(); }
+  r.qi++;
+  if (r.qi >= r.qids.length) { r.phase = 'end'; return finish(); }
+  save(); renderRun();
+}
+
+function finish() {
+  const r = run, d = T();
+  if (r.kind === 'mock') {
+    let ok = 0; const byMod = {};
+    r.qids.forEach((id, i) => {
+      const q = E.present(idx.q[id], E.rng(r.seed + i * 7919)), m = idx.mod(q.lo), good = r.picks[i] === q.c;
+      byMod[m] = byMod[m] || [0, 0]; byMod[m][1]++; if (good) { ok++; byMod[m][0]++; }
+      if (st.lo[q.lo]) E.answer(st, id, good, d, { noXp: true });
+    });
+    r.ok = ok;
+    r.xp += E.gainXp(st, d, Math.round(E.XP.mockPerVraag * r.qids.length) + E.XP.perGoedMock * ok);
+    st.mocks.push({ d, n: r.qids.length, ok, sec: r.el, byMod });
+    r.byMod = byMod;
+  }
+  let won = null;
+  if (r.kind === 'boss') {
+    won = r.hp <= 0;
+    const b = st.boss[r.boss] || (st.boss[r.boss] = { tries: 0, best: 0 });
+    b.tries++; b.best = Math.max(b.best, r.ok);
+    if (won) { r.xp += E.gainXp(st, d, b.won ? E.XP.bossOpnieuw : E.XP.boss); if (!b.won) b.won = d; }
+  }
+  const L = E.logDay(st, d);
+  const daily = r.kind === 'daily' || r.daily;
+  let streakBonus = 0;
+  if (daily && !L.done) {
+    L.done = true;
+    const sk = E.streak(st, d);
+    streakBonus = 5 * Math.min(sk.n, 10);
+    r.xp += E.gainXp(st, d, E.XP.dag + streakBonus);
+  }
+  const lv0 = E.level(r.xp0), lv1 = E.level(st.xp);
+  const nb = E.badges(st, idx, d).filter(b => b.got && !r.badges0.includes(b.id));
+  const total = r.kind === 'boss' ? r.qi + 1 : r.qids.length;
+  const wrong = r.kind === 'mock' ? [] : r.qids.map((id, i) => [id, i]).filter(([id, i]) => r.picks[i] != null && r.picks[i] !== E.present(idx.q[id], E.rng(r.seed + i * 7919)).c);
+  let head;
+  if (r.kind === 'boss') { const B = bossOf(r.boss); head = `<div class="arena"><div class="em">${won ? '👑' : B.emoji}</div></div><h3 style="font:800 22px var(--f-display);margin:0 0 6px">${won ? 'Victory!' : 'The boss escaped…'}</h3><p>${esc(won ? B.win : B.lose)}</p>`; }
+  else if (r.kind === 'mock') head = `<div class="big">${pct(r.ok / r.qids.length)}</div><p>${r.ok}/${r.qids.length} correct in ${Math.round(r.el / 60)} min. ${r.ok / r.qids.length >= 0.7 ? 'That is at or above the 70% study target. 💪' : 'Below the 70% study target — check the weak modules below.'}</p>
+    <div class="card" style="text-align:left">${Object.keys(E.MODS).filter(m => r.byMod[m]).map(m => `<div class="hbar"><span>${esc(m)} ${esc(E.MODS[m].kort)}</span><div class="tr"><i style="width:${r.byMod[m][0] / r.byMod[m][1] * 100}%"></i></div><span class="v">${r.byMod[m][0]}/${r.byMod[m][1]}</span></div>`).join('')}</div>`;
+  else head = `<div class="big">${r.ok}/${total}</div><p>${r.ok === total && total ? 'Perfect round! 💯' : r.ok / Math.max(1, total) >= 0.7 ? 'Well done.' : 'Tough one — these questions will come back in your reviews.'}</p>`;
+  r.done = true; r.live = false;
+  const result = r;
+  run = null; save();
+  replan();
+  $('#seg').style.display = 'none';
+  $('#ttl').textContent = result.title;
+  app.innerHTML = `<div class="card res">${head}
+      <div class="stats"><div class="stat"><b>+${result.xp}</b><span>XP</span></div><div class="stat"><b>${E.streak(st, d).n}${daily ? '🔥' : ''}</b><span>streak${streakBonus ? ' (+' + streakBonus + ')' : ''}</span></div><div class="stat"><b>${lv1.lvl}</b><span>level</span></div></div>
+      ${lv1.lvl > lv0.lvl ? `<p style="font:800 18px var(--f-display);color:var(--acc);margin:14px 0 0">⬆️ Level up! You are now level ${lv1.lvl}: ${esc(lv1.titel)}</p>` : ''}
+      ${nb.length ? `<div style="margin-top:12px">${nb.map(b => `<div class="pill acc" style="margin:3px">${b.emoji} New badge: ${esc(b.t)}</div>`).join('')}</div>` : ''}</div>
+    ${wrong.length ? `<h2>Review your mistakes</h2>${wrong.map(([id]) => { const q = idx.q[id]; return `<div class="card"><b>${esc(q.q)}</b><div class="fb ok" style="margin-top:8px"><b>${esc(q.a[q.c])}</b>${esc(q.x)}</div></div>`; }).join('')}` : ''}
+    <div class="btns"><button class="btn wide" data-act="home" type="button">Back to today</button></div>`;
+  scrollTo(0, 0);
+}
+
+// Klok: telt studietijd, bewaakt boss- en mocktijd
+let lastSave = 0;
+function tick(only) {
+  if (!run || !run.live) return;
+  const c = $('#clock');
+  if (run.kind === 'boss' && run.phase === 'quiz' && run.picks[run.qi] == null) {
+    const left = 180 - run.qsec;
+    if (c) { c.textContent = `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; c.classList.toggle('low', left <= 30); }
+    if (!only && left <= 0) { run.picks[run.qi] = -1; run.hearts--; E.answer(st, idx.q[run.qids[run.qi]].id, false, T()); save(); renderRun(); }
+  }
+  if (run.kind === 'mock' && run.phase === 'quiz') {
+    const left = Math.max(0, run.limit - run.el);
+    if (c) { c.textContent = `⏱ ${Math.floor(left / 3600)}:${String(Math.floor(left % 3600 / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`; c.classList.toggle('low', left < 600); }
+    if (!only && left <= 0) { toast('Time is up — your answers have been handed in.'); run.phase = 'end'; finish(); }
+  }
+}
+setInterval(() => {
+  if (!run || !run.live || document.visibilityState !== 'visible') return;
+  E.logDay(st, T()).sec++; run.el++;
+  if (run.kind === 'boss' && run.phase === 'quiz' && run.picks[run.qi] == null) run.qsec++;
+  tick(false);
+  if (Date.now() - lastSave > 15000) { lastSave = Date.now(); save(); }
+}, 1000);
+
+// ---------------------------------------------------------------- klikken
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-act],[data-run],[data-pick],[data-lo],[data-unit],[data-boss],[data-mile],[data-mock]');
+  if (!t) return;
+  const ds = t.dataset;
+  if (ds.pick != null) return choose(+ds.pick);
+  if (ds.run) {
+    const r = run;
+    if (ds.run === 'next') { r.phase = r.phase === 'story' ? (r.los.length ? 'lessons' : r.kind === 'boss' || r.kind === 'mock' ? 'intro' : 'quiz') : 'quiz'; if (r.phase === 'intro' && !(r.kind === 'boss' || r.kind === 'mock')) r.phase = 'quiz'; save(); return render(); }
+    if (ds.run === 'learned') { r.xp += E.studyLo(st, r.los[r.li], T()); popXp(E.XP.les); r.li++; if (r.li >= r.los.length) r.phase = 'quiz'; replan(); save(); scrollTo(0, 0); return renderRun(); }
+    if (ds.run === 'nextq') { scrollTo(0, 0); return nextQ(); }
+    if (ds.run === 'mocknext') { if (r.picks[r.qi] == null) return; scrollTo(0, 0); return nextQ(); }
+    if (ds.run === 'pause') { r.live = false; save(); toast('Paused — resume from Today.'); return render(); }
+    if (ds.run === 'handin') return confirm(`Hand in now? Unanswered questions count as wrong.`, 'Hand in').then(ok => { if (ok) { r.phase = 'end'; finish(); } });
+    return;
+  }
+  if (ds.lo) return loSheet(ds.lo);
+  if (ds.unit) { openUnits[ds.unit] = !t.closest('.unit').classList.contains('open'); t.closest('.unit').classList.toggle('open'); return; }
+  if (ds.boss) { const miss = E.bossReady(st, idx, ST, ds.boss).length; if (miss) { toast(`Locked: study ${miss} more lesson${miss === 1 ? '' : 's'} first.`); return; } return startBoss(ds.boss, false); }
+  if (ds.mile) { st.mijl[ds.mile] = st.mijl[ds.mile] ? null : T(); if (!st.mijl[ds.mile]) delete st.mijl[ds.mile]; else toast('Milestone done! 🎉'); save(); return render(); }
+  if (ds.mock) return startMock(+ds.mock, false);
+  e.preventDefault();
+  const act = ds.act;
+  if (act === 'start') return startDaily();
+  if (act === 'resume') { run.live = true; save(); return render(); }
+  if (act === 'drop') return confirm('Stop this session? Answers you already gave are kept.', 'Stop', true).then(ok => { if (ok) { run = null; save(); render(); } });
+  if (act === 'catch') { const b = E.backlog(st, plan, idx, T()).slice(0, 2); return startRun({ kind: 'catch', title: 'Catch up', los: b, qids: b.flatMap(id => idx.byLo[id]) }); }
+  if (act === 'ahead') { const b = E.nextLos(st, idx, 1); return startRun({ kind: 'ahead', title: 'Study ahead', los: b, qids: b.flatMap(id => idx.byLo[id]) }); }
+  if (act === 'due') return startRun({ kind: 'practice', title: 'Reviews', qids: E.dueQs(st, idx, T()).slice(0, 15) });
+  if (act === 'drill') return startRun({ kind: 'drill', title: 'Weak-spot drill', qids: E.weakest(st, idx, E.studied(st, idx), 10, E.rng(Date.now())) });
+  if (act === 'topic') return topicSheet();
+  if (act === 'logtime') return logTime();
+  if (act === 'home') { setView('today'); return; }
+});
+
+function logTime() {
+  sheet('Log study time', `<p class="muted small" style="margin-top:0">Time outside the app — reading the GARP curriculum, videos, end-of-chapter questions.</p>
+    <div class="grid2"><label class="f">Minutes<input class="in" type="number" inputmode="numeric" name="min" value="30"></label><label class="f">Date<input class="in" type="date" name="d" value="${T()}"></label></div>`,
+    [{ label: 'Cancel', value: null, kind: 'q' }, { label: 'Add', value: 'ok', check: f => (+f.min > 0 && +f.min <= 720 ? '' : 'Enter 1 to 720 minutes') }]).done.then(r => {
+    if (r.value !== 'ok') return;
+    const d = r.form.d || T();
+    st.extra[d] = (+st.extra[d] || 0) + Math.round(+r.form.min);
+    save(); render(); toast('Logged ' + Math.round(+r.form.min) + ' min');
+  });
+}
+
+// ---------------------------------------------------------------- instellingen
+const WD = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
+$('#menu').onclick = () => {
+  if (run && run.live) { run.live = false; save(); render(); }
+  const s = sheet('Settings', `
+    <label class="f">Exam date<input class="in" type="date" name="exam" value="${esc(set.exam)}"></label>
+    <label class="f" style="margin-top:10px">Path start date<input class="in" type="date" name="start" value="${esc(set.start)}"></label>
+    <div class="f" style="margin-top:10px"><span class="muted" style="font-weight:600;font-size:14px">New lessons on</span><div class="chips" id="wd" style="margin-top:6px">${WD.map(([n, t]) => `<button class="chip${set.learnDays.includes(n) ? ' on' : ''}" data-wd="${n}" type="button">${t}</button>`).join('')}</div><span class="muted small">Other days: case-file reviews and boss battles.</span></div>
+    <div class="grid2" style="margin-top:10px"><label class="f">Review weeks before exam<input class="in" type="number" inputmode="numeric" name="rw" value="${set.reviewWeeks}"></label><label class="f">Target study hours<input class="in" type="number" inputmode="numeric" name="th" value="${set.targetHours}"></label></div>
+    <label class="f" style="margin-top:10px">Readiness target (%)<input class="in" type="number" inputmode="numeric" name="tg" value="${Math.round(set.target * 100)}"></label>
+    <div class="btns" style="margin-top:12px"><button class="btn q" data-x="replan" type="button">${icon('refresh')}Re-plan from today</button></div>
+    <p class="muted small">Re-plan keeps everything you studied and spreads the remaining lessons over the days left. Use it after a holiday or illness.</p>
+    <p class="muted small">Content: own summaries and questions per learning objective of the GARP RAI Study Guide 2026 (5 modules, 80 questions, 4 hours; exam weights M1 5–15%, M2 25–35%, M3–M5 15–25%). GARP estimates 100–130 study hours. Exam window April 2027: 3–11 April. Regulation notes updated to November 2026 (EU AI Act Digital Omnibus, US SR 26-2).</p>
+    <div class="btns"><button class="btn danger" data-x="reset" type="button">${icon('trash')}Reset all progress</button></div>`,
+    [{ label: 'Cancel', value: null, kind: 'q' }, { label: 'Save', value: 'ok', check: f => (f.exam > f.start ? '' : 'The exam must be after the start date') }]);
+  let days = set.learnDays.slice();
+  s.el.addEventListener('click', e => {
+    const w = e.target.closest('[data-wd]');
+    if (w) { const n = +w.dataset.wd; days = days.includes(n) ? days.filter(x => x !== n) : days.concat(n); w.classList.toggle('on'); return; }
+    const x = e.target.closest('[data-x]'); if (!x) return;
+    if (x.dataset.x === 'replan') { s.close(null); set.start = T(); D.set('rai-set', set); replan(); save(); render(); toast('Plan updated from today'); }
+    if (x.dataset.x === 'reset') { s.close(null); confirm('Delete all RAI progress, XP and badges? This cannot be undone.', 'Delete', true).then(ok => { if (ok) { st = E.newState(); st.hist = {}; run = null; replan(); save(); render(); } }); }
+  });
+  s.done.then(r => {
+    if (r.value !== 'ok') return;
+    set.exam = r.form.exam || set.exam; set.start = r.form.start || set.start;
+    set.learnDays = days.length ? days : [1, 2, 3, 4, 5];
+    set.reviewWeeks = Math.max(1, Math.min(10, +r.form.rw || 5));
+    set.targetHours = Math.max(10, Math.min(400, +r.form.th || 115));
+    set.target = Math.max(0.5, Math.min(0.95, (+r.form.tg || 75) / 100));
+    D.set('rai-set', set); replan(); save(); render();
+  });
+};
+window.UIback = () => { if (run && run.live) { run.live = false; save(); render(); return true; } return false; };
+
+// Samenvatting voor het overzicht (en de widget)
+function dash() {
+  const d = T(), s = E.status(st, plan, idx, set, d);
+  D.set('dash-rai', { examen: set.exam, ready: s.ready, label: s.label, tone: s.tone, done: s.done, total: s.total, streak: E.streak(st, d).n, vandaag: !!(st.log[d] && st.log[d].done) });
+}
+save();
+setView(view);
+</script>
+</body>
+</html>

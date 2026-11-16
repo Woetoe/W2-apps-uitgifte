@@ -331,7 +331,7 @@
   // Wat er op het overzicht staat, gemaakt uit de samenvattingen die de onderdelen zelf bijhouden (dash-*).
   // Hier en niet in start.js, zodat de widget op het startscherm ook bijwerkt als je iets afvinkt in een
   // onderdeel en de app daarna dichtdoet (zonder eerst terug naar het overzicht te gaan).
-  const DASH_KEYS = new Set(['dash-reizen', 'aftellen', 'cadeaus', 'dash-kluis', 'dash-samen', 'dash-judo', 'dash-huis', 'weekmenu']);
+  const DASH_KEYS = new Set(['dash-reizen', 'aftellen', 'cadeaus', 'dash-kluis', 'dash-samen', 'dash-judo', 'dash-huis', 'dash-rai', 'weekmenu']);
   const dash = {
     items() {
       const D = window.W2D;
@@ -421,6 +421,17 @@
           big: d === 0 ? '<b>🥋</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
           title: `🥋 Examen ${ju.naam}`, sub: D.date.nice(ju.examen, { weekday: 'long', day: 'numeric', month: 'long' }),
           meter: ju.pct, chips: [`${ju.klaar}/${ju.tot} zit erin`, ju.week + '/' + ju.doel + ' trainingen deze week']
+        });
+      }
+      // RAI-examen: aftellen, paraatheid en of de dagchallenge al gedaan is
+      const rai = D.get('dash-rai', null);
+      if (rai && rai.examen) {
+        const d = D.date.days(rai.examen);
+        if (d != null && d >= 0) items.push({
+          days: d, href: 'rai/index.html', c: '#9d8cff', ci: '#120b33',
+          big: d === 0 ? '<b>🎓</b><small>vandaag</small>' : `<b>${d}</b><small>${d === 1 ? 'dag' : 'dagen'}</small>`,
+          title: '🎓 RAI-examen', sub: `${rai.label} · readiness ${Math.round((rai.ready || 0) * 100)}%`,
+          meter: rai.ready, chips: [`${rai.done}/${rai.total} lessen`, rai.vandaag ? '✓ challenge van vandaag gedaan' : '🎯 challenge van vandaag staat klaar', ...(rai.streak ? [`🔥 ${rai.streak} ${rai.streak === 1 ? 'dag' : 'dagen'}`] : [])]
         });
       }
       // Huis: klusjes die (bijna) moeten

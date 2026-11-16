@@ -1,0 +1,349 @@
+/* W2 Apps — RAI: rekenwerk zonder scherm (los te testen met node).
+   Planning tot de examendatum, herhaling (Leitner-bakjes), XP/levels/streaks/badges en "lig ik op schema?". */
+(function (G) {
+  'use strict';
+
+  // ---------------------------------------------------------------- vaste gegevens
+  // Examengewicht: midden van de bandbreedte uit de Study Guide 2026 (M1 5–15%, M2 25–35%, M3/M4/M5 15–25%).
+  const MODS = {
+    M1: { naam: 'AI and Risk: Introduction and Overview', kort: 'Intro', w: 0.10, band: '5–15%', kleur: '#7fd1ff' },
+    M2: { naam: 'Tools and Techniques', kort: 'Tools', w: 0.30, band: '25–35%', kleur: '#c58cff' },
+    M3: { naam: 'Risks and Risk Factors', kort: 'Risks', w: 0.20, band: '15–25%', kleur: '#ff8a65' },
+    M4: { naam: 'Responsible and Ethical AI', kort: 'Ethics', w: 0.20, band: '15–25%', kleur: '#5ee07a' },
+    M5: { naam: 'Data and AI Model Governance', kort: 'Governance', w: 0.20, band: '15–25%', kleur: '#ffc83d' }
+  };
+  const UNITS = [
+    ['m1', 'M1', 'AI and Risk: Introduction and Overview'],
+    ['m2c1', 'M2', 'Ch 1 · Introduction to Tools and Techniques'],
+    ['m2c2', 'M2', 'Ch 2 · Unsupervised Learning'],
+    ['m2c3', 'M2', 'Ch 3 · Supervised Learning – Econometric Techniques'],
+    ['m2c4', 'M2', 'Ch 4 · Supervised Learning – ML Techniques'],
+    ['m2c5', 'M2', 'Ch 5 · Semi-Supervised Learning'],
+    ['m2c6', 'M2', 'Ch 6 · Reinforcement Learning'],
+    ['m2c7', 'M2', 'Ch 7 · Supervised Learning – Model Estimation'],
+    ['m2c8', 'M2', 'Ch 8 · Model Performance Evaluation'],
+    ['m2c9', 'M2', 'Ch 9 · Natural Language Processing'],
+    ['m2c10', 'M2', 'Ch 10 · Generative AI and LLMs'],
+    ['m3', 'M3', 'Risks and Risk Factors'],
+    ['m4', 'M4', 'Responsible and Ethical AI'],
+    ['m5', 'M5', 'Data and AI Model Governance']
+  ].map(([id, mod, naam]) => ({ id, mod, naam }));
+  const UNIT = Object.fromEntries(UNITS.map(u => [u.id, u]));
+  const BOSSES = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'];
+
+  // Herhaling: dagen tot de volgende keer per bakje (0 = morgen weer)
+  const INTERVAL = [1, 2, 4, 8, 16, 32];
+  const MASTERY = [0.1, 0.35, 0.6, 0.8, 0.92, 1];
+
+  const XP = { goed: 10, fout: 2, les: 20, dag: 50, boss: 200, bossOpnieuw: 50, mockPerVraag: 1.25, perGoedMock: 3 };
+  const TITELS = [[1, 'Intern'], [3, 'Data Wrangler'], [5, 'Junior Quant'], [7, 'Model Developer'], [9, 'Model Validator'],
+    [12, 'Senior Validator'], [15, 'AI Risk Lead'], [18, 'Head of Model Risk'], [21, 'Chief AI Risk Officer'], [25, 'RAI Legend']];
+
+  // Mijlpalen buiten de app (zelf afvinken). Data volgens garp.org/rai (april 2027: examen 3–11 april).
+  const MIJLPALEN = [
+    { id: 'reg', t: 'Register for the April 2027 RAI Exam', sub: 'Early registration (cheapest) opens 1 Dec 2026 and runs to 31 Jan 2027; standard from 1 Feb. Registration includes GARP Learning (full curriculum + practice exam).', d: '2027-01-31' },
+    { id: 'garp', t: 'Open the GARP Learning curriculum', sub: 'Read the official module text alongside the daily lessons; log reading time with "Log study time".', d: '2027-02-07' },
+    { id: 'slot', t: 'Schedule your exam slot (Pearson VUE)', sub: 'At least 48 hours before; seats are first come, first served, so book early.', d: '2027-02-28' },
+    { id: 'practice', t: 'Take the official GARP practice exam', sub: 'After your own mocks; compare the score with your readiness here.', d: '2027-03-21' }
+  ];
+
+  // ---------------------------------------------------------------- datums (strings JJJJ-MM-DD, lokale tijd)
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(s || ''); return m ? new Date(+m[1], m[2] - 1, +m[3], 12) : null; };
+  const add = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+  const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5); // dagen van a naar b
+  const dow = s => parse(s).getDay(); // 0 = zondag
+  const today = () => iso(new Date());
+
+  // ---------------------------------------------------------------- index van de stof
+  function index(stof) {
+    const los = stof.los.slice();
+    const order = Object.fromEntries(UNITS.map((u, i) => [u.id, i]));
+    los.sort((a, b) => order[a.unit] - order[b.unit]); // binnen een unit blijft de volgorde van het bestand
+    const lo = {}, byLo = {}, q = {}, unitLos = {};
+    los.forEach(l => { lo[l.id] = l; byLo[l.id] = []; (unitLos[l.unit] = unitLos[l.unit] || []).push(l.id); });
+    stof.qs.forEach(x => {
+      const id = x.lo + '#' + byLo[x.lo].length;
+      const qq = Object.assign({ id }, x);
+      byLo[x.lo].push(id); q[id] = qq;
+    });
+    return { los: los.map(l => l.id), lo, byLo, q, unitLos, mod: id => UNIT[lo[id].unit].mod };
+  }
+
+  // ---------------------------------------------------------------- planning
+  const defaults = () => ({ start: today(), exam: '2027-04-03', learnDays: [1, 2, 3, 4, 5], reviewWeeks: 5, targetHours: 115, target: 0.75 });
+
+  /** Dagplan van start tot en met de examendatum. Lessen die vóór de startdatum al bestudeerd zijn (opnieuw plannen)
+      houden hun datum; de rest wordt over de leerdagen verdeeld. */
+  function makePlan(idx, story, s, st) {
+    const days = [], loDate = {}, bossDate = {};
+    const start = s.start, exam = s.exam;
+    const total = diff(start, exam);
+    if (!(total > 0)) return { days: [{ d: exam, type: 'exam', los: [] }], loDate, bossDate, learnEnd: start };
+    // Leerfase eindigt reviewWeeks weken voor het examen, maar nooit vóór de helft van de tijd
+    let learnEnd = add(exam, -7 * s.reviewWeeks - 1);
+    if (diff(start, learnEnd) < total / 2) learnEnd = add(start, Math.floor(total / 2));
+    const learnDays = s.learnDays && s.learnDays.length ? s.learnDays : [1, 2, 3, 4, 5];
+    const ld = [];
+    for (let d = start; diff(d, learnEnd) >= 0; d = add(d, 1)) if (learnDays.includes(dow(d))) ld.push(d);
+    if (!ld.length) ld.push(start);
+    const before = id => st && st.lo && st.lo[id] && st.lo[id].d < start;
+    idx.los.forEach(id => { if (before(id)) loDate[id] = st.lo[id].d; });
+    const rest = idx.los.filter(id => !before(id));
+    const n = Math.max(1, rest.length);
+    const per = ld.map(() => []);
+    rest.forEach((id, i) => { const k = Math.min(ld.length - 1, Math.floor(i * ld.length / n)); per[k].push(id); loDate[id] = ld[k]; });
+    const learnAt = Object.fromEntries(ld.map((d, i) => [d, per[i]]));
+    // Wanneer is een eindbaas "rijp": dag na de laatste les van zijn units
+    const ripe = {};
+    BOSSES.forEach(b => {
+      const ids = (story.bosses[b].units || []).flatMap(u => idx.unitLos[u] || []);
+      ripe[b] = ids.reduce((m, id) => (loDate[id] > m ? loDate[id] : m), '');
+    });
+    const bossQueue = BOSSES.filter(b => !(st && st.boss && st.boss[b] && st.boss[b].won && st.boss[b].won < start));
+    let caseNo = 0;
+    for (let d = start; diff(d, exam) >= 0; d = add(d, 1)) {
+      const left = diff(d, exam);
+      if (left === 0) { days.push({ d, type: 'exam', los: [] }); continue; }
+      if (diff(d, learnEnd) >= 0) {
+        if (learnAt[d] && learnAt[d].length) { days.push({ d, type: 'learn', los: learnAt[d] }); continue; }
+        const b = bossQueue[0];
+        if (b && ripe[b] && ripe[b] < d) { bossQueue.shift(); bossDate[b] = d; days.push({ d, type: 'boss', boss: b, los: [] }); continue; }
+        days.push({ d, type: 'review', case: caseNo++ % story.cases.length, los: [] });
+        continue;
+      }
+      // Herhaalfase: openstaande eindbazen eerst, zaterdag proefexamen, laatste 2 dagen rustig
+      const b = bossQueue[0];
+      if (b) { bossQueue.shift(); bossDate[b] = d; days.push({ d, type: 'boss', boss: b, los: [] }); continue; }
+      if (left <= 2) { days.push({ d, type: 'light', los: [] }); continue; }
+      if (dow(d) === 6 && left > 5) { days.push({ d, type: 'mock', los: [] }); continue; }
+      days.push({ d, type: dow(d) === 0 ? 'review' : 'drill', case: caseNo++ % story.cases.length, los: [] });
+    }
+    return { days, loDate, bossDate, learnEnd };
+  }
+  const dayOf = (plan, d) => plan.days.find(x => x.d === d) || null;
+
+  // ---------------------------------------------------------------- toestand
+  const newState = () => ({ v: 1, xp: 0, lo: {}, q: {}, log: {}, boss: {}, mocks: [], extra: {}, mijl: {}, badges: {}, run: null });
+
+  function logDay(st, d) { return st.log[d] || (st.log[d] = { xp: 0, sec: 0, n: 0, ok: 0, done: false }); }
+
+  function gainXp(st, d, n) { st.xp += n; logDay(st, d).xp += n; return n; }
+
+  /** Les gelezen: telt mee voor "op schema" en zet de vragen in de herhaling. */
+  function studyLo(st, id, d) {
+    if (st.lo[id]) return 0;
+    st.lo[id] = { d };
+    return gainXp(st, d, XP.les);
+  }
+
+  /** Antwoord verwerken (Leitner). Geeft verdiende XP terug. */
+  function answer(st, qid, ok, d, opts) {
+    const s = st.q[qid] || (st.q[qid] = { box: 0, due: d, n: 0, ok: 0, last: '' });
+    s.n++; if (ok) s.ok++;
+    s.box = ok ? Math.min(5, (s.n === 1 ? 1 : s.box + 1)) : Math.max(0, s.box - 2);
+    s.due = add(d, ok ? INTERVAL[s.box] : 1);
+    s.last = d;
+    const L = logDay(st, d); L.n++; if (ok) L.ok++;
+    if (opts && opts.noXp) return 0;
+    return gainXp(st, d, ok ? XP.goed : XP.fout);
+  }
+
+  const studied = (st, idx) => idx.los.filter(id => st.lo[id]);
+  function dueQs(st, idx, d) {
+    const out = [];
+    idx.los.forEach(id => { if (!st.lo[id]) return; idx.byLo[id].forEach(q => { const s = st.q[q]; if (!s || s.due <= d) out.push(q); }); });
+    out.sort((a, b) => ((st.q[a] || {}).due || '0').localeCompare((st.q[b] || {}).due || '0') || ((st.q[a] || {}).box || 0) - ((st.q[b] || {}).box || 0));
+    return out;
+  }
+
+  // ---------------------------------------------------------------- beheersing en paraatheid
+  const qMastery = s => (s && s.n ? MASTERY[s.box] : 0);
+  function loMastery(st, idx, id) {
+    const qs = idx.byLo[id] || [];
+    if (!qs.length) return st.lo[id] ? 0.5 : 0;
+    return qs.reduce((t, q) => t + qMastery(st.q[q]), 0) / qs.length;
+  }
+  function groupMastery(st, idx, ids) { return ids.length ? ids.reduce((t, id) => t + loMastery(st, idx, id), 0) / ids.length : 0; }
+  function modMastery(st, idx) {
+    const out = {};
+    Object.keys(MODS).forEach(m => { out[m] = groupMastery(st, idx, idx.los.filter(id => idx.mod(id) === m)); });
+    return out;
+  }
+  function unitMastery(st, idx) { return Object.fromEntries(UNITS.map(u => [u.id, groupMastery(st, idx, idx.unitLos[u.id] || [])])); }
+  /** Geschatte paraatheid: gewogen beheersing per module (examengewichten). 0–1. */
+  function readiness(st, idx) { const mm = modMastery(st, idx); return Object.keys(MODS).reduce((t, m) => t + MODS[m].w * mm[m], 0); }
+  /** Gewogen aandeel van de stof dat volgens plan op dag d gehad moet zijn. */
+  function plannedShare(plan, idx, d) {
+    let t = 0;
+    Object.keys(MODS).forEach(m => {
+      const ids = idx.los.filter(id => idx.mod(id) === m);
+      if (ids.length) t += MODS[m].w * ids.filter(id => plan.loDate[id] && plan.loDate[id] <= d).length / ids.length;
+    });
+    return t;
+  }
+
+  /** Verwachte paraatheid op dag d als je het plan volgt: groeit met de stof en loopt in de herhaalfase op naar het doel. */
+  function expected(plan, idx, s, d) {
+    const share = plannedShare(plan, idx, d);
+    const base = share * s.target * 0.8;
+    if (d <= plan.learnEnd) return base;
+    const span = Math.max(1, diff(plan.learnEnd, s.exam)), k = Math.min(1, diff(plan.learnEnd, d) / span);
+    return base + (s.target - base) * k;
+  }
+
+  function hours(st) {
+    const app = Object.values(st.log).reduce((t, l) => t + (l.sec || 0), 0) / 3600;
+    const extra = Object.values(st.extra || {}).reduce((t, m) => t + (+m || 0), 0) / 60;
+    return { app, extra, total: app + extra };
+  }
+
+  /** Lig ik op schema? */
+  function status(st, plan, idx, s, d) {
+    // Lessen van vandaag tellen pas mee als je ze gedaan hebt: 's ochtends lig je dus niet meteen achter.
+    const prev = idx.los.filter(id => plan.loDate[id] && plan.loDate[id] < d).length;
+    const tod = idx.los.filter(id => plan.loDate[id] === d).length;
+    const done = studied(st, idx).length;
+    const delta = done < prev ? done - prev : done > prev + tod ? done - prev - tod : 0;
+    const planned = prev + Math.min(tod, Math.max(0, done - prev));
+    const perDay = idx.los.length / Math.max(1, plan.days.filter(x => x.type === 'learn').length);
+    const daysDelta = Math.round(delta / perDay);
+    const ready = readiness(st, idx), exp = expected(plan, idx, s, add(d, -1));
+    const total = Math.max(1, diff(s.start, s.exam)), gone = Math.min(total, Math.max(0, diff(s.start, d)));
+    const h = hours(st), hTarget = s.targetHours * gone / total;
+    const due = dueQs(st, idx, d).length;
+    let tone, label;
+    const readyOk = ready >= exp * 0.9 - 0.02;
+    if (delta >= 2 && readyOk) { tone = 'ahead'; label = 'Ahead of schedule'; }
+    else if (delta >= -1 && readyOk) { tone = 'ok'; label = 'On track'; }
+    else if (delta >= -4 && ready >= exp * 0.7) { tone = 'warn'; label = 'Slightly behind'; }
+    else { tone = 'bad'; label = 'Behind schedule'; }
+    return { planned, done, total: idx.los.length, delta, daysDelta, ready, exp, hours: h, hTarget, due, tone, label, daysLeft: diff(d, s.exam) };
+  }
+
+  /** Reeks dagen achter elkaar met de dagchallenge gedaan. Elke 7 dagen levert een schild op (max 2) dat één gemiste dag opvangt. */
+  function streak(st, d) {
+    const done = Object.keys(st.log).filter(k => st.log[k].done).sort();
+    if (!done.length) return { n: 0, best: 0, shields: 0, today: false };
+    let n = 0, best = 0, shields = 0, run = 0;
+    for (let x = done[0]; x <= d; x = add(x, 1)) {
+      const ok = st.log[x] && st.log[x].done;
+      if (ok) { n++; run++; if (run % 7 === 0) shields = Math.min(2, shields + 1); }
+      else if (x === d) { /* vandaag nog niet gedaan: reeks loopt nog */ }
+      else if (shields > 0) { shields--; run = 0; }
+      else { n = 0; run = 0; }
+      best = Math.max(best, n);
+    }
+    return { n, best, shields, today: !!(st.log[d] && st.log[d].done) };
+  }
+
+  function level(xp) {
+    let l = 1; while (50 * (l + 1) * l <= xp) l++;
+    const from = 50 * l * (l - 1), to = 50 * (l + 1) * l;
+    let titel = TITELS[0][1]; TITELS.forEach(([n, t]) => { if (l >= n) titel = t; });
+    const next = TITELS.find(([n]) => n > l);
+    return { lvl: l, titel, from, to, pct: (xp - from) / (to - from), next: next ? { lvl: next[0], titel: next[1] } : null };
+  }
+
+  function badges(st, idx, d) {
+    const tot = Object.values(st.q).reduce((t, s) => t + s.ok, 0);
+    const sk = streak(st, d);
+    const all = studied(st, idx).length === idx.los.length;
+    const bestMock = st.mocks.filter(m => m.n >= 40).reduce((m, x) => Math.max(m, x.ok / x.n), 0);
+    const perfect = Object.values(st.log).some(l => l.done && l.n >= 5 && l.ok === l.n);
+    const list = [
+      ['first', '🎓', 'First lesson', 'Study your first learning objective', studied(st, idx).length >= 1],
+      ['streak7', '🔥', 'On fire', '7-day streak', sk.best >= 7],
+      ['streak30', '☄️', 'Unstoppable', '30-day streak', sk.best >= 30],
+      ['perfect', '💯', 'Flawless', 'A daily challenge with every answer right', perfect],
+      ['c100', '🎯', 'Sharpshooter', '100 correct answers', tot >= 100],
+      ['c500', '🏹', 'Sniper', '500 correct answers', tot >= 500],
+      ['half', '🧭', 'Halfway', 'Half of all learning objectives studied', studied(st, idx).length >= idx.los.length / 2],
+      ['all', '📚', 'Full curriculum', 'Every learning objective studied', all],
+      ['boss3', '⚔️', 'Monster hunter', 'Defeat 3 bosses', Object.values(st.boss).filter(b => b.won).length >= 3],
+      ['bossall', '👑', 'Dungeon cleared', 'Defeat all 7 bosses', BOSSES.every(b => st.boss[b] && st.boss[b].won)],
+      ['mock70', '✅', 'Exam ready', 'Score 70%+ on a mock exam (40+ questions)', bestMock >= 0.7],
+      ['mock85', '🏆', 'Distinction', 'Score 85%+ on a mock exam (40+ questions)', bestMock >= 0.85],
+      ['early', '🐦', 'Early bird', 'Register during early registration', !!st.mijl.reg]
+    ];
+    return list.map(([id, emoji, t, sub, got]) => ({ id, emoji, t, sub, got: !!got }));
+  }
+
+  // ---------------------------------------------------------------- vragen kiezen
+  function rng(seed) { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  function shuffle(a, r) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  /** Volgorde van de antwoordopties husselen (het juiste antwoord staat in de bron vaak op dezelfde plek). */
+  function present(q, r) {
+    const ord = shuffle([0, 1, 2, 3].slice(0, q.a.length), r);
+    return { id: q.id, q: q.q, a: ord.map(i => q.a[i]), c: ord.indexOf(q.c), x: q.x, lo: q.lo };
+  }
+
+  /** Zwakste vragen uit een verzameling leerdoelen (laagste bakje, langst geleden). */
+  function weakest(st, idx, los, n, r) {
+    const qs = shuffle(los.flatMap(id => idx.byLo[id]), r);
+    qs.sort((a, b) => qMastery(st.q[a]) - qMastery(st.q[b]));
+    return qs.slice(0, n);
+  }
+
+  /** Proefexamen: n vragen verdeeld naar examengewicht over alle (of alleen bestudeerde) leerdoelen. */
+  function mockSet(st, idx, n, r, onlyStudied) {
+    const pool = onlyStudied ? idx.los.filter(id => st.lo[id]) : idx.los;
+    const out = [];
+    const mods = Object.keys(MODS);
+    const want = mods.map(m => Math.round(n * MODS[m].w));
+    let diffN = n - want.reduce((a, b) => a + b, 0); want[1] += diffN;
+    mods.forEach((m, i) => {
+      const qs = shuffle(pool.filter(id => idx.mod(id) === m).flatMap(id => idx.byLo[id]), r);
+      out.push(...qs.slice(0, want[i]));
+    });
+    if (out.length < n) { const rest = shuffle(pool.flatMap(id => idx.byLo[id]).filter(q => !out.includes(q)), r); out.push(...rest.slice(0, n - out.length)); }
+    return shuffle(out, r);
+  }
+
+  function bossSet(st, idx, story, b, n, r) {
+    const los = story.bosses[b].units.flatMap(u => idx.unitLos[u] || []);
+    const weak = weakest(st, idx, los, Math.ceil(n / 2), r);
+    const rest = shuffle(los.flatMap(id => idx.byLo[id]).filter(q => !weak.includes(q)), r).slice(0, n - weak.length);
+    return shuffle(weak.concat(rest), r);
+  }
+  const bossReady = (st, idx, story, b) => story.bosses[b].units.flatMap(u => idx.unitLos[u] || []).filter(id => !st.lo[id]);
+
+  /** Wat staat er vandaag op het programma? */
+  function session(st, plan, idx, story, s, d, seed) {
+    const r = rng(seed || 1);
+    const day = dayOf(plan, d) || { d, type: d > s.exam ? 'done' : 'review', los: [] };
+    const out = { d, type: day.type, los: [], qids: [], boss: day.boss || null, case: day.case != null ? story.cases[day.case] : null };
+    const due = dueQs(st, idx, d);
+    if (day.type === 'learn') {
+      out.los = day.los.slice();
+      const fresh = out.los.flatMap(id => idx.byLo[id]);
+      out.qids = fresh.concat(due.filter(q => !fresh.includes(q)).slice(0, Math.max(3, 8 - fresh.length)));
+    } else if (day.type === 'boss') {
+      const miss = bossReady(st, idx, story, day.boss);
+      if (miss.length) { out.type = 'review'; out.blocked = miss.length; }
+      else { out.qids = bossSet(st, idx, story, day.boss, 12, r); return out; }
+    } else if (day.type === 'mock') {
+      out.qids = mockSet(st, idx, 80, r, false); return out;
+    } else if (day.type === 'exam' || day.type === 'done') return out;
+    if (!out.qids.length) {
+      const n = day.type === 'light' ? 6 : day.type === 'drill' ? 12 : 10;
+      const pool = studied(st, idx);
+      const base = due.slice(0, n);
+      const fill = pool.length ? weakest(st, idx, pool, n, r).filter(q => !base.includes(q)) : [];
+      out.qids = shuffle(base.concat(fill).slice(0, n), r);
+    }
+    return out;
+  }
+
+  /** Lessen die volgens plan al gehad hadden moeten worden maar nog niet bestudeerd zijn. */
+  const backlog = (st, plan, idx, d) => idx.los.filter(id => !st.lo[id] && plan.loDate[id] && plan.loDate[id] < d);
+  const nextLos = (st, idx, n) => idx.los.filter(id => !st.lo[id]).slice(0, n);
+
+  const api = { MODS, UNITS, UNIT, BOSSES, XP, TITELS, MIJLPALEN, INTERVAL,
+    iso, parse, add, diff, dow, today, index, defaults, makePlan, dayOf, newState, logDay, gainXp, studyLo, answer, studied, dueQs,
+    loMastery, unitMastery, modMastery, readiness, plannedShare, expected, hours, status, streak, level, badges,
+    rng, shuffle, present, weakest, mockSet, bossSet, bossReady, session, backlog, nextLos };
+  G.RaiEngine = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);

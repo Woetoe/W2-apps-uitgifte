@@ -1,0 +1,570 @@
+/* W2 Apps — RAI: lesstof deel 2 (Module 2 hoofdstuk 4–7). Eigen samenvattingen per learning objective. */
+(function (G) {
+  const S = G.RaiStof || (G.RaiStof = { los: [], qs: [] });
+  const L = (id, unit, t, learn, keys) => S.los.push({ id, unit, t, learn, keys });
+  const Q = (lo, q, a, c, x) => S.qs.push({ lo, q, a, c, x });
+
+  /* ================================================================ M2 · HOOFDSTUK 4 */
+  L('m2c4-1', 'm2c4', 'Decision trees: classification and regression trees',
+`A **decision tree** splits the data with a sequence of yes/no questions on features ("debt/income > 0.4?") until it reaches leaves.
+
+• **Classification tree**: leaf predicts a class (majority vote). Splits chosen to maximise **purity**, measured by **Gini impurity** (1 − Σpᵢ²) or **entropy** (−Σpᵢ log₂pᵢ); the gain in purity is the **information gain**.
+• **Regression tree**: leaf predicts a number (mean of the leaf). Splits chosen to minimise the **sum of squared errors / variance**.
+
+Construction is **greedy and recursive**: at each node, test all features and thresholds, take the best split, repeat on each child until a stopping rule (max depth, min samples per leaf).
+
+**Interpretation**: follow the path from root to leaf; very readable for small trees. Trees handle non-linearity and interactions and need no scaling, but deep trees overfit and are unstable (small data changes → different tree).`,
+['Classification tree: Gini / entropy, majority vote', 'Regression tree: minimise squared error, mean in leaf', 'Greedy recursive splitting', 'Readable, no scaling, but overfit and unstable']);
+  Q('m2c4-1', 'A node contains 8 defaulters and 2 non-defaulters. What is its Gini impurity?',
+    ['0.16', '0.32', '0.50', '0.80'], 1,
+    'Gini = 1 − (0.8² + 0.2²) = 1 − (0.64 + 0.04) = 0.32.');
+  Q('m2c4-1', 'Which criterion does a regression tree typically use to choose splits?',
+    ['Gini impurity', 'Reduction in the sum of squared errors (variance) of the target', 'Silhouette score', 'Log-likelihood of a logistic model'], 1,
+    'Regression trees predict leaf means and pick the split that most reduces squared error.');
+  Q('m2c4-1', 'What is the entropy of a node with a 50/50 class split?',
+    ['0', '0.5', '1', '2'], 2,
+    'Entropy = −(0.5·log₂0.5 + 0.5·log₂0.5) = 1, the maximum for two classes.');
+
+  L('m2c4-2', 'm2c4', 'Pruning and ensemble techniques',
+`**Pruning** fights overfitting of single trees.
+• **Pre-pruning** (early stopping): limit max depth, minimum samples per leaf, minimum gain.
+• **Post-pruning**: grow a full tree, then cut back branches that do not improve validation performance (**cost-complexity pruning**).
+
+**Ensembles** combine many trees:
+• **Bagging** (bootstrap aggregating): train trees on bootstrap samples and average/vote → **reduces variance**.
+• **Random forest**: bagging plus a **random subset of features** at each split, which decorrelates trees. Gives feature importance and out-of-bag error.
+• **Boosting** (AdaBoost, gradient boosting, XGBoost): trees built **sequentially**, each fixing the errors of the previous ones → mainly **reduces bias**; powerful but can overfit, so tune learning rate and number of trees.
+
+Trade-off: ensembles are more accurate but less interpretable than one tree.`,
+['Pre-pruning vs post-pruning (cost-complexity)', 'Bagging/random forest: parallel, reduce variance', 'Boosting: sequential, reduce bias', 'Ensembles: accuracy up, interpretability down']);
+  Q('m2c4-2', 'What distinguishes a random forest from plain bagging of trees?',
+    ['Trees are built sequentially on residuals', 'Each split considers only a random subset of features, decorrelating the trees', 'Only one tree is used', 'It does not use bootstrap samples'], 1,
+    'Random forests add feature randomness at every split, which reduces correlation between trees and therefore the variance of the average.');
+  Q('m2c4-2', 'Gradient boosting differs from bagging mainly because it:',
+    ['Builds trees independently in parallel', 'Builds trees sequentially, each one fitting the errors of the current ensemble', 'Uses only linear models', 'Does not require a loss function'], 1,
+    'Boosting is sequential and focuses on what the ensemble still gets wrong, reducing bias.');
+  Q('m2c4-2', 'A fully grown decision tree has 100% training accuracy but poor validation accuracy. The MOST direct fix is:',
+    ['Grow the tree deeper', 'Prune the tree or limit its depth', 'Remove the validation set', 'Use min-max scaling'], 1,
+    'The tree overfits; pruning or depth limits reduce complexity and variance.');
+
+  L('m2c4-3', 'm2c4', 'K-nearest neighbours (KNN) for classification',
+`**KNN** is a simple, **non-parametric**, **instance-based ("lazy")** method: there is no training phase beyond storing the data.
+
+To classify a new point:
+1. Compute its distance (usually Euclidean) to all training points.
+2. Take the **K nearest** neighbours.
+3. Predict the **majority class** among them (optionally distance-weighted).
+
+Choosing K: small K → flexible, low bias, high variance (noisy); large K → smoother, higher bias. Pick K with cross-validation; odd K avoids ties in binary problems.
+
+Notes: features must be **scaled**; prediction is slow on large data; suffers from the **curse of dimensionality**; for regression, average the neighbours' values.`,
+['Lazy, non-parametric, majority vote of K nearest', 'Small K: high variance; large K: high bias', 'Scale features; curse of dimensionality', 'Choose K by cross-validation']);
+  Q('m2c4-3', 'With K = 5, a new applicant\'s nearest neighbours are: default, no default, default, default, no default. What does KNN predict?',
+    ['No default', 'Default', 'A tie', 'Cannot be determined'], 1,
+    'Three of the five neighbours defaulted, so the majority vote is "default".');
+  Q('m2c4-3', 'What happens as K in KNN increases from 1 towards a very large value?',
+    ['Variance increases and bias decreases', 'The decision boundary becomes smoother: bias increases and variance decreases', 'Training time increases strongly', 'Feature scaling becomes unnecessary'], 1,
+    'Averaging over more neighbours smooths predictions: lower variance, higher bias. K = 1 is the most flexible.');
+  Q('m2c4-3', 'Why must income (in euros) and age (in years) be scaled before applying KNN?',
+    ['KNN cannot handle numbers', 'Otherwise income dominates the distance calculation because of its larger scale', 'Scaling creates more neighbours', 'Scaling is needed only for trees'], 1,
+    'Distances are dominated by features with large numeric ranges unless all features are put on comparable scales.');
+
+  L('m2c4-4', 'm2c4', 'Support vector machines (SVM)',
+`An **SVM** finds the separating **hyperplane** with the **largest margin** between two classes.
+
+• **Support vectors** are the training points closest to the boundary; only they determine the hyperplane.
+• **Hard margin**: no errors allowed (only for perfectly separable data).
+• **Soft margin**: allows some points inside the margin or misclassified, controlled by the **C** parameter. Large C → few violations, narrow margin, risk of overfitting; small C → wider margin, more tolerance, more bias.
+• **Kernel trick**: implicitly maps data to a higher-dimensional space where a linear separator exists (polynomial, **radial basis function (RBF)** kernels), giving non-linear boundaries without computing the mapping explicitly.
+
+Pros: effective in high dimensions, robust with clear margins. Cons: needs scaling, tuning of C and kernel parameters, poor probability outputs, slow on very large data.`,
+['Maximum-margin hyperplane', 'Support vectors define the boundary', 'C: trade-off margin width vs violations', 'Kernel trick (RBF, polynomial) for non-linear boundaries']);
+  Q('m2c4-4', 'In an SVM, which observations determine the position of the separating hyperplane?',
+    ['All observations equally', 'Only the support vectors, which lie on or inside the margin', 'Only outliers far from the boundary', 'The cluster centroids'], 1,
+    'Points far from the margin can move without changing the solution; only support vectors matter.');
+  Q('m2c4-4', 'Increasing the SVM penalty parameter C will typically:',
+    ['Widen the margin and allow more misclassifications', 'Narrow the margin and penalise misclassifications more, increasing overfitting risk', 'Remove the need for a kernel', 'Turn the SVM into K-means'], 1,
+    'A large C punishes margin violations heavily, so the model fits training data more closely with a narrower margin.');
+  Q('m2c4-4', 'What does the kernel trick allow an SVM to do?',
+    ['Train without labels', 'Create non-linear decision boundaries by implicitly working in a higher-dimensional feature space', 'Compute exact probabilities', 'Avoid feature scaling'], 1,
+    'Kernels compute inner products in a transformed space, so a linear separator there is non-linear in the original space.');
+
+  L('m2c4-5', 'm2c4', 'Neural networks: construction and challenges',
+`A **feed-forward neural network** has an **input layer**, one or more **hidden layers** and an **output layer**. Each neuron computes a weighted sum of its inputs plus a bias and applies a non-linear **activation function**:
+
+• **Sigmoid** (0–1), **tanh** (−1 to 1), **ReLU** = max(0, x) (default for hidden layers), **softmax** for multi-class outputs.
+
+Without non-linear activations, the whole network collapses to a linear model. Parameters (weights, biases) are learned by **backpropagation** and **gradient descent**. Number of parameters: for a dense layer with n inputs and m neurons → n·m weights + m biases.
+
+**Challenges**: many hyperparameters (layers, neurons, learning rate), large data needs, **overfitting**, vanishing/exploding gradients, long training, local minima, and **lack of interpretability**.`,
+['Layers of neurons: weighted sum + bias + activation', 'ReLU hidden, sigmoid/softmax outputs', 'Dense layer parameters = n·m + m', 'Challenges: data, tuning, overfitting, gradients, black box']);
+  Q('m2c4-5', 'A dense layer has 10 inputs and 4 neurons. How many trainable parameters (weights plus biases) does it have?',
+    ['14', '40', '44', '50'], 2,
+    '10 × 4 = 40 weights plus 4 biases = 44 parameters.');
+  Q('m2c4-5', 'Why do neural networks need non-linear activation functions?',
+    ['To reduce the number of parameters', 'Without them, stacked layers collapse into a single linear transformation', 'To make the network interpretable', 'To avoid using gradient descent'], 1,
+    'A composition of linear functions is linear; non-linear activations give networks their expressive power.');
+  Q('m2c4-5', 'Which activation is typically used in the output layer for a multi-class classification problem?',
+    ['ReLU', 'Softmax', 'Linear', 'Step function'], 1,
+    'Softmax turns the output scores into probabilities that sum to one across classes.');
+
+  L('m2c4-6', 'm2c4', 'Advanced structures: CNNs and RNNs',
+`**Convolutional neural networks (CNNs)** are designed for grid-like data such as images.
+• **Convolutional layers** slide small filters (kernels) over the input to detect local patterns (edges, shapes); weights are **shared**, so far fewer parameters.
+• **Pooling** layers (e.g. max-pooling) downsample and add some translation invariance.
+• Uses: image recognition, document/cheque processing, satellite imagery, even chart patterns or time series.
+
+**Recurrent neural networks (RNNs)** handle **sequences** (text, time series). A hidden state is passed from one time step to the next, acting as memory.
+• Plain RNNs suffer from **vanishing gradients**, so they forget long-range dependencies.
+• **LSTM** and **GRU** cells use gates (input, forget, output) to keep information over long sequences.
+• Uses: time-series forecasting, transaction sequences for fraud, language.`,
+['CNN: filters, weight sharing, pooling → images', 'RNN: hidden state carries memory → sequences', 'Vanishing gradients in plain RNNs', 'LSTM/GRU gates keep long-term memory']);
+  Q('m2c4-6', 'Which architecture is MOST suitable for detecting patterns in scanned images of documents?',
+    ['Recurrent neural network', 'Convolutional neural network', 'K-means', 'Linear discriminant analysis'], 1,
+    'CNNs exploit the spatial structure of images through convolutional filters and pooling.');
+  Q('m2c4-6', 'What problem do LSTM cells mainly address compared with simple RNNs?',
+    ['Too few parameters', 'Difficulty learning long-range dependencies due to vanishing gradients', 'The need for labelled data', 'Feature scaling'], 1,
+    'LSTM gates let information and gradients flow across many time steps, overcoming the vanishing gradient problem of plain RNNs.');
+  Q('m2c4-6', 'What is a key reason CNNs need fewer parameters than fully connected networks on images?',
+    ['They use no weights', 'Filter weights are shared across all positions of the image', 'They only process one pixel', 'They do not use activation functions'], 1,
+    'The same small filter is applied everywhere (weight sharing), so the parameter count does not grow with image size.');
+
+  L('m2c4-7', 'm2c4', 'Autoencoders for dimensionality reduction (vs PCA)',
+`An **autoencoder** is a neural network trained to **reproduce its own input**. It has:
+• an **encoder** that compresses the input into a small **bottleneck** (latent representation),
+• a **decoder** that reconstructs the input from the bottleneck.
+
+It is trained by minimising **reconstruction error** — no labels needed (unsupervised / self-supervised). The bottleneck gives a compressed representation; a high reconstruction error flags **anomalies** (fraud, unusual trades).
+
+**Autoencoder vs PCA**
+• PCA is **linear**, has a closed-form solution, orthogonal and ordered components, cheap and more interpretable.
+• Autoencoders with non-linear activations capture **non-linear** structure, but need more data, tuning and compute and are harder to interpret.
+• A linear autoencoder with squared-error loss learns the same subspace as PCA.`,
+['Encoder → bottleneck → decoder', 'Trained to minimise reconstruction error', 'High reconstruction error = anomaly', 'PCA linear & cheap; autoencoder non-linear & data hungry']);
+  Q('m2c4-7', 'How can an autoencoder trained on normal transactions be used to detect fraud?',
+    ['Fraudulent transactions get a high reconstruction error', 'It outputs the fraud label directly from supervised training', 'It clusters by K-means', 'It increases the number of features'], 0,
+    'The network learns to reconstruct normal patterns well; unusual transactions are reconstructed poorly.');
+  Q('m2c4-7', 'Which statement correctly contrasts autoencoders and PCA?',
+    ['PCA captures non-linear relationships; autoencoders are linear', 'Autoencoders can capture non-linear structure but are less interpretable and need more data than PCA', 'Both require labelled data', 'PCA needs a decoder network'], 1,
+    'PCA is linear and cheap; autoencoders with non-linear activations are more flexible but costlier and opaque.');
+
+  /* ================================================================ M2 · HOOFDSTUK 5 */
+  L('m2c5-1', 'm2c5', 'How semi-supervised learning differs',
+`**Semi-supervised learning (SSL)** sits between supervised and unsupervised learning: it trains on a **small labelled** set plus a **large unlabelled** set.
+
+Why: labels are often expensive or slow to get (fraud investigations, defaults that take years to observe, manual document tagging), while unlabelled data is cheap.
+
+• Supervised: only labelled data, ignores the unlabelled pool.
+• Unsupervised: ignores labels entirely, finds structure only.
+• Semi-supervised: uses the **structure in unlabelled data** to improve a predictor learned from few labels.
+
+SSL only helps if the unlabelled data carries information about the labels — that is what the assumptions in the next objective are about. If assumptions fail, SSL can make the model **worse** than supervised learning on the labelled set alone.`,
+['Few labels + many unlabelled examples', 'Labels costly, unlabelled data cheap', 'Uses structure of unlabelled data', 'Can hurt if assumptions fail']);
+  Q('m2c5-1', 'Which statement BEST describes semi-supervised learning?',
+    ['It needs no labels at all', 'It uses a small set of labelled data together with a large set of unlabelled data', 'It learns from rewards', 'It only works on images'], 1,
+    'SSL combines a few labels with plentiful unlabelled data.');
+  Q('m2c5-1', 'Compared with training only on the labelled subset, semi-supervised learning:',
+    ['Always improves accuracy', 'Can improve accuracy, but may hurt performance if its assumptions about the data do not hold', 'Never changes the result', 'Removes the need for validation'], 1,
+    'Benefits depend on the unlabelled data being informative under SSL assumptions; otherwise performance can degrade.');
+
+  L('m2c5-2', 'm2c5', 'Assumptions required for effective semi-supervised learning',
+`• **Smoothness (continuity) assumption**: points that are close to each other are likely to share the same label.
+• **Cluster assumption**: data form clusters, and points in the same cluster tend to share a label; the decision boundary should pass through **low-density** regions (low-density separation).
+• **Manifold assumption**: high-dimensional data lie on a lower-dimensional manifold; learning that structure from unlabelled data helps.
+
+Also implicitly: labelled and unlabelled data come from the **same distribution**, and the labelled sample is representative.
+
+If, for example, fraudsters deliberately mimic normal customers (so classes overlap heavily), the cluster assumption fails and SSL may spread wrong labels.`,
+['Smoothness: nearby points share labels', 'Cluster / low-density separation', 'Manifold: data on lower-dimensional structure', 'Same distribution for labelled and unlabelled']);
+  Q('m2c5-2', 'The "cluster assumption" in semi-supervised learning states that:',
+    ['Every cluster contains all classes equally', 'Points in the same cluster tend to share a label, so boundaries should lie in low-density regions', 'Clusters must be found with K-means', 'Labelled data must form one cluster'], 1,
+    'SSL methods exploit clusters in unlabelled data, placing decision boundaries where data are sparse.');
+  Q('m2c5-2', 'Which situation MOST undermines semi-supervised learning?',
+    ['Unlabelled data come from a different population than the labelled data', 'There are many unlabelled examples', 'Classes are well separated', 'Labels are accurate'], 0,
+    'If labelled and unlabelled data come from different distributions, structure learned from the unlabelled data can mislead the model.');
+
+  L('m2c5-3', 'm2c5', 'Applications of semi-supervised learning',
+`Typical cases where labels are scarce:
+
+• **Fraud and AML**: few confirmed cases, millions of transactions.
+• **Credit risk**: **reject inference** — rejected applicants have no observed outcome; SSL can help infer their likely performance.
+• **Document and text classification**: tagging contracts, news, complaints, ESG reports; only a sample is labelled by hand.
+• **Speech and image recognition**, medical imaging.
+• **Cyber security** and anomaly detection.
+• Web content classification, sentiment analysis.
+
+Common thread: labelling needs experts or time, while raw data are abundant.`,
+['Fraud/AML with few labels', 'Reject inference in credit scoring', 'Text/document classification', 'Image, speech, cyber']);
+  Q('m2c5-3', 'In credit scoring, outcomes are unknown for rejected applicants. Which SSL application addresses this?',
+    ['Reject inference', 'Hierarchical clustering', 'Grid search', 'Temporal difference learning'], 0,
+    'Reject inference uses the unlabelled rejected population to reduce the bias of training only on accepted (labelled) loans.');
+  Q('m2c5-3', 'Why is semi-supervised learning attractive for classifying thousands of legal contracts?',
+    ['Contracts have no text', 'Expert labelling is costly, so only a small sample can be labelled while many unlabelled contracts exist', 'Contracts provide reward signals', 'It needs no model at all'], 1,
+    'SSL exploits the large unlabelled pool when labels require expensive expert time.');
+
+  L('m2c5-4', 'm2c5', 'Transductive versus inductive semi-supervised learning',
+`• **Transductive** SSL: the goal is only to predict labels for the **specific unlabelled points already in the data set**. No general model for new data is produced. Example: **label propagation** over a similarity graph.
+• **Inductive** SSL: learns a **general function/model** that can classify **new, unseen** observations. Example: self-training or co-training producing a classifier you can deploy.
+
+Analogy: transductive = solve this exam's questions; inductive = learn the subject so you can answer any future question.
+
+In production risk systems you usually need **inductive** models, because new transactions or applicants keep arriving.`,
+['Transductive: label the given unlabelled points only', 'Inductive: general model for new data', 'Label propagation = transductive', 'Deployment usually needs inductive']);
+  Q('m2c5-4', 'A team only needs labels for a fixed archive of 50,000 emails and will never classify new emails. Which type of SSL suffices?',
+    ['Inductive', 'Transductive', 'Reinforcement', 'Supervised only'], 1,
+    'Transductive learning predicts labels for the given unlabelled set without building a general model.');
+  Q('m2c5-4', 'Which is a defining feature of inductive semi-supervised learning?',
+    ['It can only label points seen during training', 'It produces a model that generalises to new, unseen observations', 'It never uses unlabelled data', 'It requires a reward function'], 1,
+    'Inductive methods learn a general mapping that can be applied to future data.');
+
+  L('m2c5-5', 'm2c5', 'Self-training versus co-training',
+`**Self-training** (one model)
+1. Train a classifier on the labelled data.
+2. Predict the unlabelled data; add the **most confident** predictions as **pseudo-labels**.
+3. Retrain and repeat.
++ Simple, works with any classifier. − **Confirmation bias**: early mistakes are reinforced and errors can accumulate.
+
+**Co-training** (two models, two views)
+1. Split features into two **views** that are each sufficient to predict the label and **conditionally independent** given the label (e.g. a web page's text vs the text of links pointing to it).
+2. Train one classifier per view.
+3. Each classifier labels its most confident unlabelled examples **for the other** one.
++ Less confirmation bias because the views make different mistakes. − Needs two genuinely independent, sufficient views, which are rare.`,
+['Self-training: one model, pseudo-labels, confirmation bias', 'Co-training: two views, models teach each other', 'Co-training needs sufficient, conditionally independent views']);
+  Q('m2c5-5', 'What is the main weakness of self-training?',
+    ['It needs two independent feature views', 'Incorrect pseudo-labels can reinforce themselves (confirmation bias)', 'It cannot use unlabelled data', 'It only works for regression'], 1,
+    'The model learns from its own confident predictions; early errors get added as labels and amplified.');
+  Q('m2c5-5', 'Co-training requires which condition to work well?',
+    ['A single feature', 'Two feature views that are each sufficient for prediction and conditionally independent given the label', 'Fully labelled data', 'A reward signal'], 1,
+    'Each view must be able to predict on its own, and the views should provide independent evidence.');
+
+  /* ================================================================ M2 · HOOFDSTUK 6 */
+  L('m2c6-1', 'm2c6', 'Key principles and frameworks of reinforcement learning',
+`RL is about an **agent** interacting with an **environment**:
+
+• At each step the agent observes a **state** s, takes an **action** a, receives a **reward** r and moves to a new state.
+• A **policy** π(a|s) says which action to take in each state.
+• The goal is to maximise **cumulative discounted reward** (the **return**): G = r₁ + γr₂ + γ²r₃ + …, with **discount factor** γ between 0 and 1 (low γ = short-sighted).
+• **Value function** V(s): expected return from state s; **action-value** Q(s, a): expected return from taking a in s.
+• The standard framework is a **Markov decision process (MDP)**: the next state depends only on the current state and action.
+• **Bellman equation**: value = immediate reward + discounted value of the next state.
+
+Model-based RL learns/uses a model of the environment; model-free RL (Q-learning) learns values directly from experience.`,
+['Agent, environment, state, action, reward, policy', 'Return G = Σ γᵗ rₜ', 'V(s) and Q(s, a)', 'MDP + Bellman equation', 'Model-based vs model-free']);
+  Q('m2c6-1', 'Rewards of 10, 10 and 10 are received in three consecutive steps with discount factor γ = 0.5. What is the discounted return from the first step?',
+    ['15.0', '17.5', '20.0', '30.0'], 1,
+    'G = 10 + 0.5·10 + 0.5²·10 = 10 + 5 + 2.5 = 17.5.');
+  Q('m2c6-1', 'What does the discount factor γ close to 0 imply for an RL agent?',
+    ['It values long-term rewards highly', 'It focuses mostly on immediate rewards', 'It never explores', 'It ignores rewards'], 1,
+    'Future rewards are multiplied by powers of γ; with γ near 0 they hardly count, so the agent is short-sighted.');
+  Q('m2c6-1', 'The Markov property in an MDP means that:',
+    ['Rewards are always positive', 'The next state depends only on the current state and action, not on the full history', 'The policy is random', 'States are unlabelled'], 1,
+    'Under the Markov property, the current state contains all relevant information about the past.');
+
+  L('m2c6-2', 'm2c6', 'Exploration, exploitation and ε-greedy strategies',
+`• **Exploitation**: choose the action that currently looks best (highest estimated value) to collect reward now.
+• **Exploration**: try other actions to learn more, which may find better options later.
+
+Pure exploitation can lock in a sub-optimal choice; pure exploration wastes reward. This is the **exploration–exploitation trade-off**.
+
+**ε-greedy**: with probability **1 − ε** choose the best-known action; with probability **ε** choose a **random** action.
+• Example: ε = 0.1 → 90% exploit, 10% explore (random, which might still pick the best action).
+• **Decaying ε**: explore a lot early, less later as estimates become reliable.
+Alternatives: optimistic initial values, **upper confidence bound (UCB)**, Thompson sampling, softmax/Boltzmann exploration.`,
+['Exploit = best known; explore = learn', 'ε-greedy: 1 − ε best, ε random', 'Decay ε over time', 'Alternatives: UCB, Thompson sampling, softmax']);
+  Q('m2c6-2', 'An agent uses ε-greedy with ε = 0.2 and four possible actions. What is the probability it selects the currently best action?',
+    ['0.80', '0.85', '0.20', '0.95'], 1,
+    'It exploits with probability 0.8, and when exploring (0.2) it picks uniformly among 4 actions, choosing the best with 0.2 × 1/4 = 0.05. Total 0.85.');
+  Q('m2c6-2', 'Why is ε often decayed over time?',
+    ['To explore more as knowledge improves', 'To explore heavily early when estimates are poor and exploit more once estimates are reliable', 'To stop learning immediately', 'To increase the discount factor'], 1,
+    'Early exploration builds knowledge; later the agent should mostly use what it has learned.');
+
+  L('m2c6-3', 'm2c6', 'The multi-armed bandit (MAB) problem',
+`The **multi-armed bandit** is the simplest RL setting: a gambler faces several slot machines ("arms") with unknown reward distributions. There is **one state**; each pull gives a reward, and the goal is to maximise total reward over many pulls.
+
+• Estimate each arm's value as the **average reward** observed: Qₙ₊₁ = Qₙ + (1/n)(Rₙ − Qₙ) (incremental mean).
+• Choose arms with ε-greedy, UCB or Thompson sampling.
+• **Regret** = reward lost compared with always pulling the best arm.
+
+Finance/business examples: choosing between marketing offers or website designs (A/B testing that adapts), selecting among trading strategies or execution venues, dynamic pricing.
+
+Unlike full RL, actions do **not change future states** — there is no sequential state transition.`,
+['One state, many arms, unknown payoffs', 'Incremental average estimate', 'Regret vs always choosing best arm', 'Adaptive A/B tests, strategy selection']);
+  Q('m2c6-3', 'An arm\'s current estimated value is 4.0 after 4 pulls. The 5th pull yields a reward of 9. What is the updated estimate?',
+    ['5.0', '6.5', '4.2', '9.0'], 0,
+    'Q = 4.0 + (1/5)(9 − 4.0) = 4.0 + 1.0 = 5.0.');
+  Q('m2c6-3', 'What distinguishes the multi-armed bandit from the general reinforcement learning problem?',
+    ['There is no reward', 'Actions do not affect future states: there is effectively a single state', 'It requires labelled data', 'It always uses deep networks'], 1,
+    'In a bandit, each decision is independent of state transitions; general RL involves sequences of states affected by actions.');
+  Q('m2c6-3', 'In the bandit setting, "regret" measures:',
+    ['The number of arms', 'The reward lost compared with always choosing the optimal arm', 'Model training time', 'The discount factor'], 1,
+    'Regret is the cumulative shortfall versus the best possible arm, the cost of learning.');
+
+  L('m2c6-4', 'm2c6', 'Monte Carlo versus Temporal Difference methods',
+`Both estimate value functions from experience (model-free).
+
+**Monte Carlo (MC)**
+• Waits until the **end of an episode**, then updates values using the **actual total return** G.
+• V(s) ← V(s) + α[G − V(s)].
+• **Unbiased** but **high variance**; requires episodes that terminate.
+
+**Temporal Difference (TD)**
+• Updates after **every step** using the observed reward plus the **estimated value of the next state** (**bootstrapping**).
+• TD(0): V(s) ← V(s) + α[r + γV(s') − V(s)]. The bracket is the **TD error**.
+• Lower variance, learns online and in continuing tasks, but **biased** by the current estimates.
+• **Q-learning** (off-policy) and **SARSA** (on-policy) are TD control methods.`,
+['MC: wait for episode end, actual return, unbiased, high variance', 'TD: update each step, bootstrap, lower variance, biased', 'TD error = r + γV(s\') − V(s)', 'Q-learning (off-policy), SARSA (on-policy)']);
+  Q('m2c6-4', 'V(s) = 5, reward r = 2, V(s\') = 6, γ = 0.9, learning rate α = 0.5. What is the TD(0) updated value of V(s)?',
+    ['5.70', '6.20', '6.40', '7.40'], 1,
+    'TD target = 2 + 0.9·6 = 7.4. TD error = 7.4 − 5 = 2.4. New V = 5 + 0.5·2.4 = 6.2.');
+  Q('m2c6-4', 'Which is a key advantage of Temporal Difference learning over Monte Carlo methods?',
+    ['It is always unbiased', 'It can update after each step without waiting for the episode to end', 'It does not use rewards', 'It requires a full model of the environment'], 1,
+    'TD bootstraps from current estimates, so it learns online and works for continuing (non-terminating) tasks.');
+  Q('m2c6-4', 'Monte Carlo value estimates are characterised by:',
+    ['Low variance and high bias', 'No bias but relatively high variance', 'Updates after every time step', 'Bootstrapping from next-state values'], 1,
+    'MC uses complete actual returns: unbiased, but returns vary a lot between episodes.');
+
+  L('m2c6-5', 'm2c6', 'Deep reinforcement learning',
+`When the state space is huge (images, many market variables), tables of values are impossible. **Deep RL** uses a **neural network** to approximate the value function, the policy, or both.
+
+• **Deep Q-Network (DQN)**: a network estimates Q(s, a). Stabilised with **experience replay** (store past transitions and sample them randomly) and a **target network** (a slowly updated copy used for TD targets).
+• **Policy-gradient / actor-critic** methods (e.g. PPO) use networks for the policy (actor) and value (critic).
+• Famous results: Atari games from pixels (DQN), **AlphaGo/AlphaZero**, and **RLHF** for aligning LLMs.
+
+Risks: sample inefficiency, instability, reward hacking (optimising the reward in unintended ways), sim-to-real gaps, poor explainability — important when used for trading or hedging.`,
+['Neural nets approximate value/policy', 'DQN: experience replay + target network', 'Actor-critic, PPO', 'Risks: instability, reward hacking, opacity']);
+  Q('m2c6-5', 'Why does a Deep Q-Network use experience replay?',
+    ['To store labelled training data for supervised learning', 'To break correlations between consecutive samples and reuse past experience, stabilising training', 'To increase the discount factor', 'To avoid using a neural network'], 1,
+    'Sampling randomly from a replay buffer decorrelates updates and improves data efficiency and stability.');
+  Q('m2c6-5', 'A trading agent maximises its reward by exploiting a flaw in the simulator that does not exist in real markets. This is known as:',
+    ['Reward hacking / specification gaming', 'Underfitting', 'Label propagation', 'Stratified sampling'], 0,
+    'The agent optimises the reward signal in an unintended way; a key risk of RL in practice.');
+
+  L('m2c6-6', 'm2c6', 'Value-based versus policy-based methods',
+`**Value-based** methods (Q-learning, DQN)
+• Learn a value function Q(s, a); the policy is implicit: pick the action with the highest Q (plus exploration).
+• Work well with **discrete** action sets; usually sample-efficient; can be unstable with function approximation.
+
+**Policy-based** methods (REINFORCE, policy gradients)
+• Directly learn a **parameterised policy** π(a|s; θ) by gradient ascent on expected return.
+• Handle **continuous** actions (e.g. trade size, hedge ratio) and can learn **stochastic** policies.
+• Often higher variance and less sample-efficient.
+
+**Actor-critic** combines both: the **actor** (policy) chooses actions, the **critic** (value function) evaluates them and reduces variance.`,
+['Value-based: learn Q, act greedily; discrete actions', 'Policy-based: learn π directly; continuous/stochastic actions', 'Actor-critic combines both']);
+  Q('m2c6-6', 'An agent must choose a continuous hedge ratio between 0 and 1 at each step. Which family of methods is naturally suited?',
+    ['Value-based methods with a discrete Q-table', 'Policy-based (policy gradient) methods', 'K-means clustering', 'Naive Bayes'], 1,
+    'Policy-based methods parameterise the policy directly and handle continuous action spaces naturally.');
+  Q('m2c6-6', 'In an actor-critic method, the critic:',
+    ['Selects actions directly', 'Estimates a value function to evaluate the actor\'s actions', 'Labels the data', 'Sets the discount factor'], 1,
+    'The critic learns values and provides feedback (e.g. an advantage) to update the actor\'s policy.');
+
+  /* ================================================================ M2 · HOOFDSTUK 7 */
+  L('m2c7-1', 'm2c7', 'OLS, nonlinear least squares and maximum likelihood',
+`• **Ordinary least squares (OLS)**: choose parameters that minimise the **sum of squared residuals** in a model that is **linear in the parameters**. Closed-form solution β = (X'X)⁻¹X'y.
+• **Nonlinear least squares (NLS)**: same objective (squared residuals) but the model is **non-linear in the parameters** (e.g. y = a·e^(bx)). No closed form → iterative numerical optimisation (Gauss-Newton, gradient methods); risk of local minima, needs starting values.
+• **Maximum likelihood estimation (MLE)**: choose parameters that make the observed data **most probable** under an assumed distribution; maximise the (log-)likelihood. Used for logistic regression, GARCH, many ML models (minimising cross-entropy = MLE).
+
+Link: with normally distributed errors, MLE for a linear regression gives the same coefficients as OLS.`,
+['OLS: linear in parameters, closed form', 'NLS: non-linear, iterative, starting values', 'MLE: maximise (log-)likelihood under a distribution', 'Normal errors → MLE = OLS']);
+  Q('m2c7-1', 'Which estimation method requires an assumption about the probability distribution of the data?',
+    ['Ordinary least squares (for point estimates)', 'Maximum likelihood estimation', 'Nonlinear least squares', 'Grid search'], 1,
+    'MLE maximises the likelihood, which is defined only once a distribution for the data is specified.');
+  Q('m2c7-1', 'Under which condition do OLS and MLE give identical coefficient estimates for a linear regression?',
+    ['When errors are normally distributed (i.i.d.)', 'Never', 'Only for logistic regression', 'When the model is non-linear'], 0,
+    'With i.i.d. normal errors, maximising the likelihood is equivalent to minimising the sum of squared residuals.');
+  Q('m2c7-1', 'Why does nonlinear least squares usually need iterative optimisation?',
+    ['There is no objective function', 'The model is non-linear in its parameters, so there is generally no closed-form solution', 'It uses labelled data', 'It always has one parameter'], 1,
+    'Without linearity in parameters, the normal equations cannot be solved directly; numerical methods are needed.');
+
+  L('m2c7-2', 'm2c7', 'Gradient descent for estimating parameters',
+`**Gradient descent** minimises a loss function L(θ) step by step:
+
+θ_new = θ_old − η · ∂L/∂θ
+
+• The **gradient** points uphill; move in the opposite direction.
+• **η (learning rate)** sets the step size: too large → overshoot/diverge; too small → very slow, may stall.
+• Stop when the gradient is near zero or improvement is tiny (convergence).
+• For convex losses (linear/logistic regression) it reaches the global minimum; for neural networks it may end in local minima or saddle points.
+
+Example: L(θ) = (θ − 3)², gradient 2(θ − 3). From θ = 0 with η = 0.25: gradient −6, new θ = 0 − 0.25·(−6) = 1.5.`,
+['θ ← θ − η·gradient', 'Learning rate too high diverges, too low is slow', 'Convex → global minimum; neural nets → local minima/saddles']);
+  Q('m2c7-2', 'Loss L(w) = (w − 5)². Starting at w = 1 with learning rate 0.1, what is w after one gradient descent step?',
+    ['0.2', '1.8', '1.4', '5.0'], 1,
+    'Gradient = 2(w − 5) = −8. New w = 1 − 0.1·(−8) = 1.8.');
+  Q('m2c7-2', 'Training loss oscillates wildly and grows each epoch. The MOST likely cause is:',
+    ['The learning rate is too large', 'The learning rate is too small', 'Too much training data', 'The model is underfitting'], 0,
+    'An overly large step overshoots the minimum and can make the loss diverge.');
+
+  L('m2c7-3', 'm2c7', 'Batch, stochastic and mini-batch gradient descent; dynamic learning rates',
+`• **Batch gradient descent**: gradient computed on the **whole** training set per update. Stable, smooth path, but slow and memory heavy for big data.
+• **Stochastic gradient descent (SGD)**: update after **each single observation**. Fast, noisy updates; noise can help escape shallow local minima but the path zig-zags.
+• **Mini-batch**: update on small batches (e.g. 32–256). The standard compromise; efficient on GPUs.
+• An **epoch** = one full pass over the training data.
+
+**Dynamic learning rates** improve convergence:
+• **Schedules / decay**: start large, shrink over time (step decay, exponential decay).
+• **Momentum**: add a fraction of the previous update to smooth oscillations and speed up.
+• **Adaptive methods**: AdaGrad, RMSProp, **Adam** — per-parameter learning rates based on past gradients.`,
+['Batch: all data, stable, slow', 'SGD: one obs, fast, noisy', 'Mini-batch: compromise', 'Decay, momentum, Adam/RMSProp']);
+  Q('m2c7-3', 'A training set has 10,000 observations and mini-batch size 100. How many parameter updates happen in one epoch?',
+    ['1', '100', '1,000', '10,000'], 1,
+    '10,000 / 100 = 100 mini-batches, each giving one update.');
+  Q('m2c7-3', 'Which property is typical of stochastic gradient descent (batch size 1)?',
+    ['Very smooth convergence path', 'Noisy updates that are cheap to compute and may help escape shallow local minima', 'Requires the full data set in memory per update', 'Never converges'], 1,
+    'Single-observation gradients are noisy approximations, fast to compute, and the noise can help exploration.');
+  Q('m2c7-3', 'What does momentum add to gradient descent?',
+    ['Random restarts', 'A fraction of the previous update, smoothing oscillations and accelerating along consistent directions', 'A larger training set', 'Regularisation of weights'], 1,
+    'Momentum accumulates velocity in directions of consistent gradient, damping zig-zags.');
+
+  L('m2c7-4', 'm2c7', 'Backpropagation',
+`**Backpropagation** computes the gradient of the loss with respect to **every weight** in a neural network efficiently, using the **chain rule**.
+
+1. **Forward pass**: feed inputs through the network, compute outputs and the loss.
+2. **Backward pass**: starting at the output, compute the error signal and propagate it **layer by layer backwards**; each weight's gradient = (error signal of the neuron it feeds) × (activation of the neuron it comes from).
+3. **Update** all weights with gradient descent.
+
+Backprop is **how the gradients are computed**; gradient descent is **how they are used** to update weights. Repeated over many batches and epochs, the network converges to (locally) optimal weights.`,
+['Forward pass → loss', 'Backward pass via chain rule', 'Gradient descent uses the gradients', 'Backprop computes, GD updates']);
+  Q('m2c7-4', 'Which mathematical rule makes backpropagation possible?',
+    ['Bayes\' theorem', 'The chain rule of differentiation', 'The central limit theorem', 'The law of one price'], 1,
+    'Gradients for earlier layers are products of derivatives along the path from the loss, computed with the chain rule.');
+  Q('m2c7-4', 'What is the correct relationship between backpropagation and gradient descent?',
+    ['They are the same thing', 'Backpropagation computes the gradients; gradient descent uses them to update the weights', 'Gradient descent computes gradients; backpropagation chooses the learning rate', 'Backpropagation is only used in K-means'], 1,
+    'Backprop is the efficient gradient calculation; an optimiser such as SGD or Adam applies the updates.');
+
+  L('m2c7-5', 'm2c7', 'Computational issues in training neural networks',
+`• **Vanishing gradients**: gradients shrink as they are multiplied backwards through many layers (especially with sigmoid/tanh), so early layers barely learn.
+• **Exploding gradients**: gradients grow uncontrollably (deep nets, RNNs) → unstable weights.
+• **Local minima, saddle points and plateaus** in a non-convex loss surface.
+• **Overfitting** with many parameters.
+• **Cost**: long training times, need for GPUs, large memory.
+
+**Solutions**
+• **ReLU** (and variants) activations reduce vanishing gradients.
+• Careful **weight initialisation** (Xavier/Glorot, He).
+• **Batch normalisation** stabilises layer inputs.
+• **Gradient clipping** against exploding gradients.
+• **Residual (skip) connections**; LSTM/GRU for sequences.
+• Adaptive optimisers (Adam), momentum, learning-rate schedules.
+• Regularisation: dropout, weight decay, early stopping.`,
+['Vanishing / exploding gradients', 'Local minima, saddles, cost', 'ReLU, good initialisation, batch norm', 'Gradient clipping, skip connections, Adam']);
+  Q('m2c7-5', 'Which technique specifically addresses exploding gradients?',
+    ['Gradient clipping', 'One-hot encoding', 'K-means++ initialisation', 'Removing the bias terms'], 0,
+    'Gradient clipping caps the size (norm) of gradients so updates stay stable.');
+  Q('m2c7-5', 'A deep network with sigmoid activations trains very slowly in its first layers. A likely cause and fix is:',
+    ['Exploding gradients; increase learning rate', 'Vanishing gradients; use ReLU activations and better initialisation', 'Too little regularisation; add dropout', 'Class imbalance; oversample'], 1,
+    'Sigmoid derivatives are at most 0.25, so gradients shrink through layers; ReLU and suitable initialisation help.');
+
+  L('m2c7-6', 'm2c7', 'Underfitting and overfitting',
+`• **Underfitting**: the model is **too simple** to capture the true pattern. Poor on **training and test** data. Causes: too few features, too strong regularisation, wrong functional form, too little training. Fix: more complex model, better features, less regularisation.
+• **Overfitting**: the model learns **noise** in the training data. Excellent on training data, **poor on new data**. Causes: too complex model, too many features, too little data, training too long. Fix: more data, simpler model, regularisation, pruning, dropout, early stopping, cross-validation.
+
+Diagnosis: compare training and validation error.
+• Both high → underfitting (high bias).
+• Training low, validation much higher → overfitting (high variance).`,
+['Underfit: high train and test error (bias)', 'Overfit: low train, high test error (variance)', 'Compare training vs validation error']);
+  Q('m2c7-6', 'Training error 2%, validation error 25%. What is the diagnosis?',
+    ['Underfitting', 'Overfitting', 'A well-balanced model', 'Data leakage into training only'], 1,
+    'A large gap between low training and high validation error is the signature of overfitting.');
+  Q('m2c7-6', 'Training error 30% and validation error 31% on a task where 5% is achievable. Which action is MOST appropriate?',
+    ['Add stronger regularisation', 'Use a more flexible model or better features', 'Reduce the training data', 'Stop training earlier'], 1,
+    'Both errors are high and similar: underfitting. More capacity or better features are needed.');
+
+  L('m2c7-7', 'm2c7', 'The bias–variance trade-off',
+`Expected prediction error on new data decomposes into:
+
+**Error = Bias² + Variance + Irreducible noise**
+
+• **Bias**: error from wrong or too simple assumptions (systematic miss).
+• **Variance**: sensitivity to the specific training sample (the model changes a lot with different data).
+• **Irreducible error**: noise that no model can remove.
+
+As **model complexity rises**, bias falls and variance rises. Total error is U-shaped; the best model sits at the minimum.
+
+Examples: linear regression on a curved relationship → high bias. A deep, unpruned tree → high variance. Ensembles: bagging reduces variance, boosting reduces bias. Regularisation trades a little bias for a big reduction in variance.`,
+['Error = bias² + variance + noise', 'Complexity ↑ → bias ↓, variance ↑', 'U-shaped total error', 'Bagging cuts variance; boosting cuts bias']);
+  Q('m2c7-7', 'Which model is MOST likely to have high variance and low bias?',
+    ['A linear regression with two features', 'A very deep, unpruned decision tree', 'A model predicting the overall mean', 'A heavily regularised ridge regression'], 1,
+    'Deep unpruned trees fit training data very closely and change substantially with new samples.');
+  Q('m2c7-7', 'Which component of prediction error cannot be reduced by any model?',
+    ['Bias', 'Variance', 'Irreducible error (noise)', 'Regularisation error'], 2,
+    'Irreducible error stems from randomness in the data-generating process itself.');
+
+  L('m2c7-8', 'm2c7', 'Prediction accuracy versus interpretability',
+`More flexible models usually predict better but are harder to explain.
+
+Roughly from **most interpretable / least flexible** to **least interpretable / most flexible**:
+linear & logistic regression → decision trees → K-nearest neighbours → random forests / gradient boosting → support vector machines (with kernels) → deep neural networks.
+
+Why it matters for risk managers:
+• Regulators, auditors and customers may require **explanations** (adverse action reasons, model documentation).
+• Interpretable models make **validation**, bias detection and challenge easier.
+• High-stakes decisions (credit, insurance, hiring) favour interpretability; low-stakes or perception tasks may accept black boxes with XAI tools.
+
+The best choice depends on the **use case**, materiality and regulatory context — not accuracy alone.`,
+['Flexible models: more accurate, less interpretable', 'Regression/trees most interpretable; deep nets least', 'High stakes → favour interpretability', 'Choice depends on use case and regulation']);
+  Q('m2c7-8', 'For a regulated retail credit-approval model where applicants must receive reasons for rejection, which choice is usually MOST defensible?',
+    ['A deep neural network without explanations', 'An interpretable model such as a scorecard/logistic regression, unless a more complex model can be reliably explained', 'Whatever model has the highest accuracy', 'An unsupervised clustering model'], 1,
+    'Explainability requirements and validation needs favour interpretable models in high-stakes regulated decisions.');
+  Q('m2c7-8', 'Which ordering from MOST to LEAST interpretable is generally correct?',
+    ['Neural network, random forest, logistic regression', 'Logistic regression, decision tree, random forest, deep neural network', 'Random forest, logistic regression, single tree', 'Deep neural network, SVM, linear regression'], 1,
+    'Linear models and single trees are transparent; ensembles and deep networks are progressively harder to interpret.');
+
+  L('m2c7-9', 'm2c7', 'Regularisation to prevent overfitting',
+`**Regularisation** adds a penalty for model complexity to the loss function:
+
+• **Ridge (L2)**: penalty λΣβ². Shrinks coefficients towards zero but **not exactly zero**; good with multicollinearity.
+• **Lasso (L1)**: penalty λΣ|β|. Can shrink coefficients **exactly to zero** → automatic **feature selection**.
+• **Elastic net**: mix of L1 and L2; useful with many correlated features.
+• **λ (lambda)** controls strength: λ = 0 → ordinary model; large λ → simpler model, more bias, less variance. Tune λ by cross-validation. Scale features first.
+
+For neural networks: **weight decay** (L2), **dropout** (randomly switch off neurons during training), **early stopping** (stop when validation error starts rising), data augmentation.`,
+['Ridge L2: shrink, no zeros', 'Lasso L1: some coefficients exactly zero (selection)', 'Elastic net: both', 'λ tuned by CV; dropout, early stopping for nets']);
+  Q('m2c7-9', 'A model has 300 candidate features and the team wants the regularisation to also select a small subset. Which method fits best?',
+    ['Ridge regression', 'Lasso regression', 'Ordinary least squares', 'Batch normalisation'], 1,
+    'The L1 penalty drives some coefficients exactly to zero, performing feature selection.');
+  Q('m2c7-9', 'What is the effect of increasing λ in ridge regression?',
+    ['Coefficients grow, variance increases', 'Coefficients shrink towards zero, bias increases and variance decreases', 'Coefficients become exactly zero', 'No effect'], 1,
+    'A larger penalty shrinks coefficients, simplifying the model: more bias, less variance.');
+  Q('m2c7-9', 'Early stopping prevents overfitting by:',
+    ['Removing features', 'Halting training when validation error stops improving', 'Increasing the learning rate', 'Adding more layers'], 1,
+    'Training is stopped at the point where generalisation performance is best, before the model fits noise.');
+
+  L('m2c7-10', 'm2c7', 'Cross-validation, stratified cross-validation and bootstrapping',
+`• **k-fold cross-validation**: split data into k folds (e.g. 5 or 10). Train on k − 1 folds, validate on the remaining fold; repeat k times so each fold is used once for validation; average the scores. Uses data efficiently and gives a more stable performance estimate.
+• **Leave-one-out (LOOCV)**: k = n; nearly unbiased but expensive and high variance.
+• **Stratified k-fold**: each fold keeps the **same class proportions** as the full data set — essential for **imbalanced** targets (defaults, fraud).
+• **Time-series CV** (rolling/expanding window): never train on the future.
+• **Bootstrapping**: draw many samples of size n **with replacement**; fit/evaluate on each to estimate the variability of a statistic or model. About **63.2%** of observations appear in a bootstrap sample; the remaining ~36.8% are **out-of-bag** and can serve as validation (as in random forests).`,
+['k-fold: each fold validated once, average scores', 'Stratified: keep class proportions', 'Time series: forward-chaining CV', 'Bootstrap: sample with replacement, ~63.2% unique, OOB ~36.8%']);
+  Q('m2c7-10', 'A default model has a 2% default rate. Why use stratified k-fold cross-validation?',
+    ['To shuffle time order', 'To ensure each fold contains roughly 2% defaults, avoiding folds with almost no positives', 'To increase the number of features', 'To remove the test set'], 1,
+    'Stratification keeps the class balance in every fold so performance estimates are reliable for rare events.');
+  Q('m2c7-10', 'Approximately what fraction of the original observations do NOT appear in a given bootstrap sample (out-of-bag)?',
+    ['About 10%', 'About 25%', 'About 37%', 'About 63%'], 2,
+    'Each observation is missed with probability (1 − 1/n)ⁿ ≈ e⁻¹ ≈ 36.8%.');
+  Q('m2c7-10', 'In 5-fold cross-validation, how many times is the model trained?',
+    ['1', '4', '5', '25'], 2,
+    'Once per fold: five training runs, each validated on a different held-out fold.');
+
+  L('m2c7-11', 'm2c7', 'Grid search for hyperparameter tuning',
+`**Hyperparameters** are set **before** training (not learned from data): tree depth, K in KNN, C and kernel width in SVM, λ in lasso, learning rate, number of layers.
+
+**Grid search**:
+1. Define a set of candidate values for each hyperparameter.
+2. Train and evaluate (usually with **cross-validation**) **every combination**.
+3. Choose the combination with the best validation score; finally evaluate once on the test set.
+
+Example: 4 values of depth × 3 values of learning rate × 5-fold CV = 12 combinations × 5 = 60 model fits.
+
+Drawback: cost grows **exponentially** with the number of hyperparameters (curse of dimensionality). Alternatives: **random search** (often finds good settings faster), Bayesian optimisation, successive halving.`,
+['Hyperparameters set before training', 'Grid search: try every combination with CV', 'Fits = combinations × folds', 'Exponential cost; random/Bayesian search alternatives']);
+  Q('m2c7-11', 'A grid search tests 5 values of C and 4 values of gamma using 3-fold cross-validation. How many model fits are required?',
+    ['12', '20', '60', '27'], 2,
+    '5 × 4 = 20 combinations, each fitted 3 times: 60 fits.');
+  Q('m2c7-11', 'Which is a hyperparameter rather than a model parameter?',
+    ['A regression coefficient', 'The weights of a neural network', 'The maximum depth of a decision tree', 'A cluster centroid after training'], 2,
+    'Tree depth is chosen before training; coefficients, weights and centroids are learned from the data.');
+
+  if (typeof module !== 'undefined') module.exports = S;
+})(typeof window !== 'undefined' ? window : globalThis);

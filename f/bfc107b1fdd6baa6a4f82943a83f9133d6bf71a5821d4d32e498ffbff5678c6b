@@ -1,0 +1,586 @@
+/* W2 Apps — RAI: lesstof deel 4 (Module 3, 4 en 5). Eigen samenvattingen per learning objective.
+   Regelgeving bijgewerkt tot november 2026 (EU AI Act Digital Omnibus, SR 26-2); het examen toetst het curriculum. */
+(function (G) {
+  const S = G.RaiStof || (G.RaiStof = { los: [], qs: [] });
+  const L = (id, unit, t, learn, keys) => S.los.push({ id, unit, t, learn, keys });
+  const Q = (lo, q, a, c, x) => S.qs.push({ lo, q, a, c, x });
+
+  /* ================================================================ MODULE 3 */
+  L('m3-1', 'm3', 'Individual fairness versus group fairness',
+`• **Individual fairness**: **similar individuals should be treated similarly** ("like cases alike"). Requires a meaningful similarity metric for the task — hard to define in practice. Related: **counterfactual fairness** (would the decision change if only the protected attribute were different?).
+• **Group fairness (statistical fairness)**: outcomes or error rates should be **comparable across groups** defined by protected attributes (gender, ethnicity, age). Easier to measure, but can be satisfied on average while individuals are still treated unfairly, and different group measures conflict.
+
+Also: **fairness through unawareness** — simply removing the protected attribute — usually fails, because **proxies** (postcode, name, shopping patterns) still carry that information.`,
+['Individual: similar people, similar treatment', 'Counterfactual fairness', 'Group: parity of outcomes/errors across groups', 'Unawareness fails because of proxies']);
+  Q('m3-1', 'Two applicants with identical financial profiles receive different credit limits only because they live in different neighbourhoods. Which fairness notion is MOST directly violated?',
+    ['Group calibration', 'Individual fairness', 'Equal precision', 'Statistical parity across the full portfolio'], 1,
+    'Individual fairness requires similar individuals to be treated similarly; here near-identical applicants are treated differently.');
+  Q('m3-1', 'A model excludes gender as an input but uses shopping data highly correlated with gender. Why may it still be unfair?',
+    ['Shopping data cannot be used in models', 'Proxies can reintroduce the protected attribute, so "fairness through unawareness" fails', 'Gender must always be included', 'Correlation removes bias'], 1,
+    'Removing a protected attribute does not remove its information when correlated proxies remain.');
+
+  L('m3-2', 'm3', 'Measures of group fairness',
+`Let Ŷ be the decision and A the group.
+
+• **Demographic (statistical) parity**: P(Ŷ = 1 | A = a) equal across groups — same approval/selection **rate**. **Disparate impact ratio** = rate of protected group / rate of reference group; the US "**four-fifths (80%) rule**" flags ratios below 0.8.
+• **Equal opportunity**: equal **true positive rates** across groups (qualified people are approved equally often).
+• **Equalised odds**: equal **TPR and FPR** across groups.
+• **Predictive parity**: equal **precision** (PPV) across groups — an approval means the same chance of being good.
+• **Calibration within groups**: a score of 0.3 means 30% default probability in every group.
+• **Treatment equality**: equal ratio of FN to FP.
+
+Example: approval rates 30% (group B) vs 50% (group A) → disparate impact = 0.6 < 0.8.`,
+['Demographic parity: equal selection rates', 'Disparate impact ratio, 80% rule', 'Equal opportunity: equal TPR', 'Equalised odds: equal TPR and FPR', 'Predictive parity: equal precision; calibration']);
+  Q('m3-2', 'Loan approval rates are 45% for group X and 60% for group Y (reference). What is the disparate impact ratio, and does it pass the four-fifths rule?',
+    ['0.75, fails', '0.75, passes', '1.33, passes', '0.15, fails'], 0,
+    '45% / 60% = 0.75, which is below 0.80, so it fails the four-fifths rule.');
+  Q('m3-2', 'Which fairness measure requires equal true positive rates AND equal false positive rates across groups?',
+    ['Demographic parity', 'Equal opportunity', 'Equalised odds', 'Predictive parity'], 2,
+    'Equalised odds requires both TPR and FPR to match; equal opportunity requires only TPR.');
+  Q('m3-2', 'Among creditworthy applicants, 80% of group A but only 65% of group B are approved. Which measure is violated?',
+    ['Equal opportunity (equal TPR)', 'Predictive parity', 'Calibration', 'Treatment equality only'], 0,
+    'Equal opportunity requires qualified (positive) individuals to be approved at the same rate in each group.');
+
+  L('m3-3', 'm3', 'Trade-offs between fairness concepts and measures',
+`• **Impossibility results** (Kleinberg et al.; Chouldechova): when base rates differ between groups, a classifier generally **cannot satisfy calibration (or predictive parity) and equalised odds at the same time** (except in trivial cases such as a perfect predictor).
+• **Fairness vs accuracy**: imposing fairness constraints usually costs some accuracy or profit.
+• **Individual vs group fairness** can conflict: equalising group rates may mean treating similar individuals differently.
+• **Demographic parity vs merit**: equal approval rates may ignore genuine differences in risk; but "genuine" differences can themselves reflect historical discrimination.
+• Different stakeholders favour different measures; legal context matters (disparate treatment vs disparate impact).
+
+Practical stance: there is no single "fair" metric; choose measures **explicitly**, justify them for the use case, document trade-offs and involve legal, ethics and business owners.`,
+['Calibration vs equalised odds incompatible when base rates differ', 'Fairness vs accuracy trade-off', 'Individual vs group fairness tension', 'Choose, justify and document metrics']);
+  Q('m3-3', 'Default base rates differ between two groups. According to well-known impossibility results, which pair of criteria generally CANNOT both be satisfied by an imperfect classifier?',
+    ['Calibration within groups and equalised odds', 'Accuracy and precision', 'Demographic parity and having a threshold', 'Recall and the F1 score'], 0,
+    'With different base rates, a non-perfect classifier cannot be calibrated across groups while also equalising error rates.');
+  Q('m3-3', 'What is the MOST appropriate governance response to conflicting fairness metrics?',
+    ['Pick the metric that makes the model look best', 'Explicitly select and justify metrics for the use case, document the trade-offs, and involve legal and business stakeholders', 'Ignore fairness until regulators ask', 'Use all metrics and require all to be perfect'], 1,
+    'Because metrics conflict, the choice is a value judgement that must be made transparently and governed.');
+
+  L('m3-4', 'm3', 'Sources of algorithmic bias and unfairness',
+`Bias can enter at every stage of the AI life cycle:
+
+• **Historical bias**: data reflect past discrimination (e.g. historic lending decisions).
+• **Representation / sampling bias**: some groups under-represented or absent (e.g. thin-file customers).
+• **Measurement bias**: proxies measure the concept unequally (arrests as proxy for crime; cost of care as proxy for illness).
+• **Label bias**: labels set by biased human judgements.
+• **Aggregation bias**: one model for groups that behave differently.
+• **Selection bias / feedback loops**: model decisions determine which data are collected next (rejected applicants never show repayment → **reject inference** problem).
+• **Algorithmic/design choices**: objective functions, features, thresholds.
+• **Evaluation bias**: benchmarks not representative of the deployed population.
+• **Deployment bias**: model used in a context or for a purpose it was not designed for; **automation bias** of users.`,
+['Historical, representation, measurement, label bias', 'Aggregation and evaluation bias', 'Feedback loops and selection bias', 'Deployment and automation bias']);
+  Q('m3-4', 'A hiring model is trained on ten years of past hiring decisions in which few women were hired. The model learns to rank women lower. This is primarily:',
+    ['Measurement bias', 'Historical bias', 'Evaluation bias', 'Random noise'], 1,
+    'The data faithfully reflect a discriminatory past, which the model reproduces.');
+  Q('m3-4', 'A credit model approves only low-risk applicants, so repayment data are only collected for them; the next model version is trained on this data. Which bias arises?',
+    ['Selection bias through a feedback loop', 'Aggregation bias', 'Label smoothing', 'Stop-word bias'], 0,
+    'Model decisions shape the data collected next, creating a self-reinforcing feedback loop.');
+  Q('m3-4', 'Using healthcare spending as a proxy for health needs disadvantages a group that historically had less access to care. This is an example of:',
+    ['Measurement (proxy) bias', 'Representation bias', 'Overfitting', 'Deployment bias'], 0,
+    'The proxy measures the true concept differently across groups.');
+
+  L('m3-5', 'm3', 'Explainability, interpretability and transparency',
+`These terms overlap but differ:
+
+• **Interpretability**: the degree to which a human can understand **how the model works** internally — its mechanics (e.g. coefficients of a linear model, the path in a small tree). Often a property of the model itself ("intrinsically interpretable" / glass box).
+• **Explainability**: the ability to provide **understandable reasons for a model's outputs**, often **after the fact** (post-hoc) for complex models — why was *this* applicant rejected?
+• **Transparency**: openness about the **system and process**: what data are used, how the model was built, its purpose, limitations, governance, and when AI is being used at all (disclosure).
+
+Audiences differ: developers, validators, regulators, customers, board. Explanations must be **faithful** (truly reflect the model), **understandable** and **actionable** (e.g. what could the customer change).`,
+['Interpretability: understand the mechanism', 'Explainability: reasons for outputs, often post-hoc', 'Transparency: openness about data, design, use, limits', 'Explanations must be faithful and fit the audience']);
+  Q('m3-5', 'A bank discloses to customers that an AI system is used in claims handling, what data it uses and its known limitations. This mainly addresses:',
+    ['Interpretability', 'Transparency', 'Calibration', 'Recall'], 1,
+    'Transparency concerns openness about the system, its data, purpose and limitations.');
+  Q('m3-5', 'A validator can read off how each input affects the score directly from a linear scorecard\'s coefficients. This property is BEST described as:',
+    ['Interpretability', 'Transparency to customers', 'Robustness', 'Fairness'], 0,
+    'Being able to understand the internal mechanics of the model is interpretability.');
+
+  L('m3-6', 'm3', 'Techniques for making AI more explainable',
+`**Global** (whole model) vs **local** (one prediction); **model-specific** vs **model-agnostic**.
+
+• **Intrinsically interpretable models**: linear/logistic regression, scorecards, small trees, rule lists, GAMs.
+• **Feature importance**: e.g. permutation importance (drop in performance when a feature is shuffled).
+• **Partial dependence plots (PDP)** and **ICE** curves: how predictions change as one feature varies.
+• **LIME**: fits a simple **local surrogate** model around one prediction by perturbing inputs.
+• **SHAP**: based on **Shapley values** from cooperative game theory; fairly allocates the prediction (vs the average) among features; local contributions add up to the prediction; can be aggregated globally.
+• **Counterfactual explanations**: the smallest change to inputs that would change the decision ("if income were €5,000 higher, the loan would be approved") — useful for customers.
+• **Global surrogate models**: a simple model trained to mimic the complex one.
+• For deep nets: saliency maps, attention visualisation.
+
+Caveats: explanations are approximations, can be unstable or manipulated, and may mislead about causality.`,
+['Global vs local; agnostic vs specific', 'LIME: local surrogate by perturbation', 'SHAP: Shapley values, additive contributions', 'Counterfactuals: minimal change to flip decision', 'PDP, permutation importance, surrogates']);
+  Q('m3-6', 'A rejected applicant is told: "If your outstanding credit-card debt were €2,000 lower, your application would have been approved." This is a:',
+    ['SHAP summary plot', 'Counterfactual explanation', 'Partial dependence plot', 'Global surrogate model'], 1,
+    'Counterfactual explanations describe the minimal change in inputs that would alter the outcome.');
+  Q('m3-6', 'Which explanation method is grounded in cooperative game theory and gives additive feature contributions for each prediction?',
+    ['LIME', 'SHAP', 'Permutation importance', 'Grid search'], 1,
+    'SHAP uses Shapley values; contributions sum to the difference between the prediction and the average prediction.');
+  Q('m3-6', 'LIME explains an individual prediction by:',
+    ['Computing exact Shapley values', 'Fitting a simple interpretable model on perturbed samples around that prediction', 'Retraining the full model without one feature', 'Plotting a dendrogram'], 1,
+    'LIME builds a local surrogate (e.g. linear model) that approximates the complex model near the instance.');
+
+  L('m3-7', 'm3', 'Risks to human autonomy, safety and wellbeing',
+`• **Autonomy**: AI can **manipulate** choices through personalised nudges, dark patterns, micro-targeting, and recommender systems that exploit psychological weaknesses; opaque decisions limit people's ability to contest them; over-reliance erodes human judgement.
+• **Manipulation and deception**: persuasive chatbots, deepfakes, synthetic identities, misinformation.
+• **Safety**: failures of AI in physical systems (autonomous vehicles, medical devices), errors in critical decisions, adversarial attacks, misuse (cyber attacks, weapons).
+• **Wellbeing**: addictive engagement-maximising design, mental-health effects, surveillance and loss of privacy, job insecurity, exclusion from services (financial exclusion).
+
+In finance: aggressive personalised selling of unsuitable products, exploiting behavioural biases (e.g. gamified trading apps), and fully automated decisions without human recourse.
+
+Mitigants: human oversight and the right to contest, design ethics, consumer-protection rules (fair treatment, suitability), testing for manipulative patterns.`,
+['Autonomy: manipulation, nudges, no recourse', 'Deception: deepfakes, persuasive bots', 'Safety: critical failures, adversarial attacks, misuse', 'Wellbeing: addiction, surveillance, exclusion']);
+  Q('m3-7', 'A trading app uses AI to time push notifications and game-like rewards when users are most likely to trade impulsively. The PRIMARY concern is:',
+    ['Underfitting', 'Manipulation that undermines customer autonomy and wellbeing', 'Model calibration', 'Data leakage'], 1,
+    'Exploiting behavioural vulnerabilities to drive actions undermines autonomous decision-making and harms wellbeing.');
+  Q('m3-7', 'Which control BEST protects human autonomy when AI makes decisions about customers?',
+    ['Higher model complexity', 'Meaningful human review and the right to contest decisions with understandable explanations', 'Removing all documentation', 'Increasing the temperature'], 1,
+    'Recourse and explanation allow people to understand and challenge decisions affecting them.');
+
+  L('m3-8', 'm3', 'AI-related reputational risk and mitigation',
+`**Sources**
+• Biased or discriminatory outcomes becoming public.
+• Embarrassing or harmful chatbot outputs (offensive language, false statements, made-up policies).
+• Privacy breaches or misuse of customer data for training.
+• Opaque decisions customers perceive as unfair.
+• AI-enabled fraud against customers (deepfake CEO calls) that the firm failed to stop.
+• Misleading claims about AI capabilities ("**AI washing**").
+• Third-party/vendor failures attributed to the firm.
+• Workforce impacts and ethical controversies.
+
+**Mitigation**
+• Responsible-AI principles and governance, board oversight.
+• Testing for bias, toxicity and robustness before launch; red-teaming.
+• Human oversight, guardrails and output filters for GenAI.
+• Transparency with customers; honest marketing.
+• Incident response and communication plans; monitoring social media.
+• Vendor due diligence.`,
+['Bias scandals, chatbot failures, privacy breaches', 'AI washing, vendor failures', 'Mitigate: governance, testing, guardrails, transparency', 'Incident response and vendor due diligence']);
+  Q('m3-8', 'A company advertises its credit product as "fully AI-driven and bias-free" although it uses a simple rules engine. This creates which risk?',
+    ['AI washing leading to reputational and regulatory risk', 'Vanishing gradients', 'Concept drift', 'Underfitting'], 0,
+    'Overstating AI use or capabilities is "AI washing", which regulators have penalised and which damages trust.');
+  Q('m3-8', 'Which measure MOST directly reduces the reputational risk of a customer-facing GenAI chatbot?',
+    ['Removing human escalation', 'Pre-launch red-teaming, output guardrails and monitoring with a clear incident-response plan', 'Raising the temperature', 'Training on unfiltered internet text only'], 1,
+    'Testing, guardrails, monitoring and rapid response limit harmful outputs reaching customers and the press.');
+
+  L('m3-9', 'm3', 'Global challenges and risks of AI',
+`• **Concentration of power**: a few firms control frontier models, compute and data; dependence on a handful of cloud and model providers → **systemic/third-party concentration risk**.
+• **Geopolitics**: AI arms race, export controls on chips, divergent regulation (EU, US, China), fragmentation.
+• **Labour market**: displacement and transformation of jobs, inequality.
+• **Misinformation and democracy**: deepfakes, election interference, erosion of trust in information.
+• **Cyber security**: AI-powered attacks at scale.
+• **Environmental impact**: energy and water use of data centres and training.
+• **Financial stability**: herding from similar models, faster market dynamics, correlated failures.
+• **Digital divide** between countries and groups.
+• **Long-term/existential risks**: loss of control over highly capable systems, misalignment of goals; debated but taken seriously by many researchers and governments (AI safety institutes, international summits).
+• **Global governance gaps**: no single global regulator; coordination via OECD, G7 Hiroshima process, UN, standard setters (FSB, BIS, IOSCO).`,
+['Concentration of providers and compute', 'Geopolitics, regulatory fragmentation', 'Jobs, misinformation, cyber', 'Environment, financial stability', 'Existential/misalignment debate; governance gaps']);
+  Q('m3-9', 'Many banks rely on the same few cloud and foundation-model providers. Which global risk does this illustrate?',
+    ['Concentration (third-party) risk with systemic implications', 'Individual fairness', 'Underfitting', 'Label bias'], 0,
+    'Dependence on a few providers creates single points of failure that could affect many institutions at once.');
+  Q('m3-9', 'Which is an environmental challenge associated with AI?',
+    ['Lower energy use of data centres', 'High electricity and water consumption for training and running large models', 'Reduced chip demand', 'No measurable effect'], 1,
+    'Training and serving large models require substantial energy and cooling resources.');
+
+  L('m3-10', 'm3', 'Risks specific to GenAI and possible solutions',
+`**Risks**
+• **Hallucinations**: fluent but false or fabricated content (fake citations, invented numbers).
+• **Data leakage and privacy**: confidential data entered in prompts, memorisation of training data.
+• **Intellectual property**: copyrighted training data, ownership of outputs.
+• **Security**: **prompt injection**, **jailbreaks**, data poisoning, model theft.
+• **Bias and toxicity** in outputs.
+• **Deepfakes and fraud**: voice cloning, synthetic identities, phishing at scale.
+• **Lack of explainability and reproducibility** (non-deterministic outputs).
+• **Third-party/vendor dependence**, model changes without notice.
+• **Over-reliance** by users.
+
+**Solutions**
+• **RAG** grounding with source citations; low temperature; human review.
+• Guardrails, input/output filters, red-teaming, adversarial testing.
+• Data-loss prevention, enterprise deployments that do not train on your data, access controls.
+• Clear usage policies and staff training; AI-use inventories.
+• Watermarking/provenance (content credentials), deepfake detection, stronger authentication (call-back procedures).
+• Vendor due diligence and contractual protections; continuous monitoring.`,
+['Hallucination, leakage, IP, prompt injection, jailbreaks', 'Deepfakes and fraud', 'RAG, guardrails, red-teaming, human review', 'DLP, policies, training, vendor controls, provenance']);
+  Q('m3-10', 'An LLM-based assistant drafts a credit memo citing a regulation article that does not exist. This is an example of:',
+    ['Prompt injection', 'Hallucination', 'Data poisoning', 'Overfitting'], 1,
+    'Hallucination is the generation of plausible-sounding but fabricated content.');
+  Q('m3-10', 'Which measure MOST directly reduces hallucinations in answers about internal policies?',
+    ['Retrieval-augmented generation that grounds answers in approved documents with citations', 'Increasing temperature', 'Removing the system prompt', 'Using larger top-k'], 0,
+    'Grounding answers in retrieved authoritative sources (and asking the model to cite them) reduces fabrication.');
+  Q('m3-10', 'A finance employee receives a video call from someone who looks and sounds like the CFO, asking for an urgent transfer. Which control BEST mitigates this GenAI-enabled risk?',
+    ['Trusting video calls from executives', 'Out-of-band verification (call-back on a known number) and dual authorisation for payments', 'Faster payment processing', 'Lower model temperature'], 1,
+    'Deepfakes defeat visual/voice recognition; independent verification and dual control are robust process controls.');
+
+  /* ================================================================ MODULE 4 */
+  L('m4-1', 'm4', 'Benefits of a practical ethics framework',
+`A **practical AI ethics framework** turns abstract values into concrete policies, processes and checks.
+
+Benefits:
+• **Consistency**: similar ethical questions are handled in the same way across teams.
+• **Trust** of customers, employees, regulators and investors.
+• **Risk reduction**: identifies harms (bias, privacy, safety) early, before they become legal or reputational events.
+• **Regulatory readiness**: aligns with emerging rules (EU AI Act, supervisory expectations).
+• **Better decisions**: structured deliberation, diverse perspectives, documented reasoning.
+• **Accountability**: clear roles and escalation paths.
+• **Innovation with guardrails**: teams know what is acceptable, which can speed approval.
+
+Elements: principles, risk assessment / impact assessment tools, ethics review boards or committees, training, documentation, monitoring and feedback loops. Avoid "**ethics washing**" — principles without enforcement.`,
+['Turns values into processes and checks', 'Consistency, trust, early risk detection', 'Regulatory readiness and accountability', 'Avoid ethics washing']);
+  Q('m4-1', 'A firm publishes AI ethics principles but has no process, owner or check to apply them to projects. This is BEST described as:',
+    ['A practical ethics framework', 'Ethics washing', 'Model validation', 'Differential privacy'], 1,
+    'Principles without operational implementation and accountability amount to ethics washing.');
+  Q('m4-1', 'Which is a key benefit of operationalising AI ethics through impact assessments before deployment?',
+    ['It guarantees maximum profit', 'Potential harms are identified and mitigated early, before they become incidents', 'It replaces model validation', 'It removes the need for human oversight'], 1,
+    'Structured ex-ante assessments catch ethical risks while they are still cheap to fix.');
+
+  L('m4-2', 'm4', 'Consequentialism, deontology and virtue ethics',
+`• **Consequentialism** (e.g. utilitarianism): an action is right if it produces the **best outcomes** (greatest overall good / least harm). AI angle: cost–benefit analysis, maximising aggregate welfare. Risk: may justify harming a minority if total benefit is large; outcomes are hard to predict and measure.
+• **Deontology** (duty ethics, Kant): actions are right or wrong in themselves according to **rules, duties and rights**, regardless of consequences — e.g. never deceive, respect consent, treat people as ends not merely means. AI angle: hard constraints, rights-based rules (privacy, non-discrimination). Risk: rigid; conflicting duties.
+• **Virtue ethics** (Aristotle): focuses on the **character** of the agent — what would a person of good character (honest, fair, prudent, courageous) do? AI angle: organisational culture, professional integrity of developers and leaders. Risk: less precise guidance.
+
+Exam pattern: match a statement to the theory ("the ends justify the means" → consequentialism; "a customer's consent must never be bypassed" → deontology; "what would a responsible professional do" → virtue ethics).`,
+['Consequentialism: best outcomes', 'Deontology: duties, rules, rights', 'Virtue ethics: good character', 'Match statements to theories']);
+  Q('m4-2', 'A product team argues: "Using customers\' data without explicit consent is acceptable because the overall benefit to all customers is very large." Which ethical theory underpins this argument?',
+    ['Deontology', 'Consequentialism (utilitarianism)', 'Virtue ethics', 'Contract law'], 1,
+    'Justifying an action by its overall outcomes is consequentialist reasoning.');
+  Q('m4-2', 'A compliance officer insists that customers must never be deceived by a chatbot, whatever the business gain. Which ethical approach does this reflect?',
+    ['Consequentialism', 'Deontology', 'Virtue ethics', 'Utilitarian cost-benefit'], 1,
+    'An absolute duty that holds regardless of consequences is deontological.');
+  Q('m4-2', 'A leader asks: "What would an honest and prudent risk professional do here?" This reflects:',
+    ['Virtue ethics', 'Deontology', 'Consequentialism', 'Game theory'], 0,
+    'Virtue ethics focuses on the character traits of the decision-maker.');
+
+  L('m4-3', 'm4', 'Nonmaleficence, beneficence, justice, autonomy and explainability',
+`Five widely used principles (adapted from bioethics to AI):
+
+• **Nonmaleficence**: "do no harm" — avoid and prevent harm (safety, security, privacy breaches, misuse).
+• **Beneficence**: "do good" — AI should promote wellbeing and benefit people and society, not only the firm.
+• **Justice**: fairness — avoid discrimination, distribute benefits and burdens fairly, ensure access and redress.
+• **Autonomy**: respect people's right to make their own decisions — informed consent, human oversight, ability to opt out and contest; AI should not undermine human agency.
+• **Explainability (explicability)**: the enabling principle — make AI **intelligible** (how it works) and **accountable** (who is responsible), so the other principles can be checked.
+
+Principles can conflict (e.g. beneficence of a personalised offer vs autonomy and privacy), so trade-offs must be made explicitly.`,
+['Nonmaleficence: do no harm', 'Beneficence: do good', 'Justice: fairness and non-discrimination', 'Autonomy: human agency and consent', 'Explicability: intelligibility + accountability']);
+  Q('m4-3', 'Ensuring customers can opt out of automated decisions and request human review MOST directly supports which principle?',
+    ['Beneficence', 'Autonomy', 'Nonmaleficence', 'Justice'], 1,
+    'Autonomy concerns people\'s ability to make and influence decisions about themselves.');
+  Q('m4-3', 'Which principle is often described as "enabling" the others because it combines intelligibility and accountability?',
+    ['Beneficence', 'Explicability / explainability', 'Justice', 'Nonmaleficence'], 1,
+    'Without understanding how a system works and who is responsible, we cannot verify that the other principles are met.');
+  Q('m4-3', 'Thorough security testing to prevent an AI system from being misused to harm customers reflects:',
+    ['Nonmaleficence', 'Beneficence', 'Autonomy', 'Explicability'], 0,
+    'Nonmaleficence is about avoiding and preventing harm.');
+
+  L('m4-4', 'm4', 'Strategies to address algorithmic bias and unfairness',
+`Bias mitigation along the pipeline:
+
+• **Pre-processing** (fix the data): better and more representative data collection, re-sampling or **re-weighting** under-represented groups, removing or transforming proxy features, relabelling, data audits.
+• **In-processing** (fix the learning): add **fairness constraints** or penalties to the objective, adversarial debiasing (a second model tries to predict the protected attribute from outputs), fairness-aware algorithms.
+• **Post-processing** (fix the outputs): adjust thresholds per group, calibrate scores, reject-option classification.
+
+Organisational strategies: diverse development teams, clear fairness definitions per use case, bias testing in validation, impact assessments, human review of edge cases, monitoring outcomes by group after deployment, documentation (model cards, datasheets), stakeholder and legal involvement.
+
+Note: using protected attributes to *measure* bias is often necessary even when they may not be used for *decisions* (check local law).`,
+['Pre-processing: data fixes, re-weighting', 'In-processing: constraints, adversarial debiasing', 'Post-processing: threshold adjustment, calibration', 'Org: diverse teams, testing, monitoring, documentation']);
+  Q('m4-4', 'A team assigns higher sample weights to under-represented applicants before training. This is a:',
+    ['Post-processing technique', 'Pre-processing technique', 'In-processing technique', 'Validation technique only'], 1,
+    'Re-weighting the training data happens before the learning algorithm runs: pre-processing.');
+  Q('m4-4', 'Adding a penalty term to the loss function that increases when outcomes differ across groups is an example of:',
+    ['Pre-processing', 'In-processing', 'Post-processing', 'Data cleaning'], 1,
+    'Fairness constraints inside the training objective are in-processing methods.');
+  Q('m4-4', 'Setting different decision thresholds per group on an already trained model\'s scores is:',
+    ['Pre-processing', 'In-processing', 'Post-processing', 'Feature engineering'], 2,
+    'Adjusting outputs after training is post-processing.');
+
+  L('m4-5', 'm4', 'Ethical principles related to privacy',
+`Core privacy principles (reflected in GDPR and the OECD/FIPPs):
+
+• **Lawfulness, fairness and transparency**: a legal basis for processing; tell people what is done with their data.
+• **Purpose limitation**: use data only for specified, legitimate purposes — not silently for training unrelated models.
+• **Data minimisation**: collect only what is necessary.
+• **Accuracy**, **storage limitation**, **integrity and confidentiality** (security).
+• **Accountability**: be able to demonstrate compliance.
+• **Consent** and **individual rights**: access, rectification, erasure ("right to be forgotten"), objection; rights regarding **solely automated decisions** with significant effects (GDPR Article 22).
+• **Privacy by design and by default**.
+
+AI-specific issues: re-identification from "anonymised" data, inference of sensitive traits, memorisation by models. Techniques: **anonymisation/pseudonymisation**, **differential privacy** (adding calibrated noise), **federated learning** (train without centralising data), synthetic data, encryption.`,
+['Purpose limitation and data minimisation', 'Transparency, consent, individual rights', 'GDPR Art. 22: solely automated decisions', 'Privacy by design; differential privacy, federated learning']);
+  Q('m4-5', 'A bank wants to train a marketing model on data originally collected only for fraud prevention. Which privacy principle is MOST at stake?',
+    ['Data accuracy', 'Purpose limitation', 'Storage limitation', 'Explicability'], 1,
+    'Purpose limitation restricts the use of personal data to the purposes for which it was collected.');
+  Q('m4-5', 'Which technique protects privacy by adding carefully calibrated random noise so that individual records cannot be inferred from outputs?',
+    ['Federated learning', 'Differential privacy', 'One-hot encoding', 'Bootstrapping'], 1,
+    'Differential privacy provides mathematical guarantees by injecting noise into queries or training.');
+  Q('m4-5', 'Federated learning reduces privacy risk because:',
+    ['It needs no data', 'Models are trained locally where the data reside and only model updates are shared, not raw data', 'It publishes all data openly', 'It uses only synthetic data'], 1,
+    'Raw data stay on devices or at institutions; only parameters or gradients are aggregated.');
+
+  L('m4-6', 'm4', 'The regulatory landscape and governance challenges',
+`**Key frameworks** (status November 2026):
+• **EU AI Act** (in force August 2024): **risk-based** tiers — **unacceptable** (banned: social scoring, manipulative techniques; since Feb 2025), **high-risk** (e.g. **creditworthiness assessment and credit scoring of individuals**, life/health insurance pricing, hiring) with requirements on risk management, data governance, documentation, human oversight, accuracy and robustness; **limited risk** with **transparency** duties (chatbots, deepfakes); **minimal risk**. Separate rules for **general-purpose AI models** (since Aug 2025). The 2026 **Digital Omnibus** deferred the standalone high-risk obligations to **2 December 2027** (product-embedded ones to August 2028); transparency duties stayed on schedule.
+• **GDPR**: data protection, Art. 22 automated decisions.
+• **US**: no single federal AI law; sector regulators, state laws (e.g. Colorado), **NIST AI Risk Management Framework** (Govern, Map, Measure, Manage), model-risk guidance (SR 11-7, replaced by **SR 26-2** in April 2026).
+• **UK**: principles-based, regulator-led approach.
+• **China**: rules on algorithms, deep synthesis and generative AI.
+• International: **OECD AI Principles**, G7 Hiroshima process, ISO/IEC 42001 (AI management systems), Basel/FSB/IOSCO work.
+
+**Governance challenges**: pace of innovation vs law, defining "AI", cross-border fragmentation, cost of compliance, enforcement capacity, third-party/foundation-model accountability, measuring compliance (standards still developing).`,
+['EU AI Act: unacceptable / high / limited / minimal risk', 'Credit scoring of individuals = high-risk', 'Omnibus: high-risk Annex III from 2 Dec 2027', 'NIST AI RMF: Govern, Map, Measure, Manage', 'Challenges: pace, fragmentation, definitions, enforcement']);
+  Q('m4-6', 'Under the EU AI Act, an AI system used to assess the creditworthiness of individuals is classified as:',
+    ['Unacceptable risk (prohibited)', 'High risk', 'Limited risk', 'Minimal risk'], 1,
+    'Creditworthiness assessment and credit scoring of natural persons is listed as a high-risk use case.');
+  Q('m4-6', 'Which EU AI Act category includes social scoring of citizens by public authorities?',
+    ['High risk', 'Limited risk', 'Unacceptable risk (prohibited)', 'Minimal risk'], 2,
+    'Social scoring is among the prohibited practices.');
+  Q('m4-6', 'What are the four core functions of the NIST AI Risk Management Framework?',
+    ['Plan, Do, Check, Act', 'Govern, Map, Measure, Manage', 'Identify, Protect, Detect, Respond', 'Develop, Validate, Implement, Retire'], 1,
+    'The NIST AI RMF is organised around Govern, Map, Measure and Manage.');
+  Q('m4-6', 'A customer-service chatbot must tell users they are interacting with AI. Under the EU AI Act this is mainly a:',
+    ['Prohibition', 'Transparency obligation for limited-risk systems', 'High-risk conformity assessment', 'Capital requirement'], 1,
+    'Disclosure that one is talking to an AI system is a transparency duty.');
+
+  /* ================================================================ MODULE 5 */
+  L('m5-1', 'm5', 'Elements of a data governance framework',
+`**Data governance** ensures data used by AI are fit for purpose, secure and used appropriately.
+
+Elements:
+• **Policies and standards** for data quality, usage, retention, privacy and ethics.
+• **Roles**: data owners, **data stewards**, data custodians, a Chief Data Officer; clear accountability.
+• **Data quality management**: dimensions such as **accuracy, completeness, consistency, timeliness, validity, uniqueness**; controls, metrics and remediation.
+• **Metadata, data catalogue and data lineage**: where data come from and how they are transformed (essential for reproducibility and audit).
+• **Data security and access controls**; privacy compliance.
+• **Data life cycle** management: acquisition (including third-party/alternative data due diligence), storage, use, archiving, deletion.
+• **Bias and representativeness** checks for training data.
+• Monitoring, issue management and reporting (e.g. principles of **BCBS 239** for risk data aggregation).`,
+['Policies, standards, roles (owners, stewards)', 'Quality dimensions: accuracy, completeness, consistency, timeliness, validity', 'Metadata, catalogue, lineage', 'Security, privacy, life cycle, bias checks']);
+  Q('m5-1', 'A validator cannot trace how a training feature was derived from source systems. Which data governance element is missing?',
+    ['Data lineage', 'Data minimisation', 'Hyperparameter tuning', 'Calibration'], 0,
+    'Lineage documents the origin and transformations of data, enabling traceability and reproducibility.');
+  Q('m5-1', 'Which role is typically responsible for the day-to-day quality and proper definition of a data domain?',
+    ['Internal audit', 'Data steward', 'External regulator', 'Model user'], 1,
+    'Data stewards manage data definitions, quality rules and issue resolution for their domain.');
+
+  L('m5-2', 'm5', 'Elements of a model governance framework',
+`**Model governance** (model risk management, MRM) controls the risk of losses or poor decisions from incorrect or misused models.
+
+Elements:
+• **Definition of a model** and scope (including AI/ML, vendor models, and how to treat GenAI tools and end-user computing).
+• **Model inventory** of all models with key metadata.
+• **Risk tiering**: classify models by **materiality, complexity and uncertainty** to scale the depth and frequency of oversight.
+• **Policies and standards** for development, documentation, validation, use, monitoring and retirement.
+• **Independent validation** and **effective challenge**.
+• **Roles and responsibilities** (three lines), committees, board and senior management oversight.
+• **Ongoing monitoring**, performance thresholds, escalation.
+• **Change management** and version control.
+• **Issue/finding tracking** and remediation; **limitations and compensating controls**.
+• Internal audit review of the framework.
+• Reporting of aggregate model risk to senior management.`,
+['Model definition and inventory', 'Risk tiering: materiality, complexity, uncertainty', 'Policies across the life cycle', 'Independent validation, effective challenge', 'Monitoring, change management, audit, reporting']);
+  Q('m5-2', 'Why do banks assign risk tiers to models?',
+    ['To decide which models need no documentation', 'To scale the intensity and frequency of validation and oversight to each model\'s materiality and complexity', 'To rank developers', 'To avoid internal audit'], 1,
+    'Tiering applies proportionate scrutiny: high-impact, complex models receive deeper and more frequent review.');
+  Q('m5-2', 'Which element ensures the bank knows what models exist, who owns them and their validation status?',
+    ['Model inventory', 'Grid search', 'Data augmentation', 'Model card for one model only'], 0,
+    'A complete model inventory is the backbone of model governance.');
+
+  L('m5-3', 'm5', 'Steps in model development and testing',
+`A typical AI/ML development process:
+
+1. **Problem definition**: business objective, intended use, users, constraints, success criteria, risk appetite.
+2. **Data** sourcing, assessment, cleaning, feature engineering; check representativeness and bias.
+3. **Methodology selection**: candidate algorithms, justification (incl. interpretability needs), benchmark/challenger models.
+4. **Training** and **hyperparameter tuning** using training/validation data and cross-validation.
+5. **Testing**: out-of-sample and **out-of-time** performance, **stability**, **sensitivity analysis**, **stress and scenario testing**, robustness (noise, adversarial inputs), **fairness/bias tests**, explainability checks, benchmarking against simpler models.
+6. **Documentation**: data, assumptions, design choices, limitations, test results — enough for an independent party to understand and **reproduce** the model.
+7. Hand-over to **independent validation**, then approval and implementation.`,
+['Define purpose and success criteria', 'Data preparation and bias checks', 'Method selection with benchmarks', 'Train/tune; test out-of-sample, out-of-time, stress, fairness', 'Document for reproducibility']);
+  Q('m5-3', 'A developer tests a PD model on loans from the same years as training, but not on a later period. Which test is missing?',
+    ['Out-of-time testing', 'Unit testing of code', 'Grid search', 'Tokenisation'], 0,
+    'Out-of-time testing checks that the model works on data from a later period, revealing instability over time.');
+  Q('m5-3', 'Why compare a complex ML model with a simple benchmark (e.g. logistic regression) during development?',
+    ['Benchmarks are always better', 'To show whether the added complexity and opacity deliver a meaningful performance gain', 'It is required for unsupervised models only', 'To reduce documentation'], 1,
+    'Complexity should be justified by material improvement over transparent alternatives.');
+
+  L('m5-4', 'm5', 'Model validation and its importance',
+`**Model validation** is the set of processes that verify a model performs as expected, in line with its design objectives and business uses. It must be **independent** of development and provide **effective challenge**: critical analysis by objective, informed parties with enough authority and incentives to force change.
+
+Core components (as in SR 11-7 and its 2026 successor SR 26-2):
+• **Evaluation of conceptual soundness**: design, theory, data, assumptions, methodology choices, documentation.
+• **Ongoing monitoring**: is the model still performing as intended given changes in data, products, markets? Process verification.
+• **Outcomes analysis**: compare outputs with actual outcomes — **back-testing**, benchmarking.
+
+Why it matters: catches errors and misuse before losses, identifies limitations and required overlays/compensating controls, supports regulatory compliance and trust, and for AI/ML also covers bias, explainability, robustness and data drift.`,
+['Independence and effective challenge', 'Conceptual soundness', 'Ongoing monitoring', 'Outcomes analysis and back-testing', 'Identify limitations and compensating controls']);
+  Q('m5-4', 'Which is NOT one of the three core elements of model validation in traditional MRM guidance?',
+    ['Evaluation of conceptual soundness', 'Ongoing monitoring', 'Outcomes analysis', 'Maximising model profitability'], 3,
+    'Validation covers conceptual soundness, ongoing monitoring and outcomes analysis; profitability is a business objective.');
+  Q('m5-4', '"Effective challenge" of a model requires:',
+    ['That the developer validates their own model', 'Critical analysis by objective, competent parties with the authority to make changes happen', 'Approval by the vendor', 'Only automated tests'], 1,
+    'Challenge must be independent, informed and influential enough to lead to action.');
+  Q('m5-4', 'Comparing a VaR model\'s daily forecasts with actual P&L to count exceptions is an example of:',
+    ['Conceptual soundness review', 'Outcomes analysis (back-testing)', 'Data lineage', 'Feature engineering'], 1,
+    'Back-testing compares predictions with realised outcomes.');
+
+  L('m5-5', 'm5', 'Policies and procedures for model governance',
+`Policies set **what** must happen; procedures describe **how**.
+
+Typical contents:
+• **Scope and definitions**: what counts as a model / AI system; treatment of vendor models, GenAI tools, spreadsheets.
+• **Roles and responsibilities**, committees and **approval authorities**.
+• **Risk-tiering methodology**.
+• **Development standards** and **documentation requirements** (templates, model cards).
+• **Validation standards**: scope and frequency per tier, pre-use validation, periodic revalidation.
+• **Use and limitations**: approved uses, prohibited uses, **exceptions and temporary approvals** (with conditions and deadlines).
+• **Monitoring**: KPIs, thresholds (e.g. PSI, AUC drop), escalation and triggers for redevelopment.
+• **Change management**: what changes require revalidation; version control.
+• **Issue management**: findings severity, remediation timelines, tracking.
+• **Decommissioning**: retiring models and archiving.
+• **Third-party models**: due diligence and ongoing oversight.
+• **Periodic review of the policy** itself and internal audit.`,
+['Scope, definitions, roles, approvals', 'Tiering, development and validation standards', 'Use limits and exception process', 'Monitoring thresholds and change management', 'Issues, decommissioning, third-party, policy review']);
+  Q('m5-5', 'A business line needs to use a model urgently before validation is finished. What should the governance policy provide?',
+    ['Nothing; the model may be used freely', 'A formal exception process with temporary approval, conditions, compensating controls and a deadline', 'Automatic approval for AI models', 'Deletion of the model'], 1,
+    'Exceptions must be explicit, approved at the right level, time-bound and controlled.');
+  Q('m5-5', 'Which change to a deployed ML model would MOST likely require revalidation under a change-management policy?',
+    ['Correcting a typo in a report title', 'Retraining on a new data set with additional features', 'Changing the font of the dashboard', 'Renaming a log file'], 1,
+    'Material changes to data, features or methodology alter model behaviour and need review.');
+
+  L('m5-6', 'm5', 'Registering AI/ML applications in a model inventory',
+`For each AI/ML application, the inventory should capture enough to manage its risk:
+
+• **Identification**: unique ID, name, version, description.
+• **Purpose and intended use**, business line, users, decisions it supports; **prohibited uses**.
+• **Owner**, developer, validator (accountable persons).
+• **Model type and technique** (e.g. gradient boosting, LLM), vendor/third-party or in-house, open-source components, foundation model used.
+• **Data**: sources, sensitive/personal data, alternative data.
+• **Risk tier** and rationale (materiality, complexity, **level of autonomy**, customer impact, regulatory relevance e.g. EU AI Act high-risk).
+• **Validation status**, dates, open findings, limitations, compensating controls.
+• **Dependencies**: upstream/downstream models and systems (model interconnections).
+• **Monitoring** metrics and status; deployment date; retirement date.
+• Fairness/explainability considerations.
+
+Challenges: discovering "shadow AI" and embedded vendor AI, defining what to include, keeping it current as models retrain.`,
+['ID, purpose, intended and prohibited uses', 'Owner, developer, validator', 'Technique, vendor, data incl. personal data', 'Risk tier incl. autonomy and regulatory status', 'Validation status, findings, dependencies, monitoring']);
+  Q('m5-6', 'Which inventory field is MOST important for identifying knock-on effects when an upstream model fails?',
+    ['Font settings', 'Dependencies / interconnections with other models and systems', 'Developer\'s favourite tool', 'Number of code comments'], 1,
+    'Recording upstream and downstream dependencies shows which other models are affected by a failure.');
+  Q('m5-6', 'Staff are using unapproved public GenAI tools for analysis without the risk function knowing. This is often called:',
+    ['Shadow AI', 'Federated learning', 'Model tiering', 'Back-testing'], 0,
+    'Shadow AI is AI use outside the governance perimeter; inventory processes must try to discover it.');
+
+  L('m5-7', 'm5', 'Roles and responsibilities in model risk management',
+`**Three lines of defence**:
+• **First line — model owners, developers and users**: develop and document models, use them as intended, perform ongoing monitoring, own the model risk.
+• **Second line — independent model risk management / validation**: sets MRM policy, validates models, provides **effective challenge**, maintains inventory and aggregate reporting, can restrict use.
+• **Third line — internal audit**: independently assesses whether the overall MRM framework is designed and operating effectively (does not re-validate every model).
+
+**Board of directors**: sets risk appetite and oversees the framework; ensures adequate resources.
+**Senior management**: implements the framework, establishes policies, ensures compliance, reports to the board.
+Others: data owners, IT (implementation and controls), compliance/legal (regulation, fairness), ethics committees for AI, vendors (but accountability stays with the firm).`,
+['1st line: owners, developers, users', '2nd line: independent MRM/validation, challenge', '3rd line: internal audit of the framework', 'Board: appetite & oversight; senior mgmt: implementation', 'Accountability cannot be outsourced to vendors']);
+  Q('m5-7', 'Which function assesses whether the model risk management framework as a whole is effective, rather than validating individual models?',
+    ['Model developers', 'Independent validation (second line)', 'Internal audit (third line)', 'Model users'], 2,
+    'Internal audit reviews the design and operation of the overall framework.');
+  Q('m5-7', 'A bank buys a credit model from a vendor. Who remains accountable for the model risk?',
+    ['The vendor only', 'The bank', 'The regulator', 'Nobody, as it is a third-party model'], 1,
+    'Firms can outsource activities but not accountability; vendor models must be governed like internal ones.');
+  Q('m5-7', 'Which role sets the institution\'s appetite for model risk and oversees the framework?',
+    ['Data stewards', 'The board of directors', 'Individual model developers', 'External auditors'], 1,
+    'The board sets risk appetite and holds senior management accountable for the framework.');
+
+  L('m5-8', 'm5', 'How the model review framework differs for AI/ML models',
+`Classic validation still applies, but AI/ML adds emphasis on:
+
+• **Explainability**: validators need XAI tools (SHAP, PDP) to judge conceptual soundness when the model is a black box.
+• **Data**: much larger, alternative and unstructured data; deeper checks of quality, representativeness, leakage and lineage.
+• **Hyperparameters and tuning process**: review search strategy, overfitting controls, reproducibility (random seeds, versions).
+• **Fairness/bias testing** across groups.
+• **Robustness and stability**: sensitivity to small input changes, adversarial attacks, stability across retrains.
+• **Dynamic/continuously learning models**: models retrained frequently → define what changes need revalidation; stronger **ongoing monitoring** of **data drift** and **concept drift**.
+• **Third-party and open-source components**, pretrained/foundation models with limited transparency.
+• **GenAI**: no single "right answer"; evaluation via benchmarks, human review, red-teaming, hallucination rates.
+• **Skills**: validators need data-science expertise and tooling.`,
+['XAI needed for conceptual soundness', 'Bigger, alternative data; leakage checks', 'Hyperparameters, reproducibility', 'Fairness, robustness, adversarial testing', 'Retraining and drift monitoring; vendor/foundation models']);
+  Q('m5-8', 'A fraud model is retrained automatically every week. What is the KEY governance challenge compared with a static model?',
+    ['It needs no monitoring', 'Defining which retraining changes require revalidation and monitoring for drift and degradation continuously', 'It cannot be documented', 'It must be deleted after a week'], 1,
+    'Frequent retraining requires clear change thresholds, automated tests and strong ongoing monitoring.');
+  Q('m5-8', 'Why is reproducibility a specific concern when validating ML models?',
+    ['ML models are deterministic by definition', 'Random seeds, data versions and library versions can change results, so they must be controlled and documented', 'Reproducibility only matters for regression', 'Validators should not rerun models'], 1,
+    'ML training includes randomness and many dependencies; without controlling them, results cannot be replicated.');
+
+  L('m5-9', 'm5', 'Model implementation and adaptation',
+`**Implementation** moves an approved model into production:
+• Code conversion / deployment (e.g. from Python notebook to production system, APIs), **MLOps** pipelines.
+• **Implementation testing**: verify production outputs match the validated model (parallel runs, reconciliation), input data feeds, edge cases, performance and latency.
+• Controls: access management, version control, change logs, **segregation of duties**, fallbacks and rollback plans.
+• User training and documentation of approved use.
+
+**Adaptation** (post-deployment) — models must adapt to a changing world:
+• Monitor **data drift** (input distributions change, measured e.g. with the **Population Stability Index**) and **concept drift** (relationship between inputs and target changes).
+• Recalibration, retraining, or redevelopment when thresholds are breached.
+• **Champion–challenger** set-ups to test new versions.
+• Overlays or manual adjustments as temporary fixes, with governance.
+• Decommissioning when no longer fit for purpose.
+
+PSI rule of thumb: < 0.1 stable, 0.1–0.25 moderate shift, > 0.25 significant shift.`,
+['Implementation testing: production = validated model', 'MLOps, version control, rollback', 'Data drift vs concept drift', 'PSI: <0.1 stable, 0.1–0.25 watch, >0.25 action', 'Recalibrate, retrain, champion–challenger']);
+  Q('m5-9', 'The Population Stability Index of a key input feature is 0.32. What does this suggest?',
+    ['No meaningful change', 'A significant shift in the input distribution that warrants investigation and possibly redevelopment', 'The model is perfectly calibrated', 'The model has too many features'], 1,
+    'PSI above about 0.25 indicates a significant population shift.');
+  Q('m5-9', 'After COVID-19, the same borrower characteristics were associated with different default behaviour than before. This is:',
+    ['Data drift only', 'Concept drift', 'Tokenisation error', 'Label encoding'], 1,
+    'Concept drift is a change in the relationship between inputs and the target.');
+  Q('m5-9', 'Before go-live, a team runs the production code and the validated development code on the same inputs and compares outputs. This is:',
+    ['Implementation testing (parallel run / reconciliation)', 'Outcomes analysis', 'Hyperparameter tuning', 'Back-propagation'], 0,
+    'Implementation testing verifies that the deployed model behaves exactly as the approved one.');
+
+  L('m5-10', 'm5', 'Sources of misinterpretation of model results',
+`Even a correct model can lead to wrong decisions if outputs are misunderstood:
+
+• **Correlation vs causation**: feature importance or SHAP values show association, not causal effect.
+• **Ignoring uncertainty**: point estimates presented without confidence intervals; overconfident probabilities; poor calibration.
+• **Using a model outside its scope** (different population, product or economic regime than training data) — extrapolation.
+• **Misreading metrics**: high accuracy on imbalanced data; AUC treated as a probability of correctness; R² as proof of a good model.
+• **Misunderstanding explanations**: XAI outputs are approximations; local explanations generalised to the whole model.
+• **Anchoring and automation bias**: users accept outputs uncritically; or **confirmation bias**: they only accept outputs that match prior beliefs.
+• **Aggregation**: portfolio averages hiding segment problems (Simpson's paradox).
+• **Poor communication**: technical outputs not translated for decision-makers; unclear units or horizons (PD one-year vs lifetime).
+• **GenAI**: treating fluent text as verified fact.
+
+Remedies: clear documentation of intended use and limitations, user training, uncertainty reporting, plain-language summaries.`,
+['Correlation ≠ causation (also for SHAP)', 'Ignoring uncertainty and calibration', 'Use outside scope/extrapolation', 'Misreading metrics and explanations', 'Automation/confirmation bias; Simpson\'s paradox']);
+  Q('m5-10', 'A manager concludes from a high SHAP value for "number of credit inquiries" that reducing inquiries will cause lower default rates. What is the misinterpretation?',
+    ['SHAP values show causal effects', 'Treating an associational attribution as a causal effect', 'SHAP cannot be computed for credit models', 'Inquiries are always irrelevant'], 1,
+    'SHAP explains how the model uses features, not what would happen if the world changed: correlation is not causation.');
+  Q('m5-10', 'A model trained on prime mortgages is applied to subprime borrowers without adjustment. The main risk is:',
+    ['Using the model outside its intended scope (extrapolation)', 'Too much regularisation', 'Perfect calibration', 'Excessive documentation'], 0,
+    'The model has not learned the behaviour of a different population; its outputs may be unreliable.');
+
+  L('m5-11', 'm5', 'Governance challenges of GenAI and possible solutions',
+`**Challenges**
+• **Is it a model?** GenAI may not fit traditional model definitions; many uses are tools embedded in vendor software.
+• **Scale and decentralisation**: many use cases across the firm, often small and fast-moving; **shadow AI**.
+• **Third-party foundation models**: limited transparency about training data, architecture and updates; vendor changes without notice.
+• **Evaluation**: no single ground truth; non-deterministic outputs; hallucinations; benchmark contamination.
+• **Data protection and IP**; prompt injection and other security risks.
+• **Accountability** for outputs and for **agentic** actions.
+• Rapidly changing regulation.
+
+**Solutions**
+• Clear **GenAI policy** and acceptable-use rules; inventory of use cases (not only models).
+• **Risk-based tiering of use cases** (internal productivity vs customer-facing vs decision-making).
+• Use-case–level testing: red-teaming, hallucination and toxicity metrics, human evaluation, guardrails, RAG grounding.
+• **Human-in-the-loop** for material outputs; logging and monitoring of prompts/outputs.
+• **Vendor due diligence**, contractual rights (no training on your data, change notification), fallback options.
+• Cross-functional AI governance committee (risk, compliance, legal, IT security, data, business); staff training; alignment with frameworks such as NIST AI RMF (incl. its GenAI profile) and ISO/IEC 42001.`,
+['Model definition, scale, shadow AI', 'Opaque vendor foundation models', 'Hard to evaluate; hallucinations; security', 'Use-case inventory and risk tiering', 'Testing, guardrails, human review, vendor contracts, cross-functional committee']);
+  Q('m5-11', 'Why do many firms govern GenAI at the level of USE CASES rather than only models?',
+    ['GenAI has no risks', 'The same foundation model can be used in very different contexts with very different risk, so controls must match each use', 'Use cases are easier to delete', 'Regulators forbid model inventories'], 1,
+    'One underlying model can power a low-risk internal tool and a high-risk customer-facing service; risk depends on the use.');
+  Q('m5-11', 'Which contractual protection is MOST relevant when using a vendor\'s foundation model with confidential data?',
+    ['A guarantee of zero latency', 'Commitments that customer data will not be used for training and notification of material model changes', 'Unlimited temperature settings', 'The right to see marketing materials'], 1,
+    'Data-use restrictions and change notification address key confidentiality and model-change risks with third-party GenAI.');
+
+  if (typeof module !== 'undefined') module.exports = S;
+})(typeof window !== 'undefined' ? window : globalThis);

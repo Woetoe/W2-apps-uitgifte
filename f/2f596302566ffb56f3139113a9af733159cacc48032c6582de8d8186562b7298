@@ -1,0 +1,546 @@
+/* W2 Apps — RAI: lesstof deel 1 (Module 1, Module 2 hoofdstuk 1–3).
+   Eigen samenvattingen per learning objective van de GARP RAI Study Guide 2026, geen tekst uit het curriculum.
+   Opmaak in `learn`: alinea's met een lege regel, **vet**, regels die met "• " beginnen worden een lijstje. */
+(function (G) {
+  const S = G.RaiStof || (G.RaiStof = { los: [], qs: [] });
+  const L = (id, unit, t, learn, keys) => S.los.push({ id, unit, t, learn, keys });
+  const Q = (lo, q, a, c, x) => S.qs.push({ lo, q, a, c, x });
+
+  /* ================================================================ MODULE 1 */
+  L('m1-1', 'm1', 'Classical AI: search methods and recursion',
+`**Classical (symbolic) AI** solves problems by manipulating explicit symbols and rules written by humans. Many problems are framed as **search**: a start state, allowed moves (operators), and a goal test.
+
+• **Breadth-first search** explores level by level: finds the shortest path but uses a lot of memory.
+• **Depth-first search** goes deep first: little memory, but may wander down long or infinite paths.
+• **Heuristic search** (e.g. A*) uses an estimate of the distance to the goal to expand promising states first.
+• **Game-tree search** (minimax, alpha-beta pruning) powered chess programs such as Deep Blue.
+
+**Recursion** means a procedure calls itself on a smaller version of the same problem until it reaches a base case (Towers of Hanoi, tree traversal). Search algorithms are naturally recursive: "explore this node = explore each of its children".`,
+['Problem = states + operators + goal test', 'BFS: shortest path, memory hungry; DFS: memory light, can get lost', 'Heuristics guide search; minimax for games', 'Recursion = self-call on a smaller problem + base case']);
+  Q('m1-1', 'A route-planning tool must always return the path with the fewest steps and memory is not a constraint. Which uninformed search method fits best?',
+    ['Depth-first search', 'Breadth-first search', 'Random restart hill climbing', 'Gradient descent'], 1,
+    'Breadth-first search expands all nodes at depth d before depth d+1, so the first solution it finds uses the fewest steps. Its drawback is memory use, which is not a constraint here.');
+  Q('m1-1', 'Which feature is essential for a recursive procedure to terminate?',
+    ['A heuristic function', 'A base case that is solved directly', 'A training data set', 'A learning rate'], 1,
+    'Recursion breaks a problem into smaller instances of itself; without a base case that is answered directly, the calls never stop.');
+  Q('m1-1', 'What does a heuristic add to a search algorithm such as A*?',
+    ['A guarantee that no memory is used', 'An estimate of how close a state is to the goal, so promising states are expanded first', 'Labelled training examples', 'Random exploration of the search tree'], 1,
+    'A heuristic estimates the remaining cost to the goal. A* combines the cost so far with this estimate to focus the search.');
+
+  L('m1-2', 'm1', 'Limitations of classical AI',
+`Symbolic AI worked well in narrow, well-defined domains (chess, logic puzzles, early expert systems) but struggled in the messy real world.
+
+• **Combinatorial explosion**: the number of states grows exponentially, so exhaustive search becomes impossible.
+• **Knowledge acquisition bottleneck**: experts must hand-code rules; this is slow, expensive and incomplete.
+• **Brittleness**: rule-based systems fail badly on situations the designers did not foresee.
+• **Common sense and perception**: recognising faces, speech or handwriting is hard to write down as rules.
+• **Uncertainty**: crisp logic handles probabilistic, noisy data poorly.
+
+These limits contributed to the "AI winters" and to the shift towards **machine learning**, where the system learns patterns from data instead of following hand-written rules.`,
+['Combinatorial explosion', 'Knowledge acquisition bottleneck', 'Brittle outside designed scope', 'Weak at perception, common sense and uncertainty', 'Led to the data-driven ML paradigm']);
+  Q('m1-2', 'A bank built a rule-based expert system for loan approvals in the 1990s. Each new product required months of interviews with credit officers to update the rules. This illustrates which limitation of classical AI?',
+    ['Vanishing gradients', 'The knowledge acquisition bottleneck', 'Overfitting to training data', 'The exploration-exploitation dilemma'], 1,
+    'Hand-coding expert knowledge into rules is slow and expensive: the classic knowledge acquisition bottleneck of symbolic AI.');
+  Q('m1-2', 'Why did exhaustive search approaches fail on problems such as the game of Go for decades?',
+    ['Go has no clear rules', 'The number of possible positions grows exponentially (combinatorial explosion)', 'Go positions cannot be represented symbolically', 'Recursion cannot be applied to board games'], 1,
+    'Go has a vastly larger branching factor than chess, so the state space explodes and brute-force search is infeasible.');
+
+  L('m1-3', 'm1', 'Potential and limitations of deep learning',
+`**Deep learning** uses neural networks with many layers that learn hierarchical representations directly from raw data (pixels, text, audio).
+
+**Potential**
+• Excellent at perception tasks: image recognition, speech, translation, text generation.
+• Learns features automatically, so less manual feature engineering.
+• Scales with more data and compute.
+
+**Limitations**
+• Needs **large labelled data sets** and heavy compute.
+• **Opaque** ("black box"): hard to explain individual decisions.
+• Can be **brittle**: adversarial examples, poor generalisation to new conditions (distribution shift).
+• Learns correlations, not causation; may pick up spurious patterns and biases in the data.
+• Prone to **overconfidence** and, in generative models, hallucinations.`,
+['Learns layered features from raw data', 'Strong at perception and language', 'Data and compute hungry', 'Black box, brittle under distribution shift', 'Correlation is not causation']);
+  Q('m1-3', 'A deep learning image classifier performs well in testing but misclassifies images after tiny, human-invisible pixel changes. This is an example of:',
+    ['Adversarial vulnerability', 'Underfitting', 'The curse of dimensionality in K-means', 'Recursion depth limits'], 0,
+    'Adversarial examples exploit the brittleness of deep networks: small crafted perturbations can flip the prediction.');
+  Q('m1-3', 'Which statement about deep learning is MOST accurate for a risk manager?',
+    ['It removes the need for data quality controls because features are learned automatically', 'It can capture complex patterns but typically needs large data sets and is hard to explain', 'It establishes causal relationships between inputs and outputs', 'It always generalises well to new market regimes'], 1,
+    'Deep learning is powerful but data hungry and opaque; it learns correlations and may fail when conditions change.');
+
+  L('m1-4', 'm1', 'Key breakthroughs in AI and ML',
+`A short timeline worth knowing:
+
+• **1950s**: Turing test (1950), Dartmouth workshop coins "artificial intelligence" (1956), the perceptron (1958).
+• **1970s–80s**: expert systems boom; AI winters when promises are not met.
+• **1986**: backpropagation popularised for training multi-layer networks.
+• **1997**: Deep Blue beats Kasparov at chess (search, not learning).
+• **2012**: AlexNet wins ImageNet using GPUs: start of the deep learning era.
+• **2016**: AlphaGo beats Lee Sedol (deep RL plus tree search).
+• **2017**: the **transformer** architecture ("Attention is all you need").
+• **2022 onwards**: ChatGPT brings large language models to the mass market.
+
+**Enablers** behind the recent surge: big data, cheap compute (GPUs/cloud), better algorithms (ReLU, dropout, attention) and open-source tools.`,
+['Backprop 1986, AlexNet 2012, transformer 2017', 'Deep Blue = search; AlphaGo = deep RL + search', 'Enablers: data, GPUs, algorithms, open source']);
+  Q('m1-4', 'Which development is generally seen as the start of the modern deep learning era?',
+    ['Deep Blue beating Kasparov in 1997', 'AlexNet winning the ImageNet competition in 2012 using GPUs', 'The Dartmouth workshop in 1956', 'The launch of rule-based expert systems'], 1,
+    'AlexNet showed in 2012 that deep convolutional networks trained on GPUs could dramatically outperform earlier methods on image recognition.');
+  Q('m1-4', 'Which combination BEST explains the rapid progress of AI in the 2010s?',
+    ['More hand-written rules and faster CPUs', 'Large data sets, GPU computing power and improved algorithms', 'The abandonment of neural networks', 'Regulation that mandated AI adoption'], 1,
+    'Data availability, parallel compute (GPUs) and algorithmic improvements together enabled deep learning to scale.');
+
+  L('m1-5', 'm1', 'Supervised, unsupervised, semi-supervised and reinforcement learning',
+`• **Supervised learning**: learns a mapping from inputs to a known label. Regression (continuous target, e.g. loss given default) or classification (default yes/no, fraud yes/no).
+• **Unsupervised learning**: no labels; finds structure such as clusters or lower-dimensional representations (customer segmentation, anomaly detection, PCA).
+• **Semi-supervised learning**: a small labelled set plus a large unlabelled set (fraud labels are scarce, transactions are plentiful).
+• **Reinforcement learning**: an agent learns by trial and error which actions maximise cumulative reward (optimal trade execution, dynamic pricing, game playing).
+
+Exam trick: look at **what data exists** (labels? feedback signal?) and **what the output is** (prediction, groups, or a policy of actions).`,
+['Supervised: labels → prediction', 'Unsupervised: no labels → structure', 'Semi-supervised: few labels + many unlabelled', 'Reinforcement: actions + rewards → policy']);
+  Q('m1-5', 'A trading desk wants an algorithm that learns how to split a large order over time to minimise market impact, using feedback on execution costs. Which approach fits best?',
+    ['Unsupervised learning', 'Reinforcement learning', 'Linear discriminant analysis', 'Semi-supervised self-training'], 1,
+    'The task is a sequence of decisions with a reward signal (execution cost): a classic reinforcement learning set-up.');
+  Q('m1-5', 'A bank has millions of transactions but only a few thousand confirmed fraud labels. Which approach is designed for this situation?',
+    ['Semi-supervised learning', 'Reinforcement learning', 'Pure supervised learning on unlabelled data', 'Classical search'], 0,
+    'Semi-supervised learning combines a small labelled set with a large unlabelled set.');
+  Q('m1-5', 'Marketing wants to group customers into segments without any predefined categories. Which approach is appropriate?',
+    ['Supervised classification', 'Unsupervised clustering', 'Reinforcement learning', 'Logistic regression'], 1,
+    'There are no labels; the goal is to discover structure, which is what unsupervised clustering does.');
+
+  L('m1-6', 'm1', 'Risks of inscrutability in AI and ML',
+`**Inscrutability** (opacity) means humans cannot understand how a model reaches its outputs. Causes: model complexity (millions of parameters), proprietary vendor models, and high-dimensional data.
+
+Risks:
+• **Hard to validate**: errors, spurious correlations and bias can stay hidden.
+• **Accountability gaps**: who is responsible when nobody can explain a decision?
+• **Regulatory and legal risk**: customers may have a right to an explanation (e.g. adverse credit decisions, GDPR automated decisions).
+• **Loss of trust** by users, customers and supervisors.
+• **Difficult to detect drift or manipulation** in production.
+
+Mitigants: prefer interpretable models where stakes are high, explainability tools (SHAP, LIME), documentation, human review and strong validation.`,
+['Opacity hides errors and bias', 'Accountability and right-to-explanation issues', 'Mitigate with interpretable models, XAI, documentation, human review']);
+  Q('m1-6', 'A lender uses a complex neural network to reject loan applications and cannot tell applicants why they were rejected. The MOST direct risk is:',
+    ['Underfitting', 'Regulatory and legal risk from the inability to explain adverse decisions', 'Higher compute cost only', 'Too few model parameters'], 1,
+    'Many jurisdictions require reasons for adverse credit decisions; an inscrutable model creates legal, regulatory and trust risk.');
+  Q('m1-6', 'Why does inscrutability make model validation harder?',
+    ['Validators cannot run the model', 'Spurious relationships and biases inside the model are harder to detect', 'Opaque models always have lower accuracy', 'Validation only applies to linear models'], 1,
+    'If you cannot see how inputs drive outputs, you cannot easily check conceptual soundness or spot spurious drivers and bias.');
+
+  L('m1-7', 'm1', 'Risks of over-reliance on AI systems',
+`**Over-reliance** occurs when people trust AI outputs more than is warranted.
+
+• **Automation bias**: humans accept system recommendations even when contradictory evidence exists.
+• **Deskilling**: staff lose the expertise needed to spot errors or take over when the system fails.
+• **Complacency** in monitoring: "the model has always been right".
+• **Concentration and single points of failure**: many firms relying on the same model or vendor can create herding and systemic risk.
+• **Out-of-distribution failures**: models trained on calm periods may fail in a crisis.
+
+Controls: meaningful human-in-the-loop review, challenger models, fallbacks and manual procedures, training, and clear limits on where the model may be used.`,
+['Automation bias', 'Deskilling and complacency', 'Herding / concentration risk', 'Controls: human review, fallbacks, limits of use']);
+  Q('m1-7', 'Analysts approve an AI fraud alert system\'s recommendations 99.8% of the time, even when they have contradictory information. This pattern is called:',
+    ['Automation bias', 'Confirmation of the null hypothesis', 'Model drift', 'Exploration'], 0,
+    'Automation bias is the tendency to favour suggestions from automated systems and to ignore contradictory evidence.');
+  Q('m1-7', 'Many banks use the same third-party AI model for credit risk scoring. Which risk does this MOST increase?',
+    ['Herding and concentration (systemic) risk', 'Underfitting', 'Lower compute costs', 'The vanishing gradient problem'], 0,
+    'Common models can lead firms to act in the same way at the same time, amplifying shocks: a systemic, concentration risk.');
+
+  L('m1-8', 'm1', 'How AI exposes individuals, organisations and society to risk',
+`Think in three levels:
+
+• **Individuals**: discrimination, privacy loss, manipulation, wrongful decisions (credit, hiring, insurance), loss of autonomy.
+• **Organisations**: model risk (wrong outputs), operational and cyber risk, legal and compliance risk, reputational damage, third-party/vendor dependence, intellectual property issues.
+• **Society**: misinformation and deepfakes, job displacement, concentration of power, financial stability (herding), environmental cost of compute, and in the long run safety risks of very capable systems.
+
+Exam questions often give a scenario and ask which **type** or **level** of risk is most relevant.`,
+['Individual: bias, privacy, autonomy', 'Organisation: model, legal, reputational, third-party, cyber', 'Society: misinformation, jobs, concentration, stability, environment']);
+  Q('m1-8', 'A deepfake video of a central bank governor announcing a rate cut spreads on social media before markets open. This is primarily an example of AI risk at which level?',
+    ['Individual only', 'Societal (financial stability and misinformation)', 'Purely technical model risk', 'None, as no model was used'], 1,
+    'Misinformation that can move markets affects society at large and financial stability, beyond one person or firm.');
+  Q('m1-8', 'Which is an ORGANISATIONAL risk created by using a third-party large language model in customer service?',
+    ['Job displacement across the economy', 'Vendor dependence and leakage of confidential customer data', 'Global concentration of compute', 'Climate impact of all data centres'], 1,
+    'For the firm itself, dependence on the vendor and potential leakage of customer data are direct organisational risks.');
+
+  /* ================================================================ M2 · HOOFDSTUK 1 */
+  L('m2c1-1', 'm2c1', 'Machine learning versus classical econometrics',
+`**Econometrics** starts from theory: specify a (usually linear) model, estimate parameters, test hypotheses, interpret coefficients and causal effects. Emphasis on **inference** and **explanation**.
+
+**Machine learning** starts from data: flexible, often non-linear models chosen for **predictive accuracy** on unseen data. Emphasis on **prediction**, out-of-sample performance, cross-validation and tuning.
+
+Other differences:
+• ML handles very many features and big, unstructured data (text, images).
+• ML models are often less interpretable.
+• Econometrics relies on distributional assumptions; ML uses regularisation and validation sets to control overfitting.
+
+They overlap: linear and logistic regression appear in both.`,
+['Econometrics: theory, inference, coefficients', 'ML: data-driven, prediction, out-of-sample', 'ML: many features, non-linear, less interpretable']);
+  Q('m2c1-1', 'Which goal is MORE typical of machine learning than of classical econometrics?',
+    ['Testing whether a coefficient is statistically significant', 'Maximising predictive accuracy on unseen data', 'Deriving the model from economic theory', 'Estimating a causal elasticity'], 1,
+    'ML generally prioritises out-of-sample predictive performance; econometrics prioritises inference about parameters.');
+  Q('m2c1-1', 'Which technique is used in BOTH econometrics and machine learning?',
+    ['Logistic regression', 'Convolutional neural networks only', 'Reinforcement learning only', 'K-means only'], 0,
+    'Linear and logistic regression are classic econometric tools and also standard supervised ML methods.');
+
+  L('m2c1-2', 'm2c1', 'Distinguishing the four types of learning models',
+`Recap with a data lens:
+
+• **Supervised**: each training example has features X and a target y. Goal: predict y for new X.
+• **Unsupervised**: only X. Goal: find groups, structure or compressed representations.
+• **Semi-supervised**: a few (X, y) pairs and many X without y. Goal: use the unlabelled data to improve the predictor.
+• **Reinforcement**: no fixed data set; an agent interacts with an environment, receives rewards and learns a **policy**.
+
+Typical finance examples: credit scoring (supervised), customer segmentation (unsupervised), fraud with scarce labels (semi-supervised), order execution or hedging strategies (reinforcement).`,
+['Look at labels and feedback', 'Output: prediction, structure, or policy']);
+  Q('m2c1-2', 'What is the output of a reinforcement learning model?',
+    ['A cluster assignment', 'A policy that maps states to actions', 'A set of principal components', 'A confusion matrix'], 1,
+    'Reinforcement learning learns a policy: which action to take in each state to maximise cumulative reward.');
+  Q('m2c1-2', 'Which data set is required for supervised learning?',
+    ['Unlabelled observations only', 'Observations with a known target value (label)', 'A reward signal from an environment', 'A dendrogram'], 1,
+    'Supervised learning needs examples where the correct output is known.');
+
+  L('m2c1-3', 'm2c1', 'Data types',
+`• **Numerical (quantitative)**: continuous (income, return) or discrete counts (number of late payments).
+• **Categorical (qualitative)**: **nominal** with no order (sector, country) or **ordinal** with an order (credit rating AAA > AA > A).
+• **Structured** data sits in tables; **unstructured** data includes text, images, audio, video.
+• **Cross-sectional** (many entities, one time), **time series** (one entity, many times) and **panel** data (many entities over time).
+
+The data type decides how to preprocess: ordinal categories can be mapped to ordered numbers; nominal categories need encoding such as one-hot.`,
+['Continuous vs discrete numeric', 'Nominal vs ordinal categorical', 'Structured vs unstructured', 'Cross-section, time series, panel']);
+  Q('m2c1-3', 'Credit ratings (AAA, AA, A, BBB…) are an example of which data type?',
+    ['Continuous numerical', 'Nominal categorical', 'Ordinal categorical', 'Unstructured'], 2,
+    'Ratings are categories with a natural order but no fixed distance between them: ordinal data.');
+  Q('m2c1-3', 'Monthly default rates for 500 banks over 10 years form which type of data set?',
+    ['Cross-sectional', 'Time series', 'Panel', 'Unstructured'], 2,
+    'Many entities observed over many periods is panel (longitudinal) data.');
+
+  L('m2c1-4', 'm2c1', 'Encoding categorical variables',
+`Most algorithms need numbers, so categories must be encoded.
+
+• **Label / ordinal encoding**: map categories to integers (AAA=1, AA=2…). Fine for **ordinal** data; for nominal data it creates a fake order.
+• **One-hot encoding**: one binary (dummy) column per category. Standard for **nominal** data. With an intercept in a regression, drop one category to avoid the **dummy variable trap** (perfect multicollinearity).
+• **Target / mean encoding**: replace a category by the average target value; compact for high-cardinality variables but risks leakage, so compute it on training data only.
+• Too many categories (high cardinality) can explode the number of columns: group rare categories or use target encoding/embeddings.`,
+['Ordinal → integers; nominal → one-hot', 'Dummy trap: drop one category with an intercept', 'High cardinality: group, target-encode or embed']);
+  Q('m2c1-4', 'A regression with an intercept includes one-hot dummies for all four regions. What problem arises?',
+    ['Heteroskedasticity', 'Perfect multicollinearity (dummy variable trap)', 'Vanishing gradients', 'Class imbalance'], 1,
+    'The four dummies always sum to one, which equals the intercept column: perfect multicollinearity. Drop one region as the base category.');
+  Q('m2c1-4', 'Why is label encoding (1, 2, 3…) usually inappropriate for an industry-sector variable?',
+    ['It creates too many columns', 'It imposes an artificial order and distance between sectors', 'It cannot be used in tree models', 'It removes all information'], 1,
+    'Sectors are nominal; integer codes suggest that sector 3 is "more" than sector 1, which models may wrongly exploit.');
+
+  L('m2c1-5', 'm2c1', 'Data cleaning and why it matters',
+`"Garbage in, garbage out": model quality is bounded by data quality.
+
+Common cleaning tasks:
+• **Missing values**: delete rows/columns, impute (mean/median/mode, model-based), or add a "missing" indicator. Ask *why* data is missing; non-random missingness can bias results.
+• **Outliers**: detect (z-scores, IQR, visual checks) and decide: correct errors, cap (winsorise), transform or keep genuine extremes (tail events matter in risk!).
+• **Duplicates and inconsistencies**: units, formats, spelling, dates.
+• **Errors**: impossible values (negative age), wrong labels.
+
+Reasons: better accuracy, less bias, valid inference, regulatory data-quality expectations (e.g. BCBS 239) and reproducibility.`,
+['Missing: delete, impute, flag – ask why', 'Outliers: error or genuine tail event?', 'Fix duplicates, units, formats, wrong labels']);
+  Q('m2c1-5', 'In a market-risk data set, a daily loss of 25% appears on a crash day. What is the BEST treatment?',
+    ['Delete it automatically as an outlier', 'Verify it; if genuine, keep it because tail events are critical for risk models', 'Replace it with the mean return', 'Convert it to a missing value'], 1,
+    'Outliers should be investigated. Genuine extreme observations carry vital tail-risk information and should not be cleaned away.');
+  Q('m2c1-5', 'Income is missing much more often for self-employed applicants. Simply deleting incomplete rows will MOST likely:',
+    ['Have no effect', 'Bias the sample by under-representing the self-employed', 'Reduce model variance without side effects', 'Create multicollinearity'], 1,
+    'When missingness is related to a characteristic, dropping rows changes the population and biases the model.');
+
+  L('m2c1-6', 'm2c1', 'Data preparation techniques and their benefits',
+`Beyond cleaning, preparation turns raw data into informative model inputs:
+
+• **Feature engineering**: create ratios (debt/income), lags, rolling averages, interaction terms.
+• **Feature selection**: drop irrelevant or redundant features to reduce noise, overfitting and cost.
+• **Scaling/normalisation** so features are comparable (next objective).
+• **Transformations** such as logs to reduce skew.
+• **Dimensionality reduction** (PCA, autoencoders).
+• **Handling imbalance**: oversampling (e.g. SMOTE), undersampling, class weights.
+• **Splitting** into training, validation and test sets **before** fitting preprocessing steps to avoid **data leakage**.
+
+Benefits: better accuracy, faster training, more stable and interpretable models.`,
+['Engineer, select, scale, transform, reduce', 'Handle class imbalance', 'Fit preprocessing on training data only (no leakage)']);
+  Q('m2c1-6', 'A data scientist standardises the whole data set using its overall mean and standard deviation and then splits it into training and test sets. What is the issue?',
+    ['None', 'Data leakage: information from the test set influenced the training preprocessing', 'Underfitting', 'The dummy variable trap'], 1,
+    'Preprocessing parameters must be estimated on training data only; otherwise test-set information leaks into training and performance looks better than it is.');
+  Q('m2c1-6', 'Only 0.5% of transactions are fraudulent. Which preparation step directly addresses this?',
+    ['Log transformation', 'Resampling or class weighting to handle class imbalance', 'One-hot encoding', 'Removing duplicates'], 1,
+    'Severe class imbalance can make a model ignore the minority class; oversampling, undersampling or class weights help.');
+
+  L('m2c1-7', 'm2c1', 'Data scaling and transformation',
+`Many algorithms (KNN, K-means, SVM, neural networks, PCA, regularised regression) are sensitive to feature scale.
+
+• **Standardisation (z-score)**: z = (x − mean) / standard deviation. Result has mean 0 and standard deviation 1.
+• **Min-max normalisation**: x' = (x − min) / (max − min). Result lies in [0, 1]; sensitive to outliers.
+• **Log transformation**: compresses right-skewed variables (income, firm size); needs positive values.
+• **Box-Cox / Yeo-Johnson**: family of power transformations to make data more normal.
+
+Example: income 60,000 with mean 50,000 and sd 20,000 → z = 0.5. With min 10,000 and max 210,000 → min-max = 50,000/200,000 = 0.25.
+
+Tree-based models are largely insensitive to monotonic scaling.`,
+['z = (x − μ)/σ', 'min-max: (x − min)/(max − min)', 'Log for right skew', 'Distance-based methods need scaling; trees do not']);
+  Q('m2c1-7', 'A feature has mean 40 and standard deviation 8. What is the standardised value of an observation equal to 52?',
+    ['0.67', '1.50', '−1.50', '12.00'], 1,
+    'z = (52 − 40) / 8 = 1.5.');
+  Q('m2c1-7', 'Feature values range from 20 to 120. What is the min-max normalised value of 70?',
+    ['0.25', '0.50', '0.58', '0.70'], 1,
+    '(70 − 20) / (120 − 20) = 50 / 100 = 0.50.');
+  Q('m2c1-7', 'For which model is feature scaling LEAST important?',
+    ['K-nearest neighbours', 'K-means clustering', 'Decision tree', 'Support vector machine'], 2,
+    'Decision trees split on thresholds of single features, so monotonic rescaling does not change the splits.');
+
+  L('m2c1-8', 'm2c1', 'Principal components analysis (PCA)',
+`**PCA** reduces the number of features by creating new, **uncorrelated** variables (principal components) that are linear combinations of the originals.
+
+• The 1st component points in the direction of **maximum variance**; each next component captures the most remaining variance and is orthogonal to the previous ones.
+• Mathematically: eigenvectors of the covariance (or correlation) matrix; eigenvalues = variance explained.
+• Keep the first k components that explain e.g. 90–95% of variance (or use a scree plot "elbow").
+• **Standardise first**, otherwise large-scale variables dominate.
+
+Finance classic: yield curve moves are mostly explained by three components: **level, slope and curvature**.
+
+Downsides: components are hard to interpret, PCA is linear and unsupervised (ignores the target).`,
+['Uncorrelated linear combinations ordered by variance', 'Eigenvectors/eigenvalues of covariance matrix', 'Standardise first; choose k by variance explained', 'Yield curve: level, slope, curvature']);
+  Q('m2c1-8', 'Eigenvalues of a 4-variable correlation matrix are 2.4, 1.0, 0.4 and 0.2. What proportion of total variance do the first two components explain?',
+    ['60%', '75%', '85%', '90%'], 2,
+    'Total variance = 2.4 + 1.0 + 0.4 + 0.2 = 4.0. First two = 3.4. 3.4 / 4.0 = 85%.');
+  Q('m2c1-8', 'Why should variables normally be standardised before PCA?',
+    ['PCA only works with binary data', 'Otherwise variables with large scales dominate the components', 'Standardisation makes the components correlated', 'It increases the number of components'], 1,
+    'PCA maximises variance; a variable measured in large units has large variance and would dominate unless data are standardised.');
+  Q('m2c1-8', 'Which is a key LIMITATION of PCA?',
+    ['Components are correlated with each other', 'Components can be hard to interpret and only capture linear structure', 'It increases dimensionality', 'It requires labelled data'], 1,
+    'Principal components are mixtures of original variables (hard to interpret) and PCA captures only linear relationships.');
+
+  L('m2c1-9', 'm2c1', 'Training, validation and test samples',
+`• **Training set** (e.g. 60–70%): used to fit the model parameters.
+• **Validation set** (e.g. 15–20%): used to compare models and **tune hyperparameters** (tree depth, regularisation strength) and for early stopping.
+• **Test set** (e.g. 15–20%): kept untouched until the end to give an **unbiased estimate** of performance on new data. Use it once.
+
+If you tune on the test set, the test score becomes optimistic. With little data, use **cross-validation** instead of a single validation split.
+
+For time series, split **chronologically** (train on the past, test on the future) to avoid look-ahead bias.`,
+['Train: fit parameters', 'Validation: tune hyperparameters / select model', 'Test: final unbiased estimate, use once', 'Time series: split in time order']);
+  Q('m2c1-9', 'A team tries 50 hyperparameter settings and reports the best score on the test set as expected live performance. What is wrong?',
+    ['Nothing', 'The test set has effectively been used for tuning, so the reported score is optimistically biased', 'The training set is too large', 'Hyperparameters should never be tuned'], 1,
+    'Selecting the best of many settings on the test set turns it into a validation set; the final estimate is no longer unbiased.');
+  Q('m2c1-9', 'For a model predicting next month\'s defaults, how should data be split?',
+    ['Randomly shuffle all months', 'Chronologically: earlier periods for training, later periods for testing', 'Use the test set for training', 'Only by customer ID'], 1,
+    'Random splits leak future information into training; time-ordered splits mimic real use.');
+
+  /* ================================================================ M2 · HOOFDSTUK 2 */
+  L('m2c2-1', 'm2c2', 'Clustering techniques',
+`**Clustering** groups observations so that members of a cluster are similar and different clusters are dissimilar.
+
+• **Partitional / centroid-based** (K-means, K-medoids): choose K, assign points to the nearest centre.
+• **Hierarchical**: **agglomerative** (bottom-up, merge closest clusters) or **divisive** (top-down, split). Output: a dendrogram; no need to pre-set K.
+• **Density-based** (DBSCAN): clusters are dense regions; finds arbitrary shapes and labels sparse points as noise/outliers.
+• **Distribution-based** (Gaussian mixture models): soft, probabilistic membership.
+
+Distance measures matter: Euclidean, Manhattan, cosine similarity; scale features first.`,
+['Centroid: K-means', 'Hierarchical: agglomerative / divisive, dendrogram', 'Density: DBSCAN, arbitrary shapes, noise', 'Distribution: Gaussian mixtures, soft membership']);
+  Q('m2c2-1', 'Which clustering method can find clusters of arbitrary shape and explicitly label isolated points as noise?',
+    ['K-means', 'DBSCAN (density-based)', 'Agglomerative clustering with Ward linkage', 'PCA'], 1,
+    'Density-based methods like DBSCAN grow clusters from dense regions and mark points in sparse regions as noise.');
+  Q('m2c2-1', 'Which method builds clusters bottom-up by repeatedly merging the two closest clusters?',
+    ['Divisive hierarchical clustering', 'Agglomerative hierarchical clustering', 'K-means', 'Self-training'], 1,
+    'Agglomerative clustering starts with every point as its own cluster and merges step by step.');
+
+  L('m2c2-2', 'm2c2', 'How K-means separates data into clusters',
+`**K-means algorithm**
+1. Choose K and initialise K centroids (randomly or with **k-means++**).
+2. **Assign** each point to the nearest centroid (usually Euclidean distance).
+3. **Update** each centroid to the mean of the points assigned to it.
+4. Repeat steps 2–3 until assignments stop changing (convergence).
+
+The algorithm minimises the **within-cluster sum of squares (WCSS)**. It always converges, but possibly to a **local** minimum, so run it several times with different starts and keep the best (lowest WCSS).
+
+Example: centroid A at (1, 1), centroid B at (5, 5). The point (2, 3) has squared distance 1+4 = 5 to A and 9+4 = 13 to B, so it joins A.`,
+['Assign to nearest centroid, update centroid to mean, repeat', 'Minimises WCSS', 'Local optimum: multiple random starts / k-means++']);
+  Q('m2c2-2', 'Centroids are at A = (2, 2) and B = (6, 4). To which cluster is the point (4, 2) assigned using Euclidean distance?',
+    ['A, distance 2.0 versus 2.83', 'B, distance 2.0 versus 2.83', 'A and B equally', 'Neither, it is noise'], 0,
+    'Distance to A = √((4−2)² + 0²) = 2.0. Distance to B = √((4−6)² + (2−4)²) = √8 ≈ 2.83. Nearest is A.');
+  Q('m2c2-2', 'Why is K-means typically run several times with different initial centroids?',
+    ['To change the value of K', 'Because it can converge to a local rather than the global minimum of WCSS', 'To create a dendrogram', 'Because it needs labelled data'], 1,
+    'Results depend on initialisation; multiple runs (or k-means++) reduce the chance of a poor local solution.');
+  Q('m2c2-2', 'After assignment, cluster 1 contains the points (1, 2), (3, 4) and (2, 6). What is the updated centroid?',
+    ['(2, 4)', '(3, 6)', '(2, 3)', '(1.5, 4)'], 0,
+    'Mean x = (1+3+2)/3 = 2; mean y = (2+4+6)/3 = 4. New centroid (2, 4).');
+
+  L('m2c2-3', 'm2c2', 'Advantages and disadvantages of K-means',
+`**Advantages**
+• Simple, intuitive, fast and scalable to large data sets.
+• Easy to interpret cluster centres.
+• Always converges.
+
+**Disadvantages**
+• K must be chosen in advance.
+• Sensitive to initial centroids (local minima) and to **outliers** (means are pulled).
+• Assumes roughly **spherical, similarly sized** clusters; struggles with elongated or irregular shapes and different densities.
+• Needs **scaled** numeric features; categorical data need other methods (e.g. K-modes).
+• **Curse of dimensionality**: distances become less meaningful with many features.
+
+Risk example: segmenting borrowers or detecting unusual trading patterns; outliers can distort clusters, so treat them first.`,
+['Pros: simple, fast, scalable', 'Cons: choose K, init sensitivity, outliers', 'Assumes spherical clusters; needs scaling', 'Weak in high dimensions']);
+  Q('m2c2-3', 'Which data situation is MOST problematic for K-means?',
+    ['Large data sets with well-separated round clusters', 'Clusters that are long and curved with very different densities', 'Standardised numerical features', 'Data where K is known'], 1,
+    'K-means assumes compact, spherical clusters of similar size; elongated or irregular shapes break that assumption.');
+  Q('m2c2-3', 'Why are outliers a particular concern for K-means?',
+    ['They are automatically removed', 'Centroids are means, which are pulled towards extreme points', 'They increase the number of clusters automatically', 'They make the algorithm supervised'], 1,
+    'Because centroids are averages, a few extreme points can shift centroids and distort cluster assignments.');
+
+  L('m2c2-4', 'm2c2', 'Performance measures: WCSS and BCSS',
+`• **WCSS** (within-cluster sum of squares, inertia) = sum over all points of the squared distance to their own cluster centroid. Measures **compactness**: lower is better.
+• **BCSS** (between-cluster sum of squares) = sum over clusters of (number of points × squared distance from cluster centroid to the overall mean). Measures **separation**: higher is better.
+• **TSS = WCSS + BCSS** (total sum of squares is fixed for a data set).
+• Ratio **BCSS/TSS** is the share of variance explained by the clustering.
+
+Note: WCSS always falls as K rises (with K = n, WCSS = 0), so you cannot pick K by minimising WCSS alone.`,
+['WCSS: compactness, lower is better', 'BCSS: separation, higher is better', 'TSS = WCSS + BCSS', 'WCSS always decreases with K']);
+  Q('m2c2-4', 'A clustering has total sum of squares 500 and WCSS 150. What is BCSS and the share of variance explained?',
+    ['BCSS 350, 70%', 'BCSS 150, 30%', 'BCSS 650, 130%', 'BCSS 350, 30%'], 0,
+    'BCSS = TSS − WCSS = 500 − 150 = 350. Explained share = 350/500 = 70%.');
+  Q('m2c2-4', 'Why is minimising WCSS NOT a valid way to choose the number of clusters?',
+    ['WCSS increases with K', 'WCSS always decreases as K increases, reaching zero when every point is its own cluster', 'WCSS cannot be calculated', 'WCSS only applies to hierarchical clustering'], 1,
+    'More clusters always reduce within-cluster distances, so the minimum WCSS is meaningless; use the elbow, silhouette or gap statistic.');
+
+  L('m2c2-5', 'm2c2', 'Choosing the optimal number of clusters',
+`• **Elbow method**: plot WCSS against K and pick the "elbow" where extra clusters give only small improvements.
+• **Silhouette score**: for each point, s = (b − a) / max(a, b), where a = average distance to points in its own cluster and b = average distance to points in the nearest other cluster. Ranges from −1 to +1; choose the K with the **highest average silhouette**.
+• **Gap statistic**: compares WCSS with that expected under random (reference) data; choose K where the gap is largest (or the smallest K within one standard error of the max).
+• **Business judgement**: segments must be meaningful, stable and actionable.
+
+Example: a = 2, b = 5 → s = (5 − 2)/5 = 0.6 (well clustered).`,
+['Elbow: WCSS vs K', 'Silhouette s = (b − a)/max(a, b), highest average wins', 'Gap statistic vs random reference', 'Business usefulness matters']);
+  Q('m2c2-5', 'For a point, the average distance to its own cluster is 3 and to the nearest other cluster is 4. What is its silhouette value?',
+    ['0.25', '0.33', '0.75', '−0.25'], 0,
+    's = (b − a) / max(a, b) = (4 − 3) / 4 = 0.25.');
+  Q('m2c2-5', 'Average silhouette scores are K=2: 0.41, K=3: 0.58, K=4: 0.49, K=5: 0.37. Which K is preferred?',
+    ['2', '3', '4', '5'], 1,
+    'Choose the K with the highest average silhouette: K = 3.');
+  Q('m2c2-5', 'A negative silhouette value for a point indicates that:',
+    ['It is perfectly clustered', 'It is probably assigned to the wrong cluster, being closer to another cluster', 'It is the centroid', 'K is too small by definition'], 1,
+    'Negative s means b < a: the point is on average closer to another cluster than to its own.');
+
+  L('m2c2-6', 'm2c2', 'Construction and use of a dendrogram',
+`A **dendrogram** is the tree diagram produced by hierarchical clustering.
+
+• Leaves at the bottom are individual observations.
+• Each merge is drawn as a horizontal link at a **height equal to the distance** (dissimilarity) at which the clusters were joined.
+• **Linkage** defines distance between clusters: **single** (closest pair; can create long chains), **complete** (farthest pair; compact clusters), **average** (mean of all pairs), **Ward** (merge giving the smallest increase in WCSS).
+• **Cutting** the tree horizontally at a chosen height gives the clusters; a cut through a long vertical gap suggests a natural number of clusters.
+
+Uses: exploring structure without fixing K, grouping assets or counterparties by correlation, building hierarchical risk-parity portfolios.`,
+['Height of merge = distance', 'Linkage: single, complete, average, Ward', 'Cut the tree to get K clusters', 'Long vertical gaps suggest natural K']);
+  Q('m2c2-6', 'In a dendrogram, what does the height at which two branches join represent?',
+    ['The number of observations', 'The distance (dissimilarity) between the clusters when they were merged', 'The order of data collection', 'The silhouette score'], 1,
+    'The vertical axis shows the linkage distance; higher joins mean less similar clusters.');
+  Q('m2c2-6', 'Which linkage method merges the two clusters that produce the smallest increase in within-cluster variance?',
+    ['Single linkage', 'Complete linkage', 'Ward linkage', 'Centroid initialisation'], 2,
+    'Ward\'s method chooses the merge that minimises the increase in total within-cluster sum of squares.');
+  Q('m2c2-6', 'Which linkage is known for producing long, "chained" clusters?',
+    ['Single linkage', 'Complete linkage', 'Ward linkage', 'Average linkage'], 0,
+    'Single linkage uses the nearest pair of points, so clusters can link up through chains of close points.');
+
+  /* ================================================================ M2 · HOOFDSTUK 3 */
+  L('m2c3-1', 'm2c3', 'Uses and limitations of simple and multiple linear regression',
+`**Simple regression**: y = α + βx + ε. **Multiple regression**: y = α + β₁x₁ + … + βₖxₖ + ε. Estimated by OLS (minimise the sum of squared residuals).
+
+**Uses**: predicting continuous outcomes (loss rates, returns, house prices), quantifying relationships, factor models, stress-testing (macro variables → losses).
+
+**Limitations**
+• Assumes a **linear** relationship (in the parameters).
+• Sensitive to **outliers**.
+• Assumes errors with constant variance, no autocorrelation; inference relies on these.
+• **Multicollinearity** makes coefficients unstable.
+• Correlation ≠ causation; omitted variables bias the coefficients.
+• Poor for classification targets (predictions can fall outside 0–1).`,
+['OLS minimises squared residuals', 'Uses: prediction, factor models, stress tests', 'Limits: linearity, outliers, assumptions, multicollinearity, causality']);
+  Q('m2c3-1', 'Why is ordinary linear regression a poor choice for predicting whether a borrower defaults (0/1)?',
+    ['It cannot use more than one variable', 'Predictions can fall below 0 or above 1 and errors are not normally distributed', 'It always overfits', 'It requires unlabelled data'], 1,
+    'The linear probability model can predict impossible probabilities; logistic regression maps outputs into (0, 1).');
+  Q('m2c3-1', 'Which situation MOST threatens the reliability of individual coefficients in a multiple regression?',
+    ['A large sample size', 'High correlation among explanatory variables (multicollinearity)', 'A high R²', 'Standardised variables'], 1,
+    'Multicollinearity inflates coefficient standard errors and makes estimates unstable, even if overall fit is good.');
+
+  L('m2c3-2', 'm2c3', 'Interpreting regression results',
+`• **Coefficient βⱼ**: expected change in y for a one-unit increase in xⱼ, **holding the other variables constant**.
+• **Intercept α**: expected y when all x = 0 (may have no practical meaning).
+• **t-statistic** = coefficient / standard error. Rule of thumb: |t| > 2 (≈ 5% significance) → significantly different from 0. **p-value** < 0.05 likewise.
+• **R²**: share of the variance of y explained by the model (0–1). Always rises when variables are added.
+• **Adjusted R²** penalises extra variables; can fall if a useless variable is added.
+• **F-test**: are all slope coefficients jointly zero?
+
+Example: β = 0.8, SE = 0.25 → t = 3.2 → significant.`,
+['β = effect of one unit, others held constant', 't = β/SE; |t| > 2 ≈ significant', 'R² explained variance; adjusted R² penalises extra variables', 'F-test: joint significance']);
+  Q('m2c3-2', 'A coefficient estimate is 1.2 with a standard error of 0.8. At roughly the 5% level, the coefficient is:',
+    ['Significant, because t = 1.5', 'Not significant, because t = 1.5 is below about 2', 'Significant, because the coefficient is positive', 'Not interpretable'], 1,
+    't = 1.2 / 0.8 = 1.5, below the critical value of about 1.96, so we cannot reject that the true coefficient is zero.');
+  Q('m2c3-2', 'Adding a random noise variable to a regression will MOST likely:',
+    ['Decrease R²', 'Increase R² slightly but may decrease adjusted R²', 'Leave both R² and adjusted R² unchanged', 'Make all coefficients significant'], 1,
+    'R² never falls when a variable is added; adjusted R² penalises the lost degree of freedom and can drop.');
+  Q('m2c3-2', 'In y = 2 + 0.5·x₁ − 1.5·x₂, how is −1.5 interpreted?',
+    ['y falls by 1.5 when x₂ rises by one unit, holding x₁ constant', 'y equals −1.5 when x₂ = 0', 'x₂ explains 150% of y', 'x₂ is not significant'], 0,
+    'Each slope coefficient is a partial effect: the change in y per unit of that variable, other variables unchanged.');
+
+  L('m2c3-3', 'm2c3', 'Misspecification problems and remedies',
+`• **Omitted variable bias**: a relevant variable correlated with included regressors is left out → biased coefficients. Remedy: include it or use proxies.
+• **Irrelevant variables**: inflate variance, no bias.
+• **Wrong functional form** (non-linearity): use transformations, polynomials, interactions.
+• **Heteroskedasticity**: error variance not constant → coefficients still unbiased but standard errors wrong. Remedy: robust (White) standard errors, weighted least squares. Test: Breusch-Pagan, White.
+• **Autocorrelation** (serial correlation, common in time series) → wrong standard errors. Remedy: Newey-West errors, add lags. Test: Durbin-Watson, Breusch-Godfrey.
+• **Multicollinearity**: unstable coefficients. Detect with VIF (> 10 problematic). Remedy: drop/combine variables, PCA, ridge.
+• **Outliers / influential points**: check Cook's distance; investigate.`,
+['Omitted variable → bias', 'Heteroskedasticity → robust SEs (White)', 'Autocorrelation → Newey-West, Durbin-Watson', 'Multicollinearity → VIF, drop/combine, ridge']);
+  Q('m2c3-3', 'Residual variance of a loss model increases with loan size, but coefficients look sensible. What is the problem and a remedy?',
+    ['Autocorrelation; add lags', 'Heteroskedasticity; use robust (White) standard errors or weighted least squares', 'Omitted variable bias; drop the intercept', 'Multicollinearity; remove the target'], 1,
+    'Non-constant error variance is heteroskedasticity. OLS coefficients stay unbiased, but standard errors must be corrected.');
+  Q('m2c3-3', 'Which misspecification causes BIASED coefficient estimates (not just wrong standard errors)?',
+    ['Heteroskedasticity', 'Omitting a relevant variable that is correlated with included regressors', 'Including an irrelevant variable', 'Autocorrelation in a cross-section'], 1,
+    'Omitted variable bias distorts the coefficients of correlated included variables; heteroskedasticity and autocorrelation mainly affect standard errors.');
+  Q('m2c3-3', 'A variance inflation factor (VIF) of 25 for one regressor indicates:',
+    ['No issue', 'Severe multicollinearity', 'Perfect model fit', 'Heteroskedasticity'], 1,
+    'VIF above about 10 signals that the regressor is highly explained by the others: severe multicollinearity.');
+
+  L('m2c3-4', 'm2c3', 'Logistic regression for classification',
+`**Logistic regression** models the probability of a binary outcome:
+
+P(y = 1 | x) = 1 / (1 + e^−z), with z = β₀ + β₁x₁ + … + βₖxₖ.
+
+• The **sigmoid** maps any z to (0, 1).
+• Coefficients are linear in the **log-odds**: ln(p / (1 − p)) = z. A coefficient β means the odds are multiplied by **e^β** for a one-unit increase in x.
+• Estimated by **maximum likelihood** (no closed form; iterative).
+• Classify with a **threshold** (0.5 by default, but tune to business costs).
+• Workhorse of **credit scoring (PD models)**: interpretable, well understood by regulators.
+
+Example: z = −2 + 0.5 × 2 = −1 → p = 1/(1 + e¹) ≈ 0.27.`,
+['p = 1/(1 + e^−z)', 'Log-odds linear in x; odds ratio = e^β', 'Estimated by maximum likelihood', 'Threshold converts probability to class']);
+  Q('m2c3-4', 'A logistic model gives z = 0 for an applicant. What is the predicted probability of default?',
+    ['0', '0.25', '0.5', '1'], 2,
+    'p = 1 / (1 + e⁰) = 1 / 2 = 0.5.');
+  Q('m2c3-4', 'In a logistic PD model, the coefficient on "number of late payments" is 0.7. What happens to the odds of default for one extra late payment?',
+    ['They increase by 0.7 percentage points', 'They are multiplied by about e^0.7 ≈ 2.01', 'The probability doubles exactly', 'They fall by 70%'], 1,
+    'Coefficients act on log-odds; the odds ratio for a one-unit increase is e^β ≈ 2.01.');
+  Q('m2c3-4', 'How are logistic regression coefficients usually estimated?',
+    ['Ordinary least squares with a closed-form solution', 'Maximum likelihood estimation', 'K-means', 'Grid search only'], 1,
+    'The likelihood of the observed 0/1 outcomes is maximised iteratively.');
+
+  L('m2c3-5', 'm2c3', 'Linear discriminant analysis (LDA) for classification',
+`**LDA** classifies observations by finding a linear combination of features that **best separates** the classes: maximise the distance between class means relative to the variance within classes.
+
+Assumptions: features are (multivariate) **normally distributed** within each class, with the **same covariance matrix** across classes. Then decision boundaries are linear.
+
+• Produces a **discriminant score**; classify by comparing to a cut-off (or by highest posterior probability using Bayes' rule).
+• Classic finance use: **Altman Z-score** for bankruptcy prediction.
+• Also used for dimensionality reduction (at most number of classes − 1 dimensions).
+• Compared with logistic regression: LDA can be more efficient when its assumptions hold, but logistic regression is more robust when they do not (e.g. categorical features).
+• **QDA** relaxes the equal-covariance assumption (quadratic boundaries).`,
+['Maximises between-class vs within-class separation', 'Assumes normality and equal covariance', 'Altman Z-score is a discriminant model', 'Logistic regression more robust if assumptions fail']);
+  Q('m2c3-5', 'Which assumption underlies standard linear discriminant analysis?',
+    ['Features are independent given the class (naive assumption)', 'Classes share the same covariance matrix and features are normally distributed within each class', 'There are no labels', 'The relationship is learned by trial and error'], 1,
+    'LDA assumes multivariate normal features with a common covariance matrix, which yields linear decision boundaries.');
+  Q('m2c3-5', 'Which well-known credit model is an application of discriminant analysis?',
+    ['Black-Scholes', 'Altman Z-score', 'GARCH(1,1)', 'Word2Vec'], 1,
+    'Altman\'s Z-score combines financial ratios using discriminant analysis to separate bankrupt from non-bankrupt firms.');
+  Q('m2c3-5', 'When might logistic regression be preferred over LDA?',
+    ['When features are clearly non-normal or include many categorical variables', 'When classes are perfectly normally distributed with equal covariance', 'When no labels exist', 'When the target is continuous'], 0,
+    'Logistic regression makes no normality assumption about features and is more robust when LDA\'s assumptions are violated.');
+
+  if (typeof module !== 'undefined') module.exports = S;
+})(typeof window !== 'undefined' ? window : globalThis);

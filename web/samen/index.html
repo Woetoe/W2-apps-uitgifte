@@ -89,6 +89,9 @@
 .mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .mrow:last-child{border-bottom:0}
 .mrow b{flex:1}
+.undo{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:31;background:#f2efe8;color:#14161f;border-radius:14px;padding:8px 8px 8px 16px;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.undo span{flex:1}
+.undo button{border:0;background:#14161f;color:#f2efe8;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.it.fresh{animation:none}}
 </style>
 </head>
@@ -102,6 +105,7 @@
 <script src="../w2ui.js"></script>
 <script src="sync.js"></script>
 <script src="boodschappen.js"></script>
+<script src="herhaal.js"></script>
 <script>
 const { esc, $, $$, icon, sheet, confirm, toast } = UI;
 const D = W2D, S = Samen, app = $('#app');
@@ -365,7 +369,7 @@ function zetSoortOm(l, soort) {
 // ---------------------------------------------------------------- één lijst
 let fresh = new Set();        // nieuw van de ander sinds je de lijst voor het laatst zag
 let justAdded = null;
-let next = { wie: '', datum: '' };   // to-do: geldt voor wat je hierna toevoegt
+let next = { wie: '', datum: '', herhaal: '' };   // to-do: geldt voor wat je hierna toevoegt
 let showDone = false;
 function markSeen(id) { const s = D.get('samen-seen', {}) || {}; s[id] = Date.now(); D.set('samen-seen', s); }
 
@@ -377,7 +381,7 @@ function renderLijst(first) {
     const seen = (D.get('samen-seen', {}) || {})[l.id] || 0;
     fresh = new Set(itemsVan(l.id).filter(i => i.door !== me().id && (i.gemaakt || 0) > seen).map(i => i.id));
     markSeen(l.id);
-    next = { wie: '', datum: '' }; showDone = false;
+    next = { wie: '', datum: '', herhaal: '' }; showDone = false;
     const ph = l.soort === 'boodschappen' ? 'Wat moet er in huis?' : l.soort === 'todo' ? 'Nieuwe taak' : 'Toevoegen';
     app.innerHTML = `<div class="add"><form id="addf" autocomplete="off"><input class="in" id="addin" placeholder="${ph}" enterkeyhint="done" maxlength="120"><button class="btn" type="submit" aria-label="Toevoegen">${icon('plus')}</button></form><div class="chips" id="chips"></div></div>
       <div id="body"></div>`;
@@ -407,7 +411,11 @@ function addItem(l, raw) {
     remember(tekst, it.cat);
   } else {
     it = { lijst: l.id, tekst: cap(raw) };
-    if (l.soort === 'todo') { if (next.wie) it.wie = next.wie; if (next.datum) it.datum = next.datum; }
+    if (l.soort === 'todo') {
+      if (next.wie) it.wie = next.wie;
+      if (next.datum) it.datum = next.datum;
+      if (next.herhaal) { it.herhaal = next.herhaal; it.datum = it.datum || Herhaal.start(next.herhaal, D.date.today()); it.anker = it.datum; }
+    }
   }
   const id = D.uid();
   S.put('items', id, Object.assign(it, { ok: false, door: me().id, gemaakt: Date.now() }));
@@ -438,7 +446,8 @@ function renderChips(l) {
     const opts = [['Vandaag', dayPlus(0)], ['Morgen', dayPlus(1)], ['Weekend', weekend()]];
     const custom = next.datum && !opts.some(o => o[1] === next.datum);
     host.innerHTML = wie + opts.map(([t, d]) => `<button type="button" class="chip ${next.datum === d ? 'on' : ''}" data-dat="${d}">${t}</button>`).join('') +
-      `<button type="button" class="chip ${custom ? 'on' : ''}" data-dat="kies">📅 ${custom ? esc(dateLabel(next.datum)) : 'Datum'}</button>`;
+      `<button type="button" class="chip ${custom ? 'on' : ''}" data-dat="kies">📅 ${custom ? esc(dateLabel(next.datum)) : 'Datum'}</button>` +
+      `<button type="button" class="chip ${next.herhaal ? 'on' : ''}" data-her="1">🔁 ${next.herhaal ? esc(Herhaal.NAAM[next.herhaal]) : 'Herhalen'}</button>`;
     host.hidden = false;
   } else host.hidden = true;
   host.classList.toggle('wrap', l.soort === 'todo');
@@ -449,6 +458,10 @@ function onChip(l, e) {
   if (s) { addItem(l, s.dataset.sug); return; }
   const w = e.target.closest('[data-wie]');
   if (w) { next.wie = next.wie === w.dataset.wie ? '' : w.dataset.wie; renderChips(l); return; }
+  if (e.target.closest('[data-her]')) {
+    herhaalSheet(next.herhaal).then(v => { if (v != null) { next.herhaal = v; renderChips(l); } });
+    return;
+  }
   const d = e.target.closest('[data-dat]');
   if (d) {
     if (d.dataset.dat === 'kies') {
@@ -461,6 +474,33 @@ function onChip(l, e) {
   }
 }
 
+// Keuzeblad: hoe vaak? Geeft '' (niet herhalen), een soort, of null (annuleren).
+function herhaalSheet(cur) {
+  const sh = sheet('Herhalen', `<div class="muted small">Afvinken zet de taak meteen door naar de volgende keer. Te laat afgevinkt? Dan schuift hij naar de eerstvolgende keer.</div>
+    <div class="list">${[['', 'Niet herhalen'], ...Herhaal.SOORTEN].map(([k, v]) => `<button class="row" type="button" data-h="${k}"><div class="grow"><b>${k ? '🔁 ' : ''}${esc(v)}</b></div>${k === (cur || '') ? icon('check') : ''}</button>`).join('')}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }]);
+  sh.el.addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (b) sh.close(b.dataset.h); });
+  return sh.done.then(r => (typeof r.value === 'string' ? r.value : null));
+}
+
+// Herhalende taak afvinken: datum door naar de volgende keer, met even de kans om het terug te draaien.
+let undoEl = null, undoT = 0;
+function vinkHerhaling(id, it) {
+  const vandaag = D.date.today();
+  const nieuw = Herhaal.volgende(it.datum, it.herhaal, vandaag, it.anker);
+  const terug = { datum: it.datum || '', laatst: it.laatst || null };
+  S.update('items', id, { datum: nieuw, laatst: { door: me().id, op: Date.now() } });
+  if (undoEl) undoEl.remove();
+  clearTimeout(undoT);
+  undoEl = document.createElement('div');
+  undoEl.className = 'undo';
+  undoEl.setAttribute('role', 'status');
+  undoEl.innerHTML = `<span>✔️ Gedaan. Volgende keer: ${esc(dateLabel(nieuw))}</span><button type="button">Ongedaan</button>`;
+  undoEl.querySelector('button').onclick = () => { if (S.data.items[id]) S.update('items', id, terug); undoEl.remove(); undoEl = null; };
+  document.body.appendChild(undoEl);
+  undoT = setTimeout(() => { if (undoEl) { undoEl.remove(); undoEl = null; } }, 5000);
+}
+
 function itemRow(i, l) {
   const meta = [];
   if (l.soort === 'todo') {
@@ -468,11 +508,13 @@ function itemRow(i, l) {
       const n = D.date.days(i.datum);
       meta.push(`<span class="pill ${n < 0 ? 'late' : n === 0 ? 'today' : ''}">${esc(dateLabel(i.datum))}</span>`);
     }
+    if (i.herhaal && Herhaal.KORT[i.herhaal]) meta.push(`<span>🔁 ${esc(Herhaal.KORT[i.herhaal])}</span>`);
     if (i.wie === 'samen') meta.push('<span>👫 samen</span>');
     else if (i.wie && lid(i.wie)) meta.push(`${av(i.wie, 's')}<span>${i.wie === me().id ? 'jij' : esc(lid(i.wie).naam)}</span>`);
   }
   if (i.notitie) meta.push(`<span>📝 ${esc(i.notitie.length > 40 ? i.notitie.slice(0, 40) + '…' : i.notitie)}</span>`);
   if (i.ok && i.okDoor && i.okDoor !== me().id && l.soort !== 'boodschappen') meta.push(`<span>afgevinkt door ${esc(naamVan(i.okDoor))}</span>`);
+  else if (!i.ok && i.herhaal && i.laatst && i.laatst.op) meta.push(`<span>laatst: ${esc(naamVan(i.laatst.door))}, ${esc(new Date(i.laatst.op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }))}</span>`);
   else if (!i.ok && i.door && i.door !== me().id) meta.push(`<span>van ${esc(naamVan(i.door))}</span>`);
   return `<div class="it ${i.ok ? 'ok' : ''} ${i.id === justAdded ? 'fresh' : ''}" data-id="${esc(i.id)}" role="checkbox" aria-checked="${i.ok ? 'true' : 'false'}">
     <span class="box">${icon('check')}</span>
@@ -532,6 +574,7 @@ app.addEventListener('click', async e => {
   if (row) {
     const it = S.data.items[row.dataset.id]; if (!it) return;
     buzz();
+    if (it.herhaal && !it.ok && l.soort === 'todo' && Herhaal.NAAM[it.herhaal]) { vinkHerhaling(row.dataset.id, it); return; }
     S.update('items', row.dataset.id, it.ok ? { ok: false, okDoor: '', okOp: 0 } : { ok: true, okDoor: me().id, okOp: Date.now() });
     return;
   }
@@ -556,7 +599,8 @@ function itemSheet(l, id) {
     ${l.soort === 'boodschappen' ? `<div class="grid2"><label class="f">Hoeveel<input class="in" name="aantal" value="${esc(i.aantal || '')}" placeholder="bv. 2 of 500 g" maxlength="20"></label>
       <label class="f">Afdeling<select class="in" name="cat">${CATS.map(c => `<option value="${c.id}" ${c.id === (i.cat || 'overig') ? 'selected' : ''}>${c.emoji} ${esc(c.naam)}</option>`).join('')}</select></label></div>` : ''}
     ${l.soort === 'todo' ? `${m.length > 1 ? `<div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600">Wie<div class="seg" id="wie"><button type="button" data-v="" class="${!wie ? 'on' : ''}">—</button>${m.map(x => `<button type="button" data-v="${esc(x.id)}" class="${wie === x.id ? 'on' : ''}">${x.id === me().id ? 'Ik' : esc(x.naam)}</button>`).join('')}<button type="button" data-v="samen" class="${wie === 'samen' ? 'on' : ''}">Samen</button></div></div>` : ''}
-      <label class="f">Wanneer af<input class="in" type="date" name="datum" value="${esc(i.datum || '')}"></label>` : ''}
+      <label class="f">Wanneer af<input class="in" type="date" name="datum" value="${esc(i.datum || '')}"></label>
+      <label class="f">Herhalen<select class="in" name="herhaal"><option value="">Niet herhalen</option>${Herhaal.SOORTEN.map(([k, v]) => `<option value="${k}" ${i.herhaal === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>` : ''}
     <label class="f">Notitie<textarea class="in" name="notitie" rows="2" maxlength="500" placeholder="${l.soort === 'boodschappen' ? 'bv. merk, de grote pot' : 'Details'}">${esc(i.notitie || '')}</textarea></label>
     <div class="muted small">Toegevoegd door ${esc(naamVan(i.door))}${i.gemaakt ? ', ' + new Date(i.gemaakt).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}${i.ok && i.okDoor ? ` · afgevinkt door ${esc(naamVan(i.okDoor))}` : ''}</div>`,
   [{ label: icon('trash'), value: 'del', kind: 'danger' }, { label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.tekst.trim() ? '' : 'Vul iets in.' }]);
@@ -571,7 +615,14 @@ function itemSheet(l, id) {
     if (r.value !== 'ok' || !S.data.items[id]) return;
     const f = r.form, p = { tekst: cap(f.tekst.trim()), notitie: f.notitie.trim() };
     if (l.soort === 'boodschappen') { p.aantal = f.aantal.trim(); p.cat = f.cat; if (f.cat !== i.cat) remember(p.tekst, f.cat); }
-    if (l.soort === 'todo') { p.datum = f.datum || ''; p.wie = wie; }
+    if (l.soort === 'todo') {
+      p.datum = f.datum || ''; p.wie = wie; p.herhaal = f.herhaal || '';
+      if (p.herhaal) {
+        if (!p.datum) p.datum = Herhaal.start(p.herhaal, D.date.today());
+        if (p.herhaal !== i.herhaal || p.datum !== i.datum) p.anker = p.datum;   // nieuwe reeks: dag van de maand vanaf hier
+        if (i.ok) { p.ok = false; p.okDoor = ''; p.okOp = 0; }
+      }
+    }
     S.update('items', id, p);
   });
 }

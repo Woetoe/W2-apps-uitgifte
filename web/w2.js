@@ -504,6 +504,47 @@ const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,
         const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(b); });
         return { status: r.status, b64, type: b.type };
       } catch (e) { return { status: 0, fout: navigator.onLine === false ? 'geen internet' : String(e.message || e) }; }
+    },
+    // Een openbare webpagina of plaatje ophalen (recept van een website). Alleen in de app (native 11):
+    // een gewone webpagina mag andere sites niet lezen. Geeft {status, body, url} of {status, b64, type}; status 0 = mislukt.
+    page: {
+      available: () => !!(native && native.pageGet),
+      async get(url, binary) {
+        if (!native || !native.pageGet) return { status: 0, fout: 'kan alleen in de app', code: 'geen-app' };
+        const r = await ask('page', 45000, id => native.pageGet(id, url, !!binary));
+        return r || { status: 0, fout: 'geen antwoord' };
+      }
+    },
+    // Een gewone website openen in de browser van de telefoon (of een nieuw tabblad).
+    openLink(url) {
+      if (!/^https:\/\//i.test(String(url || ''))) return false;
+      if (native && native.openLink) { try { return !!native.openLink(url); } catch (e) { return false; } }
+      try { window.open(url, '_blank', 'noopener'); return true; } catch (e) { return false; }
+    },
+    // Delen naar W2 (native 11): wat je in een andere app via Delen naar W2 Apps stuurde.
+    shared: {
+      available: () => !!(native && native.shareInfo),
+      /** {busy, text, subject, files:[{i, naam, mime, grootte, fout?}]} of null. */
+      info() { try { const s = native && native.shareInfo ? native.shareInfo() : ''; return s ? JSON.parse(s) : null; } catch (e) { return null; } },
+      /** Wacht tot de bestanden gekopieerd zijn (hooguit ~60 s). */
+      async ready() {
+        for (let i = 0; i < 300; i++) { const s = W2.shared.info(); if (!s || !s.busy) return s; await new Promise(r => setTimeout(r, 200)); }
+        return W2.shared.info();
+      },
+      /** Bestand i als File (of null). */
+      file(i) {
+        try {
+          const s = W2.shared.info(), f = s && (s.files || []).find(x => x.i === i);
+          if (!f || f.fout) return null;
+          const b64 = native.shareFile(i);
+          if (!b64) return null;
+          const bin = atob(b64), a = new Uint8Array(bin.length);
+          for (let k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k);
+          return new File([a], f.naam || 'bestand', { type: f.mime || 'application/octet-stream' });
+        } catch (e) { return null; }
+      },
+      files() { const s = W2.shared.info(); return ((s && s.files) || []).filter(f => !f.fout).map(f => W2.shared.file(f.i)).filter(Boolean); },
+      clear() { try { native && native.shareClear && native.shareClear(); } catch (e) {} }
     }
   };
   let awakeLock = null, awakeWant = false, seq = 0;

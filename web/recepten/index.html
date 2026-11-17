@@ -67,6 +67,8 @@
 .prev .f span{color:var(--muted);font-size:13px}
 input[type=file]{display:none}
 .more{text-align:center}
+.bron{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--acc);font-weight:700;padding:4px 0;cursor:pointer;font-size:14px}
+.bron svg{width:16px;height:16px}
 </style>
 </head>
 <body>
@@ -87,6 +89,7 @@ input[type=file]{display:none}
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
 <script src="docx.js"></script>
+<script src="web.js"></script>
 <script src="../samen/sync.js"></script>
 <script src="../samen/deel.js"></script>
 <script src="../samen/boodschappen.js"></script>
@@ -168,6 +171,7 @@ function filtered() {
 async function renderList() {
   if (!all.length) {
     app.innerHTML = `<div class="empty"><b>Nog geen recepten</b>Kies je Word-bestanden (.docx) uit je Google Drive of telefoon. De app haalt de recepten eruit; alles blijft op je telefoon.<br><button class="btn" data-act="import" type="button">${icon('upload')}Word-bestanden kiezen</button>
+      <button class="btn q" data-act="url" type="button" style="margin-top:10px">${icon('link')}Van een website</button>
       <p class="small" style="margin-top:14px">Of <a href="#" data-act="new">typ zelf een recept</a>.</p></div>`;
     return;
   }
@@ -207,6 +211,7 @@ async function renderRecipe(r) {
     ${foto ? `<img class="photo" src="${foto}" alt="">` : ''}
     <h2 class="rtitle sel">${esc(r.titel)}</h2>
     <div class="meta">${r.boek ? `<span class="pill">${esc(r.boek)}</span>` : ''}${r.tijd ? `<span class="pill">${icon('timer', 'width="14" height="14"')}${r.tijd} min</span>` : ''}</div>
+    ${r.bron ? `<div><button class="bron" data-act="bron" type="button">${icon('open')}Bron: ${esc(WebRecept.host(r.bron) || r.bron)}</button></div>` : ''}
     <div class="btns"><button class="btn" data-act="cook" type="button" ${r.stappen.length ? '' : 'disabled'}>${icon('play')}Kookmodus</button><button class="btn q" data-act="fav" type="button" aria-label="Favoriet" style="flex:0 0 56px;color:${r.fav ? 'var(--acc)' : ''}">${icon('star', r.fav ? 'fill="currentColor"' : '')}</button><button class="btn q" data-act="edit" type="button" aria-label="Bewerken" style="flex:0 0 56px">${icon('edit')}</button></div>
     ${r.intro && r.intro.length ? `<p class="muted sel" style="margin:0;white-space:pre-wrap">${esc(r.intro.join('\n'))}</p>` : ''}
     ${r.ingr.length ? `<h2>Ingrediënten</h2>
@@ -233,6 +238,8 @@ app.addEventListener('click', async e => {
   switch (ds.act) {
     case 'import': return $('#pick').click();
     case 'new': e.preventDefault(); return edit(null);
+    case 'url': return urlSheet();
+    case 'bron': if (!W2.openLink(r.bron)) toast('Openen lukte niet'); return;
     case 'more': limit += 300; return renderList();
     case 'min': servings = Math.max(1, (servings || r.personen) - 1); return renderRecipe(r);
     case 'plus': servings = Math.min(60, (servings || r.personen) + 1); return renderRecipe(r);
@@ -283,9 +290,9 @@ async function toShopping(r) {
 }
 
 // ---------------------------------------------------------------- zelf maken / bewerken
-async function edit(r) {
+async function edit(r, extra) {
   const isNew = !r;
-  r = r || { titel: '', boek: 'Eigen recepten', personen: 4, tijd: '', ingr: [], stappen: [], tips: [], intro: [] };
+  r = r || Object.assign({ titel: '', boek: 'Eigen recepten', personen: 4, tijd: '', ingr: [], stappen: [], tips: [], intro: [] }, extra || {});
   const res = await sheet(isNew ? 'Nieuw recept' : 'Recept bewerken', `
     <label class="f">Naam<input class="in" name="titel" value="${esc(r.titel)}"></label>
     <div class="grid2"><label class="f">Personen<input class="in" name="personen" type="number" inputmode="numeric" value="${r.personen || ''}"></label><label class="f">Tijd (min)<input class="in" name="tijd" type="number" inputmode="numeric" value="${r.tijd || ''}"></label></div>
@@ -363,11 +370,105 @@ async function importFiles(files) {
   open(null);
 }
 
+// ---------------------------------------------------------------- recept van een website
+// De pagina wordt via de app zelf opgehaald (W2.page, native 11) en hier gelezen (web.js); er gaat niets van jou mee.
+async function urlSheet(pre) {
+  const r = await sheet('Recept van een website', `
+    <label class="f">Link naar het recept<input class="in" name="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://…" value="${esc(pre || '')}"></label>
+    <div class="muted small">Tip: in Chrome of een andere app kun je ook op <b style="color:var(--text)">Delen</b> tikken en <b style="color:var(--text)">W2 Apps</b> kiezen.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Ophalen', value: 'ok', check: f => WebRecept.findUrl(f.url) ? '' : 'Plak een link die begint met https://' }], { focus: !pre }).done;
+  if (r.value === 'ok') importUrl(WebRecept.findUrl(r.form.url));
+}
+
+/** Plaatje (base64) verkleinen tot een jpeg van max. 900 px, net als bij de Word-import. */
+async function shrink(b64, type) {
+  try {
+    const bin = atob(b64), a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    const bmp = await createImageBitmap(new Blob([a], { type: type || 'image/jpeg' }));
+    if (bmp.width < 120 || bmp.height < 120) return '';
+    const s = Math.min(1, 900 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', .74);
+  } catch (e) { return ''; }
+}
+
+async function importUrl(url) {
+  if (!W2.page.available()) {
+    return toast(W2.inApp ? 'Hiervoor is de nieuwe app-versie nodig: Instellingen › Updates.' : 'Een recept van een website ophalen kan alleen in de app op je telefoon.', 5000);
+  }
+  toast('Recept ophalen bij ' + (WebRecept.host(url) || 'de website') + '…', 45000);
+  const res = await W2.page.get(url);
+  if (!res.status || res.status >= 400 || res.body == null) {
+    toast('');
+    const why = !res.status ? (res.fout || 'onbekende fout') : res.status === 403 || res.status === 429 ? 'de website laat de app niet binnen' : res.status === 404 ? 'de pagina bestaat niet' : 'fout ' + res.status;
+    const k = await sheet('Ophalen lukte niet', `<div class="muted">${esc(WebRecept.host(url))}: ${esc(why)}.</div>`,
+      [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Zelf typen', value: 'new' }]).done;
+    if (k.value === 'new') edit(null, { bron: url });
+    return;
+  }
+  let rec;
+  try { rec = WebRecept.parse(res.body, res.url || url); }
+  catch (e) {
+    toast('');
+    const k = await sheet('Geen recept gevonden', `<div class="muted">${esc(e.message)}</div>`, [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Zelf typen', value: 'new' }]).done;
+    if (k.value === 'new') edit(null, { bron: url });
+    return;
+  }
+  let foto = '';
+  if (rec.fotoUrl) {
+    toast('Foto ophalen…', 30000);
+    const p = await W2.page.get(rec.fotoUrl, true);
+    if (p.status && p.status < 400 && p.b64) foto = await shrink(p.b64, p.type);
+  }
+  toast('');
+  const bron = rec.bron || url;
+  const old = all.find(x => x.bron && x.bron === bron);
+  const books = Array.from(new Set(all.map(x => x.boek).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'nl'));
+  let withPhoto = !!foto;
+  const sh = sheet(old ? 'Recept bijwerken' : 'Recept gevonden', `
+    ${foto ? `<img src="${foto}" alt="" style="width:100%;border-radius:14px;aspect-ratio:16/10;object-fit:cover">` : ''}
+    <label class="f">Naam<input class="in" name="titel" value="${esc(rec.titel)}"></label>
+    <div class="muted small">${[rec.personen ? rec.personen + ' pers.' : '', rec.tijd ? rec.tijd + ' min' : '', rec.ingr.length + ' ingrediënten', rec.stappen.length + ' stappen', 'van ' + WebRecept.host(bron)].filter(Boolean).map(esc).join(' · ')}</div>
+    <label class="f">Categorie<input class="in" name="boek" value="${esc(old ? old.boek || '' : 'Van internet')}" list="boeken2"><datalist id="boeken2">${books.map(b => `<option value="${esc(b)}">`).join('')}</datalist></label>
+    ${foto ? `<div class="toggle"><div class="grow"><b>Foto meenemen</b></div><button type="button" class="sw on" data-sw="foto" aria-label="Foto meenemen"></button></div>` : ''}
+    ${old ? '<div class="muted small">Dit recept had je al; het wordt bijgewerkt (favoriet blijft).</div>' : ''}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: old ? 'Bijwerken' : 'Bewaren', value: 'ok', check: f => f.titel.trim() ? '' : 'Geef het recept een naam.' }]);
+  sh.el.addEventListener('click', e => { const b = e.target.closest('[data-sw=foto]'); if (b) { withPhoto = !withPhoto; b.classList.toggle('on', withPhoto); } });
+  const r = await sh.done;
+  if (r.value !== 'ok') return;
+  delete rec.fotoUrl;
+  const id = old ? old.id : D.uid();
+  const out = Object.assign({}, rec, { id, titel: r.form.titel.trim(), boek: r.form.boek.trim() || 'Van internet', bron, fav: old ? old.fav : false, added: old ? old.added : Date.now(),
+    heeftFoto: (withPhoto && !!foto) || !!(old && old.heeftFoto && !withPhoto) });
+  if (withPhoto && foto) await fotos.put(id, foto);
+  await db.put(id, out);
+  await load();
+  toast(old ? 'Bijgewerkt' : 'Bewaard');
+  open(id);
+}
+
+// Delen naar W2: Recepten geopend met #gedeeld (vanaf de pagina delen/). Link → website; Word-bestanden → importeren.
+async function fromShare() {
+  const s = await W2.shared.ready();
+  if (!s) return false;
+  const url = WebRecept.findUrl(s.text) || WebRecept.findUrl(s.subject);
+  const docx = (s.files || []).filter(f => !f.fout && /\.docx$/i.test(f.naam || '')).map(f => W2.shared.file(f.i)).filter(Boolean);
+  W2.shared.clear();
+  if (docx.length) { importFiles(docx); return true; }
+  if (url) { importUrl(url); return true; }
+  toast('Er zat geen link of Word-bestand bij.');
+  return false;
+}
+
 // ---------------------------------------------------------------- menu
 $('#menu').onclick = async () => {
   const books = Array.from(new Set(all.map(r => r.boek).filter(Boolean)));
   const s = sheet('Recepten', `<div class="list">
     <button class="row" data-m="import" type="button"><span class="ico">${icon('upload')}</span><span class="grow"><b>Word-bestanden importeren</b><span class="sub">.docx uit Drive of je telefoon</span></span></button>
+    <button class="row" data-m="url" type="button"><span class="ico">${icon('link')}</span><span class="grow"><b>Recept van een website</b><span class="sub">Plak een link, bv. van Allerhande of Leukerecepten</span></span></button>
     <button class="row" data-m="new" type="button"><span class="ico">${icon('edit')}</span><span class="grow"><b>Zelf een recept typen</b></span></button>
     ${books.length ? `<button class="row" data-m="delbook" type="button"><span class="ico">${icon('trash')}</span><span class="grow"><b>Een categorie weghalen</b><span class="sub">Bijvoorbeeld na een mislukte import</span></span></button>` : ''}
   </div>`, []);
@@ -378,6 +479,7 @@ $('#menu').onclick = async () => {
   const r = await s.done;
   if (r.value === 'import') $('#pick').click();
   if (r.value === 'new') edit(null);
+  if (r.value === 'url') urlSheet();
   if (r.value === 'delbook') {
     const c = await sheet('Categorie weghalen', `<label class="f">Welke?<select class="in" name="b">${books.map(b => `<option>${esc(b)}</option>`).join('')}</select></label>`, [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Weghalen', value: 'ok', kind: 'danger' }]).done;
     if (c.value !== 'ok') return;
@@ -480,6 +582,8 @@ function koppelDeel() {
   try { await load(); } catch (e) { app.innerHTML = `<div class="notice">Recepten lezen lukte niet: ${esc(e.message)}</div>`; return; }
   koppelDeel();
   const h = location.hash.slice(1);
+  if (h === 'gedeeld') { open(null); fromShare(); return; }
+  if (h === 'website') { open(null); urlSheet(); return; }
   open(h && byId(h) ? h : null);
 })();
 </script>

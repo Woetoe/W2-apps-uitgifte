@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Delen naar W2</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#4d8dff;--acc-ink:#06142e}
+.prev{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.prev .sub{color:var(--muted);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.prev .tx{white-space:pre-wrap;word-break:break-word;max-height:9.5em;overflow:hidden;user-select:text;-webkit-user-select:text}
+.prev .host{display:inline-flex;align-items:center;gap:6px;color:var(--acc);font-weight:700}
+.prev .host svg{width:16px;height:16px}
+.fl{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.fl:first-of-type{border-top:0}
+.fl svg{width:20px;height:20px;color:var(--muted);flex:none}
+.fl b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.fl span{color:var(--muted);font-size:13px;flex:none}
+.fl .bad{color:var(--danger)}
+.dest .ico{font-size:22px;background:var(--panel2)}
+h2.q{font:800 15px var(--f-display);color:var(--muted);margin:14px 2px 0}
+.spin{width:28px;height:28px;border-radius:14px;border:3px solid var(--line);border-top-color:var(--acc);animation:sp 1s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html" aria-label="Terug"></a><h1>Delen naar W2</h1></div>
+<main class="page" id="app"></main>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/boodschappen.js"></script>
+<script src="../recepten/web.js"></script>
+<script src="regels.js"></script>
+<script>
+// Delen naar W2 (native 11): je deelt in een andere app (Chrome, WhatsApp, Gmail, Drive…) iets naar W2 Apps,
+// en hier kies je waar het heen gaat. Bestanden zijn al door de app gekopieerd (Gedeeld.java).
+const { esc, $, icon, sheet, toast } = UI;
+const D = W2D, app = $('#app');
+$('#back').innerHTML = icon('back');
+let info = null;
+
+function sizeTxt(n) { return n == null ? '' : UI.fmtSize ? UI.fmtSize(n) : Math.round(n / 1024) + ' kB'; }
+
+function render() {
+  if (!W2.shared.available()) {
+    app.innerHTML = `<div class="empty"><b>Delen naar W2</b>${W2.inApp ? 'Hiervoor is de nieuwe app-versie nodig: Instellingen › Updates.' : 'Dit werkt alleen in de app op je telefoon.'}</div>`;
+    return;
+  }
+  if (!info) {
+    app.innerHTML = `<div class="empty"><b>Niets gedeeld</b>Tik in een andere app (Chrome, WhatsApp, Gmail, Drive) op <b style="color:var(--text)">Delen</b> en kies <b style="color:var(--text)">W2 Apps</b>. Een link naar een recept, een ticket of tekst voor de boodschappenlijst komt dan hier binnen.<br><a class="btn" href="../index.html" style="margin-top:14px">Naar het startscherm</a></div>`;
+    return;
+  }
+  if (info.busy) {
+    app.innerHTML = `<div class="empty"><div class="spin"></div><b style="margin-top:12px">Ophalen…</b>${info.n > 1 ? info.n + ' bestanden' : 'Het bestand'} wordt klaargezet.</div>`;
+    return;
+  }
+  const k = Regels.kies(info);
+  const files = info.files || [];
+  app.innerHTML = `
+    <div class="prev">
+      ${k.url ? `<div class="sub">Link</div><div class="host">${icon('link')}${esc(WebRecept.host(k.url))}</div>${info.subject ? `<div class="tx">${esc(info.subject)}</div>` : ''}`
+        : k.text ? `<div class="sub">Tekst</div><div class="tx">${esc(k.text)}</div>` : ''}
+      ${files.length ? `<div class="sub">${files.length === 1 ? 'Bestand' : files.length + ' bestanden'}</div>${files.map(f => `<div class="fl">${icon(/^image\//.test(f.mime) ? 'image' : 'file')}<b>${esc(f.naam)}</b>${f.fout ? `<span class="bad">${esc(f.fout)}</span>` : `<span>${esc(sizeTxt(f.grootte))}</span>`}</div>`).join('')}` : ''}
+    </div>
+    ${k.doelen.length ? `<h2 class="q">Waar moet het heen?</h2>
+    <div class="list">${k.doelen.map(d => `<button class="row dest" type="button" data-d="${d.id}"><span class="ico">${d.emoji}</span><span class="grow"><b>${esc(d.titel)}</b><span class="sub">${esc(d.uitleg)}</span></span></button>`).join('')}</div>`
+      : `<div class="notice">Hier kan de app niets mee${files.some(f => f.fout) ? ' (het bestand kon niet gelezen worden)' : ''}.</div>`}
+    <button class="btn q wide" type="button" data-d="niets" style="margin-top:8px">Niets doen</button>`;
+}
+
+app.addEventListener('click', async e => {
+  const b = e.target.closest('[data-d]'); if (!b || !info) return;
+  const d = b.dataset.d;
+  if (d === 'niets') { W2.shared.clear(); location.href = '../index.html'; return; }
+  // De pagina's hieronder lezen het gedeelde zelf en ruimen het daarna op.
+  if (d === 'recept' || d === 'docx') { location.href = '../recepten/index.html#gedeeld'; return; }
+  if (d === 'reis') { location.href = '../reizen/index.html#gedeeld'; return; }
+  if (d === 'kluis') { location.href = '../kluis/index.html#gedeeld'; return; }
+  if (d === 'lijst') return naarLijst();
+});
+
+// Tekst op een lijst in Samen: elke regel een item (boodschappen krijgen hun aantal en afdeling).
+async function naarLijst() {
+  const S = window.Samen, B = window.Boodschappen;
+  if (!S || !S.cfg) {
+    const r = await sheet('Samen staat nog uit', `<div class="muted">De lijsten staan in <b style="color:var(--text)">Samen</b>. Zet Samen eerst aan (dat kan ook alleen voor jezelf); daarna kun je hier dingen op een lijst delen.</div>`,
+      [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Naar Samen', value: 'go' }]).done;
+    if (r.value === 'go') location.href = '../samen/index.html';
+    return;
+  }
+  const lijsten = Object.entries(S.data.lijsten).map(([id, l]) => Object.assign({ id }, l)).sort((a, b) => (a.pos || 0) - (b.pos || 0) || (a.gemaakt || 0) - (b.gemaakt || 0));
+  if (!lijsten.length) return toast('Er is nog geen lijst in Samen. Maak er daar een.');
+  const k = Regels.kies(info);
+  const regels = k.regels;
+  const sh = sheet('Op welke lijst?', `<div class="muted small">${regels.length === 1 ? esc(regels[0].tekst) : regels.length + ' regels, elk een eigen item'}</div>
+    <div class="list">${lijsten.map(l => `<button class="row" type="button" data-l="${esc(l.id)}"><span class="ico" style="background:color-mix(in srgb,${esc(l.kleur || '#ff7eb6')} 22%,var(--panel2));font-size:22px">${esc(l.emoji || '📝')}</span><span class="grow"><b>${esc(l.naam)}</b></span></button>`).join('')}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }]);
+  sh.el.addEventListener('click', e => { const x = e.target.closest('[data-l]'); if (x) sh.close(x.dataset.l); });
+  const r = await sh.done;
+  if (!r.value) return;
+  const l = lijsten.find(x => x.id === r.value);
+  try { await S.start(); } catch (e2) {}
+  let added = 0, dup = 0;
+  if (l.soort === 'boodschappen') {
+    const out = B.addLines(l.id, regels.map(x => x.tekst), regels.length === 1 && regels[0].notitie ? regels[0].notitie : '');
+    added = out.added; dup = out.dup;
+  } else {
+    const me = S.cfg.me.id;
+    regels.forEach(x => {
+      const it = { lijst: l.id, tekst: B.cap(x.tekst), ok: false, door: me, gemaakt: Date.now() };
+      if (x.notitie) it.notitie = x.notitie;
+      S.put('items', D.uid(), it);
+      added++;
+    });
+  }
+  W2.shared.clear();
+  toast(added ? `${added} op ${(l.emoji || '') + ' ' + l.naam}${dup ? ` (${dup} stond${dup === 1 ? '' : 'en'} er al op)` : ''}` : 'Alles stond er al op.', 3000);
+  setTimeout(() => { location.href = '../samen/index.html#l=' + l.id; }, 700);
+}
+
+(async () => {
+  render();
+  info = W2.shared.available() ? W2.shared.info() : null;
+  render();
+  if (info && info.busy) { info = await W2.shared.ready(); render(); }
+})();
+</script>
+</body>
+</html>

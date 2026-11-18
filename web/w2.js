@@ -51,7 +51,7 @@ const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,
   }
 
   // ------------------------------------------------------------------ dichtbij of via internet
-  const GAME_NAMES = { dampoe: 'Dampoe Wars', schaken: 'Schaken', halma: 'Chinees dammen', backgammon: 'Backgammon', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy', dammen: 'Dammen', zeeslag: 'Zeeslag', klaverjassen: 'Klaverjassen', verbinding: 'Verbinding testen' };
+  const GAME_NAMES = { dampoe: 'Dampoe Wars', pressure: 'High Pressure', schaken: 'Schaken', halma: 'Chinees dammen', backgammon: 'Backgammon', woordbord: 'Woordbord', kronkel: 'Kronkel', tegelrummy: 'Tegelrummy', dammen: 'Dammen', zeeslag: 'Zeeslag', klaverjassen: 'Klaverjassen', verbinding: 'Verbinding testen' };
   const pageDir = (function () { const p = location.pathname.split('/').filter(Boolean); if (p.length && !/\.html?$/.test(p[p.length - 1])) return p[p.length - 1]; return p.length > 1 ? p[p.length - 2] : ''; })();
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -553,7 +553,7 @@ const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,
     if (!document.hidden && awakeWant && !native) { awakeLock = null; W2.awake(true); }
   });
   // In een spel blijft het scherm aan (de app deed dat zelf al voor de oudste spellen; zo geldt het overal).
-  const GAME_DIRS = ['backgammon', 'halma', 'schaken', 'woordbord', 'kronkel', 'tegelrummy', 'legtuit', 'vingerspel', 'verbinding', 'klaverjassen', 'dammen', 'zeeslag'];
+  const GAME_DIRS = ['backgammon', 'halma', 'schaken', 'woordbord', 'kronkel', 'tegelrummy', 'legtuit', 'vingerspel', 'verbinding', 'klaverjassen', 'dammen', 'zeeslag', 'pressure'];
   if (GAME_DIRS.includes(pageDir)) { try { W2.awake(true); } catch (e) {} }
   // Liep er een spel via internet op de vorige pagina (ander spel geopend), dan gaat dat hier verder.
   if (INET) { try { if (INET.resume()) { via = 'inet'; const i = INET.info(); multi = !!i.multi; last = { fn: i.role, multi, name: '' }; } } catch (e) {} }

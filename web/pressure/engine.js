@@ -23,15 +23,16 @@
   const SHIELD_INV = 90;
   const ITEM_LIFE = 7 * HZ, ITEM_FALL = 1.6;
   const DROP_CHANCE = 0.13;
+  const CEIL_BONUS = 50;                    // per maat, als een wolk het plafond raakt
   const START_LIVES = 5, MAX_LIVES = 9;
   const WALL_HALF = 4;
   const LEVELS_N = 100;
 
   const ITEMS = [
-    { id: 'dubbel', name: 'Dubbele plant', desc: 'Twee planten tegelijk afschieten', w: 3 },
-    { id: 'plak', name: 'Plakplant', desc: 'Je plant blijft 4 seconden aan het plafond hangen', w: 3 },
+    { id: 'dubbel', name: 'Dubbele plant', desc: 'Twee planten tegelijk afschieten, dit level', w: 3 },
+    { id: 'plak', name: 'Plakplant', desc: 'Je plant blijft 4 s aan het plafond hangen, dit level; nog eens schieten laat los', w: 3 },
     { id: 'chill', name: 'Chill-klok', desc: 'Alle wolken staan 4 seconden stil', w: 3 },
-    { id: 'schild', name: 'Schild', desc: 'Eén keer geraakt worden zonder leven kwijt', w: 3 },
+    { id: 'schild', name: 'Schild', desc: 'Eén keer geraakt worden zonder leven kwijt; gaat mee naar het volgende level', w: 3 },
     { id: 'leven', name: 'Extra leven', desc: 'Eén leven erbij voor jullie samen', w: 1 }
   ];
   const IBY = Object.fromEntries(ITEMS.map((it, i) => [it.id, i]));
@@ -165,7 +166,8 @@
       sim.walls = L.walls.map(wa => ({ x: wa.x, open: 0 }));
       sim.plants = []; sim.items = [];
       sim.players.forEach((pl, i) => {
-        Object.assign(pl, { x: spawnX(i), face: i === 0 ? 1 : -1, d: 0, fq: 0, moving: false, inv: 0, grace: GRACE_STEPS, hit: false });
+        // dubbele plant en plakplant gelden maar één level; het schild blijft tot het een klap opvangt
+        Object.assign(pl, { x: spawnX(i), face: i === 0 ? 1 : -1, d: 0, fq: 0, moving: false, inv: 0, grace: GRACE_STEPS, hit: false, dbl: false, plak: false });
         // tussenmuren: zet de speler in een vak, niet in de muur
         for (const wa of sim.walls) if (Math.abs(pl.x - wa.x) < PW / 2 + WALL_HALF + 2) pl.x = wa.x + (i === 0 ? -1 : 1) * (PW / 2 + WALL_HALF + 4);
       });
@@ -240,7 +242,12 @@
         }
         if (q.fq) {
           q.fq = 0;
-          const mine = sim.plants.filter(pt => pt.o === i).length;
+          let mine = sim.plants.filter(pt => pt.o === i).length;
+          if (mine >= (q.dbl ? 2 : 1)) {
+            // nog een keer schieten: de oudste plakkende plant laat los, en er gaat meteen een nieuwe omhoog
+            const held = sim.plants.find(pt => pt.o === i && pt.held);
+            if (held) { held.gone = true; sim.plants = sim.plants.filter(pt => !pt.gone); mine--; ev(['loose', i]); }
+          }
           if (mine < (q.dbl ? 2 : 1)) {
             const lim = plantLimit(q.x);
             sim.plants.push({ id: id++, o: i, x: q.x, top: H - PLANT_START, lim, stuck: 0, plak: q.plak });
@@ -272,7 +279,7 @@
         // vloer
         if (q.y + r >= H) { q.y = H - r; q.vy = -bounceV(q.s); }
         // plafond
-        if (q.y - r < 0) { q.y = r; q.vy = Math.abs(q.vy); }
+        if (q.y - r <= 0) { q.y = r; q.ceil = true; continue; }
         // zijkanten
         if (q.x - r < 0) { q.x = r; q.vx = Math.abs(q.vx); }
         if (q.x + r > W) { q.x = W - r; q.vx = -Math.abs(q.vx); }
@@ -289,16 +296,35 @@
         // plankjes
         for (const pl of sim.plats) collideRect(q, r, pl);
       }
+      if (sim.balls.some(q => q.ceil)) {
+        for (const q of sim.balls) if (q.ceil) {
+          const pts = ceilPts(q.s);
+          sim.score += pts;
+          ev(['ceil', q.s, Math.round(q.x), Math.round(q.y), pts]);
+        }
+        sim.balls = sim.balls.filter(q => !q.ceil);
+      }
+    }
+    // Punten voor een wolk die het plafond raakt: alle wolkjes die erin zitten, plus een bonus.
+    function ceilPts(s) {
+      let p = 0;
+      for (let k = 1; k <= s; k++) p += 2 ** (s - k) * POP_PTS[k];
+      return p + CEIL_BONUS * s;
+    }
+    // Stuiteren op een plankje: nooit zo hoog dat de wolk vanzelf het plafond raakt.
+    function platBounce(q, pl) {
+      const h = Math.min(APEX[q.s], pl.y0 - 2 * RADIUS[q.s] - 4);
+      return -Math.sqrt(2 * sim.grav * Math.max(4, h));
     }
     function collideRect(q, r, pl) {
       const cx = Math.max(pl.x0, Math.min(pl.x1, q.x)), cy = Math.max(pl.y0, Math.min(pl.y1, q.y));
       const dx = q.x - cx, dy = q.y - cy, d2 = dx * dx + dy * dy;
       if (d2 >= r * r) return;
       if (dx === 0 && dy === 0) {           // midden zit erin: naar boven duwen
-        q.y = pl.y0 - r; q.vy = -bounceV(q.s); return;
+        q.y = pl.y0 - r; q.vy = platBounce(q, pl); return;
       }
       if (dx === 0) {
-        if (q.y < pl.y0) { q.y = pl.y0 - r; if (q.vy > 0) q.vy = -bounceV(q.s); }
+        if (q.y < pl.y0) { q.y = pl.y0 - r; if (q.vy > 0) q.vy = platBounce(q, pl); }
         else { q.y = pl.y1 + r; q.vy = Math.abs(q.vy); }
       } else if (dy === 0) {
         if (q.x < pl.x0) { q.x = pl.x0 - r; q.vx = -Math.abs(q.vx); }
@@ -307,7 +333,7 @@
         const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
         q.x = cx + nx * r; q.y = cy + ny * r;
         if (nx * q.vx < 0) q.vx = -q.vx;
-        if (ny < 0) { if (q.vy > 0) q.vy = -bounceV(q.s); }
+        if (ny < 0) { if (q.vy > 0) q.vy = platBounce(q, pl); }
         else if (q.vy < 0) q.vy = -q.vy;
       }
     }

@@ -641,6 +641,12 @@ function handleEvent(e) {
   else if (k === 'shoot') { if (e[1] === G.me || role !== 'join') sShoot(); }
   else if (k === 'item') { sItem(); if (e[1] === G.me) buzz(15); const it = K.ITEMS.find(x => x.id === e[2]); if (it) R.msg = { t: (e[1] === G.me ? '' : (G.players[e[1]] ? G.players[e[1]].name + ': ' : '')) + it.name, until: performance.now() + 1600 }; }
   else if (k === 'stick') sStick();
+  else if (k === 'loose') sStick();
+  else if (k === 'ceil') {
+    poof(e[1]); tone(660, 0.1, 'triangle', 0.08, 0.05); tone(990, 0.16, 'triangle', 0.08, 0.13);
+    R.puff(e[1], e[2], e[3]); R.puff(Math.max(1, e[1] - 1), e[2] - 8, e[3] + 4); R.puff(Math.max(1, e[1] - 1), e[2] + 8, e[3] + 4);
+    R.text('Plafond! +' + e[4], e[2], Math.max(18, e[3] + 14)); R.shake = 2;
+  }
   else if (k === 'wall') { sWall(); R.shake = 4; }
   else if (k === 'shield') { sShield(); buzz(30); }
   else if (k === 'hit' || k === 'time') {
@@ -866,7 +872,9 @@ function vHome() {
       <li>Raakt een wolk je plant, dan knapt hij in twee kleinere. De kleinste wolkjes verdwijnen.</li>
       <li>Word je geraakt of is de tijd op, dan kost dat een leven en begint het level opnieuw. Samen delen jullie de levens.</li>
       <li>Alle wolken weg = level gehaald, met een bonus voor de tijd die over is.</li>
-      <li>Je schiet één plant tegelijk; pas als die weg is kan de volgende.</li>
+      <li>Je schiet één plant tegelijk; pas als die weg is kan de volgende. Plakt je plant aan het plafond, dan laat hij los als je nog een keer schiet en gaat er meteen een nieuwe omhoog.</li>
+      <li>Raakt een rookwolk het plafond, dan is hij in één keer weg, met alle punten plus een bonus.</li>
+      <li>Dubbele plant en plakplant gelden alleen in het level waarin je ze pakt. Het schild gaat mee naar het volgende level, tot het een klap opvangt of je een leven verliest.</li>
       <li>Vier werelden van 25 levels: strand, jungle (plankjes), reggae-stad (muren die wegzakken als een kant leeg is) en de ruimte (minder zwaartekracht). Elke wereld eindigt met een eindbaas.</li>
     </ul>
     <div class="items">${K.ITEMS.map(it => `<div><img src="${A.itemURL(it.id)}" alt=""><span><b>${it.name}</b>${it.desc}</span></div>`).join('')}</div>

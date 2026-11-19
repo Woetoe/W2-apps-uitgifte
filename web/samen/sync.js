@@ -520,7 +520,7 @@
     return 'Doe mee met onze gedeelde lijstjes in W2 Apps (tabblad Samen › Ik heb een code).\n' +
       'Code: ' + prettyCode(cfg.code) + '\n' +
       (cfg.url !== DEFAULT_URL ? 'Server: ' + cfg.url + '\n' : '') +
-      'App nog niet? https://github.com/Woetoe/W2-apps-uitgifte/releases (W2-Apps.apk)';
+      'App nog niet? https://github.com/Woetoe/W2-apps-uitgifte/releases/latest/download/W2-Apps.apk';
   }
 
   window.Samen = {

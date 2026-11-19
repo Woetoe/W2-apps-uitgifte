@@ -285,5 +285,5 @@
     return { trips: list, warnings };
   }
 
-  window.XLSX = { parse, _toDate: toDate };
+  window.XLSX = { parse, unzip, _toDate: toDate };
 })();

@@ -86,19 +86,63 @@
 .imp .warn{margin-top:10px;font-size:13px;color:var(--muted);max-height:120px;overflow:auto}
 .imp .warn div{padding:2px 0}
 input[type=file]{display:none}
+/* Tickets (wallet) */
+.seg button{font-size:13px}
+.tk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:18px;padding:14px 12px 14px 14px;margin:0 0 10px;color:#fff;cursor:pointer;
+  background:linear-gradient(135deg,var(--k,#455a64),color-mix(in srgb,var(--k,#455a64) 55%,#0b0c12));box-shadow:0 6px 18px rgba(0,0,0,.28);font:inherit;position:relative}
+.tk .e{font-size:26px;line-height:1;flex:none}
+.tk .m{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.tk .m b{font:800 17px/1.2 var(--f-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk .m span{font-size:13px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk .w{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:13px;font-weight:700}
+.tk .w small{font-size:12px;opacity:.8;font-weight:600}
+.tk .q{flex:none;width:40px;height:40px;border-radius:10px;background:#fff;display:grid;place-items:center;color:#111}
+.tk .q svg{width:26px;height:26px}
+.tk.old{opacity:.55}
+.tk-next .tk{margin-bottom:0}
+.tk-hint{font-size:13px;color:var(--muted);margin:4px 2px 0}
+.cand{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.cand:last-child{border-bottom:0}
+.cand input{width:22px;height:22px;accent-color:var(--acc);flex:none}
+.cand .pv{width:64px;height:64px;flex:none;background:#fff;border-radius:8px;display:grid;place-items:center;overflow:hidden}
+.cand .pv img,.cand .pv svg{max-width:60px;max-height:60px}
+.cand .tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.cand .tx span{font-size:13px;color:var(--muted)}
+.fs{position:fixed;inset:0;z-index:25;background:#fff;color:#111;display:flex;flex-direction:column;overflow:auto;touch-action:pan-y}
+.fs-top{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0}
+.fs-top button{width:46px;height:46px;border:0;border-radius:14px;background:#eee;color:#111;font-size:26px;cursor:pointer}
+.fs-top span{font-weight:700;color:#666}
+.fs-b{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 22px 18px;gap:4px}
+.fs-b .r{color:#777;font-weight:700;font-size:14px}
+.fs-b h2{font:800 26px/1.15 var(--f-display);margin:2px 0;color:#111}
+.fs-b .s{color:#444}
+.fs-b .wn{color:#0b7a6e;font-weight:800;font-size:17px}
+.fs-c{width:min(100%,520px);margin:18px 0 6px;display:flex;justify-content:center}
+.fs-c svg,.fs-c img{width:100%;height:auto;image-rendering:pixelated}
+.fs-c.lin svg{max-height:200px}
+.fs-c.sq svg,.fs-c.sq img{max-width:360px}
+.fs-t{color:#555;font-size:14px;overflow-wrap:anywhere;max-width:520px}
+.fs-alt{border:0;background:#eee;color:#111;border-radius:12px;padding:10px 14px;font:700 14px var(--f-body);margin-top:6px;cursor:pointer}
+.fs-v{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;width:min(100%,520px);margin-top:14px;text-align:left}
+.fs-v div{display:flex;flex-direction:column}
+.fs-v small{color:#777;font-weight:600;font-size:12px}
+.fs-v b{font-size:16px;color:#111;overflow-wrap:anywhere}
+.fs-nav{display:flex;gap:10px;justify-content:center;padding:6px 0 calc(env(safe-area-inset-bottom,0px) + 16px)}
+.fs-nav button{min-width:120px;height:48px;border:0;border-radius:14px;background:#eee;color:#111;font:700 16px var(--f-body);cursor:pointer}
 </style>
 </head>
 <body>
 <div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="title">Reizen</h1><button class="ib" id="lockbtn" type="button" aria-label="Slot" hidden></button></div>
 <main class="page" id="app"></main>
 <button class="fab" id="fab" type="button" aria-label="Nieuwe reis" hidden></button>
-<input type="file" id="pick" multiple accept="application/pdf,image/*,.pkpass,.html,.txt,.doc,.docx,.ics">
+<input type="file" id="pick" multiple accept="application/pdf,image/*,.pkpass,application/vnd.apple.pkpass,.html,.txt,.doc,.docx,.ics">
 <input type="file" id="pickx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
 <script src="../web.js"></script>
 <script src="../w2.js"></script>
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
 <script src="xlsx.js"></script>
+<script src="tickets.js"></script>
 <script src="../samen/sync.js"></script>
 <script src="../samen/deel.js"></script>
 <script>
@@ -125,14 +169,15 @@ let cur = null; // id van open reis
 let deel = null; // delen met je partner via Samen (samen/deel.js)
 
 // ---------------------------------------------------------------- opslag
-async function load() { data = await D.secret.get(AREA, { trips: [] }); if (!data.trips) data.trips = []; }
+async function load() { data = await D.secret.get(AREA, { trips: [] }); if (!data.trips) data.trips = []; data.trips.forEach(t => { if (!Array.isArray(t.tickets)) t.tickets = []; }); }
 async function save() {
   try { await D.secret.set(AREA, data); if (deel) deel.push(); }
   catch (e) { if (e instanceof D.Locked) { toast('Op slot: ontgrendel eerst.'); start(); return; } toast('Opslaan lukte niet: ' + e.message); }
+  publishSoon();
   // Samenvatting voor het overzicht (zonder documenten of codes)
   D.set('dash-reizen', data.trips.map(t => ({
     id: t.id, naam: t.naam, emoji: t.emoji, van: t.van, tot: t.tot,
-    pack: [t.pak.filter(x => x.ok).length, t.pak.length], todo: [t.todo.filter(x => x.ok).length, t.todo.length], docs: t.docs.length,
+    pack: [t.pak.filter(x => x.ok).length, t.pak.length], todo: [t.todo.filter(x => x.ok).length, t.todo.length], docs: t.docs.length, tickets: (t.tickets || []).length,
     ...deadlines(t)
   })));
 }
@@ -175,7 +220,9 @@ function renderList() {
     const pk = t.pak.length ? ` · ${t.pak.filter(x => x.ok).length}/${t.pak.length} ingepakt` : '';
     return `<button class="row" data-open="${t.id}" type="button"><span class="ico">${t.emoji || '✈️'}</span><span class="grow"><b>${esc(t.naam)}</b><span class="sub">${esc(whenText(t))}${pk}</span></span><span class="end">${status}</span></button>`;
   };
-  app.innerHTML = (up.length ? `<div class="list">${up.map(row).join('')}</div>` : '<p class="muted">Geen komende reizen.</p>') +
+  const nx = Tickets.komend(data.trips)[0];
+  app.innerHTML = (nx ? `<div class="sec"><h2>Eerstvolgende ticket</h2></div><div class="tk-next">${ticketCard(nx.t, nx.trip)}</div><div style="height:12px"></div>` : '') +
+    (up.length ? `<div class="list">${up.map(row).join('')}</div>` : '<p class="muted">Geen komende reizen.</p>') +
     (past.length ? `<h2>Geweest <small>${past.length}</small></h2><div class="list past">${past.map(row).join('')}</div>` : '') +
     `<div class="btns xl"><button class="btn q" data-act="xlsx" type="button">${icon('upload')}Uit Excel laden</button><button class="btn q" data-act="xlsxtpl" type="button">${icon('file')}Invulbestand</button></div>
     <p class="muted small">Vul reizen, gegevens, paklijst en te-regelen in Excel in en laad ze hier in één keer. Bestaat een reis al (zelfde naam), dan wordt hij bijgewerkt.</p>`;
@@ -223,6 +270,7 @@ function renderTrip(t) {
   const pk = t.pak.filter(x => x.ok).length, open = t.todo.filter(x => !x.ok).length, late = deadlines(t).late;
   const tabs = [
     ['info', 'Overzicht', `<span class="n">${t.codes.length ? t.codes.length + ' gegevens' : '&nbsp;'}</span>`],
+    ['tickets', 'Tickets', `<span class="n">${(n => n ? n + (n === 1 ? ' ticket' : ' tickets') : '&nbsp;')(t.tickets.filter(x => Tickets.komt(x, t)).length)}</span>`],
     ['todo', 'Regelen', `<span class="n${late ? ' late' : ''}">${late ? late + ' te laat' : open ? open + ' open' : t.todo.length ? 'klaar' : '&nbsp;'}</span>`],
     ['pak', 'Paklijst', `<span class="n">${t.pak.length ? pk + '/' + t.pak.length : '&nbsp;'}</span>`],
     ['plan', 'Planning', `<span class="n">${(n => n ? n + ' dagen' : '&nbsp;')((t.notities || '').split('\n').filter(l => /^(ma|di|wo|do|vr|za|zo)\.?\s+\d{1,2}\s+[a-z]{3,}\.?\s*[·:–-]/i.test(l.trim())).length)}</span>`]
@@ -230,6 +278,7 @@ function renderTrip(t) {
   const seg = `<nav class="seg" role="tablist">${tabs.map(([k, l, n]) => `<button type="button" role="tab" data-tab="${k}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}">${l}${n}</button>`).join('')}</nav>`;
   let body = '';
   if (tab === 'info') body = tripInfo(t);
+  else if (tab === 'tickets') body = ticketsTab(t);
   else if (tab === 'todo') body = `<div class="sec"><h2>Te regelen <small>${t.todo.length ? (t.todo.length - open) + '/' + t.todo.length + ' geregeld' : ''}${late ? ` · <span class="late-n">${late} te laat</span>` : ''}</small></h2></div>${todoList(t)}`;
   else if (tab === 'pak') body = `<div class="sec"><h2>Paklijst <small>${t.pak.length ? pk + '/' + t.pak.length + ' ingepakt' : ''}</small></h2><button class="btn q" data-act="tpl" type="button">Lijst erbij</button></div>
     ${t.pak.length ? `<div class="bar"><i style="width:${Math.round(pk / t.pak.length * 100)}%"></i></div>` : ''}${checklist(t.pak, 'pak')}`;
@@ -245,9 +294,11 @@ function heroHtml(t) {
   return `<div class="hero"><span class="em">${t.emoji || '✈️'}</span><b>${esc(t.naam)}</b><span class="when">${esc(whenText(t))}${t.bestemming ? ' · ' + esc(t.bestemming) : ''}</span>${count}</div>`;
 }
 function tripInfo(t) {
+  const tk = Tickets.sorteer(t.tickets.filter(x => Tickets.komt(x, t)), t)[0];
+  const tkHtml = tk ? `<div class="sec"><h2>Eerstvolgende ticket</h2><button class="btn q" data-tab="tickets" type="button">Alle tickets</button></div><div class="tk-next">${ticketCard(tk, t)}</div>` : '';
   const next = t.todo.map((x, i) => i).filter(i => !t.todo[i].ok).sort((a, b) => (t.todo[a].dl || '9') < (t.todo[b].dl || '9') ? -1 : (t.todo[a].dl || '9') > (t.todo[b].dl || '9') ? 1 : a - b).slice(0, 3);
   const nOpen = t.todo.filter(x => !x.ok).length;
-  return `${next.length ? `<div class="sec"><h2>Eerst te doen</h2></div>
+  return `${tkHtml}${next.length ? `<div class="sec"><h2>Eerst te doen</h2></div>
     <div class="card todo next">${next.map(i => { const x = t.todo[i]; return `<div class="check"><span class="box" data-tick="todo:${i}" role="checkbox" aria-checked="false"></span><span class="t" data-todo="${i}"><b>${esc(x.t)}</b>${dlText(x)}</span></div>`; }).join('')}
     ${nOpen > next.length ? `<button class="more" data-tab="todo" type="button">Alle ${nOpen} open taken →</button>` : ''}</div>` : ''}
 
@@ -320,7 +371,7 @@ async function newTrip() {
   const f = r.form;
   const pak = [];
   Object.keys(TEMPLATES).forEach(k => { if (f['tpl_' + k]) TEMPLATES[k].forEach(x => pak.includes(x) || pak.push(x)); });
-  const t = { id: D.uid(), naam: f.naam.trim(), emoji: f.emoji, bestemming: f.bestemming.trim(), van: f.van, tot: f.tot || f.van, notities: '', docs: [], codes: [],
+  const t = { id: D.uid(), naam: f.naam.trim(), emoji: f.emoji, bestemming: f.bestemming.trim(), van: f.van, tot: f.tot || f.van, notities: '', docs: [], codes: [], tickets: [],
     pak: pak.map(x => ({ t: x, ok: false })), todo: TODO.map(x => ({ t: x, ok: false })), made: Date.now() };
   data.trips.push(t);
   await save();
@@ -329,7 +380,7 @@ async function newTrip() {
 }
 
 function open(id) { cur = id; tab = 'info'; history.replaceState(null, '', id ? '#' + id : '#'); window.scrollTo(0, 0); render(); }
-window.UIback = () => { if (cur && tab !== 'info') { setTab('info'); return true; } if (cur) { open(null); return true; } return false; };
+window.UIback = () => { if (fsClose()) return true; if (cur && tab !== 'info') { setTab('info'); return true; } if (cur) { open(null); return true; } return false; };
 function setTab(k) {
   tab = k; render();
   const seg = $('.seg'); if (seg && window.scrollY > seg.offsetTop) window.scrollTo(0, Math.max(0, seg.offsetTop - 8));
@@ -346,6 +397,7 @@ $('#pick').addEventListener('change', async e => {
 });
 async function addDocs(t, list) {
   toast(list.length > 1 ? `${list.length} bestanden bewaren…` : 'Bewaren…', 8000);
+  const nieuw = [], passen = [];
   try {
     for (const file of list) {
       if (file.size > 25 * 1048576) { toast(file.name + ' is groter dan 25 MB, overgeslagen.'); continue; }
@@ -353,11 +405,26 @@ async function addDocs(t, list) {
       f.titel = file.name.replace(/\.[^.]+$/, '');
       f.soort = guessKind(file.name);
       t.docs.push(f);
+      nieuw.push(f);
+      // Wallet-bestand: meteen een ticket van maken
+      if (/\.pkpass$/i.test(file.name) || /pkpass/.test(file.type || '')) {
+        try { passen.push(await Tickets.readPkpass(await file.arrayBuffer(), { doc: f.id, ref: t.van })); }
+        catch (e) { toast(file.name + ': ' + e.message, 5000); }
+      }
     }
     await save();
     toast('Bewaard');
-  } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Bewaren lukte niet: ' + err.message); }
+  } catch (err) { toast(err instanceof D.Locked ? 'Op slot: ontgrendel eerst.' : 'Bewaren lukte niet: ' + err.message); render(); return; }
+  if (passen.length) {
+    const n = addTickets(t, passen);
+    await save();
+    toast(n ? (n === 1 ? 'Ticket toegevoegd' : n + ' tickets toegevoegd') : 'Dit ticket stond er al');
+    if (n) { tab = 'tickets'; }
+  }
   render();
+  // Tickets en instapkaarten: codes zoeken in de nieuwe pdf's en afbeeldingen
+  const scan = nieuw.filter(f => scanbaar(f));
+  if (scan.length && W2.herken.kanTicket()) await zoekCodes(t, scan, true);
 }
 
 // Delen naar W2: Reizen geopend met #gedeeld. Bestanden → documenten van een reis; alleen tekst → bij Planning.
@@ -399,7 +466,7 @@ function guessKind(n) {
 }
 
 app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-act],[data-open],[data-doc],[data-docmenu],[data-tick],[data-del],[data-addbtn],[data-copy],[data-codemenu],[data-todo],[data-tab]');
+  const el = e.target.closest('[data-act],[data-open],[data-doc],[data-docmenu],[data-tick],[data-del],[data-addbtn],[data-copy],[data-codemenu],[data-todo],[data-tab],[data-ticket]');
   if (!el) return;
   const t = cur && trip(cur);
   const ds = el.dataset;
@@ -408,6 +475,7 @@ app.addEventListener('click', async e => {
   if (ds.act === 'new') return newTrip();
   if (ds.act === 'xlsx') { $('#pickx').click(); return; }
   if (ds.act === 'xlsxtpl') return saveTemplate();
+  if (ds.ticket) return fsOpen(ds.ticket, t);
   if (!t) return;
   if (ds.docmenu != null) { e.stopPropagation(); return docMenu(t, +ds.docmenu); }
   if (ds.doc != null) {
@@ -444,6 +512,9 @@ app.addEventListener('click', async e => {
     case 'donetoggle': showDone = !showDone; return render();
     case 'adddoc': pickFor = t.id; $('#pick').click(); return;
     case 'addcode': return codeForm(t, -1);
+    case 'addticket': pickFor = t.id; $('#pick').click(); return;
+    case 'scandocs': return zoekCodes(t, t.docs.filter(scanbaar), false);
+    case 'widget': return widgetUitleg();
     case 'tpl': {
       const r = await sheet('Lijst erbij', `<div class="tpl">${Object.keys(TEMPLATES).map(k => `<label><input type="checkbox" name="tpl_${k}">${TPL_NAMES[k]}</label>`).join('')}</div>`,
         [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok' }]).done;
@@ -509,6 +580,204 @@ async function codeForm(t, i) {
 
 $('#fab').onclick = newTrip;
 
+// ---------------------------------------------------------------- tickets (wallet)
+const SOORT_KLEUR = { Vlucht: '#1f5fbf', Trein: '#9a7400', Bus: '#2e7d32', Boot: '#00838f', Evenement: '#8e24aa', Verblijf: '#6d4c41', Huurauto: '#c62828', Excursie: '#e65100', Ticket: '#455a64' };
+const QR_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm-6 2h2v2h-2zm4 0h2v2h-2zm-2 2h2v2h-2zm4 0h2v2h-2z"/></svg>';
+const scanbaar = f => /^(application\/pdf|image\/)/.test(f.mime || D.mimeOf(f.name) || '') && (f.size || 0) <= 15 * 1048576;
+const findTicket = id => { for (const trip of data.trips) { const t = (trip.tickets || []).find(x => x.id === id); if (t) return { t, trip }; } return null; };
+
+function wanneerTekst(w, lang) {
+  if (!w) return '';
+  const d = D.date.days(Tickets.dagVan(w)), tijd = Tickets.tijdVan(w);
+  const dag = d === 0 ? 'vandaag' : d === 1 ? 'morgen' : D.date.nice(Tickets.dagVan(w), lang ? { weekday: 'long', day: 'numeric', month: 'long' } : { weekday: 'short', day: 'numeric', month: 'short' });
+  return tijd ? dag + (lang ? ' · ' : ' ') + tijd : dag;
+}
+function ticketCard(x, trip) {
+  const kleur = x.kleur || SOORT_KLEUR[x.soort] || SOORT_KLEUR.Ticket;
+  const d = x.wanneer ? Tickets.dagVan(x.wanneer) : '';
+  const rel = d ? D.date.days(d) : null;
+  const dag = d ? (rel === 0 ? 'vandaag' : rel === 1 ? 'morgen' : D.date.nice(d, { weekday: 'short', day: 'numeric', month: 'short' })) : '';
+  return `<button class="tk${Tickets.komt(x, trip) ? '' : ' old'}" type="button" data-ticket="${esc(x.id)}" style="--k:${esc(kleur)}"><span class="e">${Tickets.SOORT_EMOJI[x.soort] || '🎫'}</span>
+    <span class="m"><b>${esc(x.titel)}</b><span>${esc(x.sub || (trip && !cur ? trip.naam : '') || Tickets.FMT_NAAM[x.fmt] || '')}</span></span>
+    ${dag ? `<span class="w">${esc(dag)}${Tickets.tijdVan(x.wanneer) ? `<small>${esc(Tickets.tijdVan(x.wanneer))}</small>` : ''}</span>` : ''}
+    <span class="q">${QR_ICON}</span></button>`;
+}
+function ticketsTab(t) {
+  const komend = Tickets.sorteer(t.tickets.filter(x => Tickets.komt(x, t)), t);
+  const oud = Tickets.sorteer(t.tickets.filter(x => !Tickets.komt(x, t)), t).reverse();
+  const kan = W2.herken.kanTicket(), docs = t.docs.filter(scanbaar).length;
+  return `<div class="sec"><h2>Tickets <small>${t.tickets.length || ''}</small></h2><button class="btn" data-act="addticket" type="button">${icon('plus')}Toevoegen</button></div>
+    ${komend.map(x => ticketCard(x, t)).join('') || `<p class="muted small">Instapkaarten, treinkaartjes, toegangsbewijzen: alles met een QR-code of streepjescode. Kies een pdf, screenshot of wallet-bestand (.pkpass); ${kan ? 'de app haalt de code eruit en' : 'een .pkpass werkt hier, codes uit een pdf of screenshot halen kan in de app op je telefoon. De app'} laat hem groot en scherp zien, met het scherm op volle helderheid.</p>`}
+    ${oud.length ? `<div class="done-h" data-act="donetoggle">${showDone ? '▾' : '▸'} Geweest (${oud.length})</div>${showDone ? oud.map(x => ticketCard(x, t)).join('') : ''}` : ''}
+    <div class="btns xl">${kan && docs ? `<button class="btn q" data-act="scandocs" type="button">${icon('search')}Zoek codes in documenten</button>` : ''}${D.inApp ? `<button class="btn q" data-act="widget" type="button">Widget</button>` : ''}</div>
+    ${D.inApp ? '<p class="tk-hint">Zet de widget <b>W2 · Tickets</b> op je startscherm: dan staat je eerstvolgende ticket er meteen, zonder de app te openen.</p>' : ''}`;
+}
+/** Nieuwe tickets erbij, zonder dubbele (zelfde code). Geeft het aantal nieuwe. */
+function addTickets(t, list) {
+  const have = new Set(data.trips.flatMap(x => (x.tickets || []).map(Tickets.sleutel)));
+  let n = 0;
+  for (const x of list) { const k = Tickets.sleutel(x); if (have.has(k)) continue; have.add(k); t.tickets.push(x); n++; }
+  return n;
+}
+
+/** Codes zoeken in documenten (pdf/afbeelding) van een reis en laten kiezen welke tickets erbij komen. */
+async function zoekCodes(t, docs, stil) {
+  if (!W2.herken.kanTicket()) { toast('Codes uitlezen kan in de app op je telefoon.'); return; }
+  if (!docs.length) { toast('Geen pdf\'s of afbeeldingen bij deze reis.'); return; }
+  const have = new Set(data.trips.flatMap(x => (x.tickets || []).map(Tickets.sleutel)));
+  const cand = [];
+  let fout = '';
+  for (let i = 0; i < docs.length; i++) {
+    const f = docs[i];
+    toast(docs.length > 1 ? `Codes zoeken… ${i + 1} van ${docs.length}` : 'Codes zoeken…', 30000);
+    let b64 = '';
+    try { b64 = await D.files.get(AREA, f.id); } catch (e) { if (e instanceof D.Locked) { toast('Op slot: ontgrendel eerst.'); return; } continue; }
+    if (!b64) continue;
+    const pdf = /pdf/.test(f.mime || D.mimeOf(f.name) || '');
+    const r = await W2.herken.ticket(b64, pdf);
+    if (!r) { fout = 'geen antwoord van de app'; continue; }
+    if (!r.ok) { fout = r.fout || 'lezen lukte niet'; continue; }
+    if (r.codeFout) fout = r.codeFout;
+    const naam = f.titel || (f.name || '').replace(/\.[^.]+$/, '');
+    const lijst = (r.pas || []).map(it => Tickets.fromScan(it, { titel: naam, soort: { Vlucht: 'Vlucht', Verblijf: 'Verblijf', Huurauto: 'Huurauto', Excursie: 'Excursie' }[f.soort] || 'Ticket', ref: t.van, doc: f.id })).filter(Boolean);
+    lijst.forEach((x, j) => { if (lijst.length > 1 && x.titel === naam) x.titel = `${naam} (${j + 1})`; });
+    for (const x of lijst) { const k = Tickets.sleutel(x); if (have.has(k)) continue; have.add(k); cand.push(x); }
+  }
+  toast('');
+  if (!cand.length) {
+    if (!stil) toast(fout && /download|module|play/i.test(fout) ? 'De codelezer van Google wordt nog binnengehaald. Probeer het over een paar minuten opnieuw.' : 'Geen nieuwe scanbare codes gevonden.', 5000);
+    else if (fout && /download|module/i.test(fout)) toast('De codelezer wordt nog binnengehaald; zoek later via Tickets › Zoek codes in documenten.', 5000);
+    return;
+  }
+  const B = await Tickets.bwip().catch(() => null);
+  const pv = x => x.crop ? `<img src="data:image/png;base64,${x.crop}" alt="">` : (B ? Tickets.svgSync(B, x) : QR_ICON);
+  const r = await sheet(cand.length === 1 ? 'Code gevonden' : `${cand.length} codes gevonden`, `
+    <p class="muted small" style="margin-top:0">Als ticket bewaren? Titel en tijd pas je daarna aan: open het ticket en tik op ⋯.</p>
+    <div>${cand.map((x, i) => `<label class="cand"><input type="checkbox" name="c${i}" checked><span class="pv">${pv(x)}</span><span class="tx"><b>${esc(x.titel)}</b><span>${esc([x.sub, wanneerTekst(x.wanneer), Tickets.FMT_NAAM[x.fmt]].filter(Boolean).join(' · '))}</span></span></label>`).join('')}</div>`,
+  [{ label: 'Niet nu', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  const n = addTickets(t, cand.filter((x, i) => r.form['c' + i]));
+  if (!n) return;
+  await save();
+  tab = 'tickets';
+  render();
+  toast(n === 1 ? 'Ticket bewaard' : n + ' tickets bewaard');
+}
+
+async function ticketForm(id) {
+  const f = findTicket(id);
+  if (!f) return;
+  const x = f.t;
+  const d = Tickets.dagVan(x.wanneer), tm = Tickets.tijdVan(x.wanneer);
+  const doc = x.doc && f.trip.docs.find(z => z.id === x.doc);
+  const r = await sheet('Ticket', `
+    <label class="f">Titel<input class="in" name="titel" value="${esc(x.titel)}"></label>
+    <label class="f">Onderregel<input class="in" name="sub" value="${esc(x.sub || '')}" placeholder="Bijv. KL 765 · stoel 12A"></label>
+    <label class="f">Soort<select class="in" name="soort">${Tickets.SOORT.map(k => `<option ${k === x.soort ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <div class="grid2"><label class="f">Datum<input class="in" type="date" name="dag" value="${esc(d)}"></label><label class="f">Tijd<input class="in" type="time" name="tijd" value="${esc(tm)}"></label></div>
+    <span class="muted small">${esc(Tickets.FMT_NAAM[x.fmt] || x.fmt)}${doc ? ' · uit ' + esc(doc.titel || doc.name) : ''}${x.bron === 'pkpass' ? ' · wallet-bestand' : ''}</span>`,
+  [{ label: 'Verwijderen', value: 'del', kind: 'danger' }, { label: 'Bewaren', value: 'ok', check: g => g.titel.trim() ? (g.tijd && !g.dag ? 'Kies ook een datum.' : '') : 'Geef het ticket een titel.' }]).done;
+  if (r.value === 'ok') {
+    Object.assign(x, { titel: r.form.titel.trim(), sub: r.form.sub.trim(), soort: r.form.soort, wanneer: r.form.dag ? r.form.dag + (r.form.tijd ? 'T' + r.form.tijd : '') : '' });
+  } else if (r.value === 'del') {
+    if (!(await confirm(`Ticket <b>${esc(x.titel)}</b> weghalen? Het document zelf blijft bij de reis.`, 'Weghalen', true))) return;
+    f.trip.tickets = f.trip.tickets.filter(z => z !== x);
+  } else return;
+  await save(); render();
+}
+
+async function widgetUitleg() {
+  const on = D.get('tickets-widget', true);
+  const r = await sheet('Widget Tickets', `<p style="margin-top:0">Houd je startscherm ingedrukt › <b>Widgets</b> › <b>W2 Apps</b> › <b>W2 · Tickets</b>. Je ziet dan je eerstvolgende ticket met de code; met ‹ › blader je door de komende tickets. Tik op de code voor het hele scherm op volle helderheid.</p>
+    <p class="muted small">De widget toont de code zonder vingerafdruk of pincode, ook als Reizen op slot zit. Zo werkt het ook bij de gate.</p>
+    <label class="f" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="on"${on ? ' checked' : ''} style="width:22px;height:22px;accent-color:var(--acc)">Tickets op de widget tonen</label>`,
+  [{ label: 'Klaar', value: 'ok' }]).done;
+  if (r.value === 'ok' && !!r.form.on !== on) { D.set('tickets-widget', !!r.form.on); lastPub = ''; publishSoon(); toast(r.form.on ? 'Widget toont je tickets' : 'Widget is leeg'); }
+}
+
+// Widget: komende tickets met hun code als plaatje doorgeven aan de app (native 12)
+let pubT = 0, lastPub = '';
+const pngCache = new Map();
+function publishSoon() { clearTimeout(pubT); pubT = setTimeout(publishTickets, 500); }
+async function publishTickets() {
+  if (!D.inApp || !window.W2 || !W2.publish) return;
+  const list = D.get('tickets-widget', true) ? Tickets.komend(data.trips).slice(0, 12) : [];
+  const out = [];
+  for (const { t, trip } of list) {
+    const it = Tickets.widgetItem(t, trip), k = Tickets.sleutel(t);
+    try {
+      if (!pngCache.has(k)) pngCache.set(k, await Tickets.png(t));
+      const p = pngCache.get(k);
+      if (p) Object.assign(it, p);
+    } catch (e) {}
+    out.push(it);
+  }
+  const sig = JSON.stringify(out);
+  if (sig === lastPub) return;
+  lastPub = sig;
+  W2.publish('tickets', out);
+}
+
+// Ticket over het hele scherm: wit, groot, volle helderheid; vegen of ‹ › voor het volgende
+let fs = null;
+function fsOpen(id, inTrip) {
+  const f = findTicket(id);
+  if (!f) return;
+  let list;
+  if (inTrip) { const k = Tickets.sorteer(inTrip.tickets.filter(x => Tickets.komt(x, inTrip)), inTrip); list = (k.includes(f.t) ? k : Tickets.sorteer(inTrip.tickets, inTrip)).map(t => ({ t, trip: inTrip })); }
+  else { list = Tickets.komend(data.trips); if (!list.some(x => x.t === f.t)) list = [f]; }
+  const el = document.createElement('div');
+  el.className = 'fs';
+  el.setAttribute('role', 'dialog');
+  document.body.appendChild(el);
+  fs = { el, list, i: Math.max(0, list.findIndex(x => x.t === f.t)), orig: false };
+  W2.helder(true);
+  W2.awake(true);
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-fs]'); if (!b) return;
+    const a = b.dataset.fs;
+    if (a === 'x') fsClose();
+    else if (a === 'prev' || a === 'next') fsGo(a === 'next' ? 1 : -1);
+    else if (a === 'orig') { fs.orig = !fs.orig; fsShow(); }
+    else if (a === 'edit') { const id = fs.list[fs.i].t.id; fsClose(); ticketForm(id); }
+  });
+  let x0 = null;
+  el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 70) fsGo(dx < 0 ? 1 : -1); });
+  fsShow();
+}
+function fsGo(d) { if (!fs || fs.list.length < 2) return; fs.i = (fs.i + d + fs.list.length) % fs.list.length; fs.orig = false; fsShow(); }
+function fsClose() {
+  if (!fs) return false;
+  fs.el.remove(); fs = null;
+  W2.helder(false);
+  W2.awake(false);
+  return true;
+}
+async function fsShow() {
+  if (!fs) return;
+  const { t: x, trip } = fs.list[fs.i];
+  const kan = Tickets.kanTekenen(x);
+  const orig = (fs.orig || !kan) && x.crop;
+  let code = '';
+  if (orig) code = `<img src="data:image/png;base64,${x.crop}" alt="Code">`;
+  else if (kan) { try { code = await Tickets.svg(x); } catch (e) { code = ''; } }
+  if (!fs) return;
+  if (!code && x.crop) code = `<img src="data:image/png;base64,${x.crop}" alt="Code">`;
+  if (!code) code = '<p style="color:#a00">Deze code kan niet getekend worden.</p>';
+  const sq = !Tickets.LINEAIR[x.fmt] && x.fmt !== 'pdf417';
+  const tekst = x.tekst || (Tickets.LINEAIR[x.fmt] && x.data && x.data.length <= 40 ? x.data : '');
+  const doc = x.doc && trip.docs.find(z => z.id === x.doc);
+  fs.el.innerHTML = `<div class="fs-top"><button type="button" data-fs="x" aria-label="Sluiten">×</button><span>${fs.list.length > 1 ? (fs.i + 1) + ' / ' + fs.list.length : ''}</span><button type="button" data-fs="edit" aria-label="Bewerken" style="font-size:22px">⋯</button></div>
+    <div class="fs-b"><span class="r">${esc((trip.emoji || '✈️') + ' ' + trip.naam)}</span><h2>${esc(x.titel)}</h2>${x.sub ? `<span class="s">${esc(x.sub)}</span>` : ''}${x.wanneer ? `<span class="wn">${esc(wanneerTekst(x.wanneer, true))}</span>` : ''}
+    <div class="fs-c ${Tickets.LINEAIR[x.fmt] ? 'lin' : sq ? 'sq' : ''}">${code}</div>
+    ${tekst ? `<div class="fs-t">${esc(tekst)}</div>` : ''}
+    ${kan && x.crop ? `<button class="fs-alt" type="button" data-fs="orig">${orig ? 'Opnieuw getekend tonen' : 'Origineel tonen'}</button>` : ''}
+    ${x.velden && x.velden.length ? `<div class="fs-v">${x.velden.map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
+    ${doc ? `<p style="color:#777;font-size:13px;margin-top:14px">Uit ${esc(doc.titel || doc.name)}</p>` : ''}</div>
+    ${fs.list.length > 1 ? '<div class="fs-nav"><button type="button" data-fs="prev">‹ Vorige</button><button type="button" data-fs="next">Volgende ›</button></div>' : '<div class="fs-nav"></div>'}`;
+}
+
 // ---------------------------------------------------------------- Excel-import
 const nkey = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
 const isEmoji = s => /\p{Extended_Pictographic}/u.test(s) && s.length <= 8 && !/[a-z]{2}/i.test(s);
@@ -523,7 +792,7 @@ function guessEmoji(src) {
 function mergeTrip(src, dry) {
   const old = data.trips.find(x => nkey(x.naam) === nkey(src.naam));
   const t = old ? (dry ? JSON.parse(JSON.stringify(old)) : old)
-    : { id: D.uid(), naam: src.naam, emoji: '', bestemming: '', van: '', tot: '', notities: '', docs: [], codes: [], pak: [], todo: [], made: Date.now() };
+    : { id: D.uid(), naam: src.naam, emoji: '', bestemming: '', van: '', tot: '', notities: '', docs: [], codes: [], tickets: [], pak: [], todo: [], made: Date.now() };
   const n = { nieuw: !old, codes: 0, pak: 0, todo: 0 };
   if (isEmoji(src.emoji)) t.emoji = src.emoji; else if (!old) t.emoji = guessEmoji(src);
   if (src.bestemming) t.bestemming = src.bestemming;
@@ -619,6 +888,7 @@ function start() {
     try { await load(); } catch (e) { if (e instanceof D.Locked) return start(); app.innerHTML = `<div class="notice">Lezen lukte niet: ${esc(e.message)}</div>`; return; }
     lockBtn();
     koppelDeel();
+    publishSoon();
     const h = location.hash.slice(1);
     if (h === 'nieuw') { history.replaceState(null, '', '#'); render(); newTrip(); }
     else if (h === 'gedeeld') { history.replaceState(null, '', '#'); open(null); fromShare(); }
@@ -640,6 +910,7 @@ function koppelDeel() {
         Object.keys(t).forEach(k => delete t[k]);
         return Object.assign(t, nu);
       });
+      data.trips.forEach(t => { if (!Array.isArray(t.tickets)) t.tickets = []; });
       await save();
       if (cur && !trip(cur)) open(null); else render();
     },

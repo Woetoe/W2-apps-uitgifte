@@ -488,7 +488,17 @@ const REGELS = "{\n  \"rules\": {\n    \".read\": false,\n    \".write\": false,
       foto(dataUrl, wat) {
         if (!native || !native.scanImage) return Promise.resolve(null);
         return ask('scan', 60000, id => native.scanImage(id, dataUrl, wat || 'alles'));
+      },
+      // Tickets (vanaf native 12): scanbare codes in een pdf of afbeelding (base64). Geeft {ok, pas:[{f, v, b64, crop, page}]} of null.
+      kanTicket: () => !!(native && native.scanTicket),
+      ticket(b64, pdf) {
+        if (!native || !native.scanTicket) return Promise.resolve(null);
+        return ask('scan', 120000, id => native.scanTicket(id, b64, !!pdf));
       }
+    },
+    // Scherm op volle helderheid (ticket laten scannen). Vanaf native 12; in de browser kan het niet.
+    helder(on) {
+      if (native && native.brightness) { try { native.brightness(!!on); } catch (e) {} }
     },
     // Iets ophalen bij een van de vaste diensten van de Verzameling (TCGdex, MusicBrainz, Discogs…).
     // In de app via de app zelf (native 10), anders gewoon fetch. Geeft {status, body} of {status, b64, type}; status 0 = mislukt.

@@ -32,7 +32,9 @@
 
   function koppel(opts) {
     const kind = opts.kind;
-    const SNAP = 'deel-snap-' + kind, WACHT = 'deel-wacht-' + kind, GEZIEN = 'deel-gezien-' + kind;
+    // Extra groep (Kosten delen met een maat): eigen boekhouding per groep (@<slot>), los van je eerste Samen.
+    const sfx = S && S.slot ? '@' + S.slot : '';
+    const SNAP = 'deel-snap-' + kind + sfx, WACHT = 'deel-wacht-' + kind + sfx, GEZIEN = 'deel-gezien-' + kind + sfx;
     let snap = D.get(SNAP, {}) || {};
     // wacht: verstuurd maar nog niet bevestigd door Firebase (id → vingerafdruk van wat we stuurden).
     // gezien: stond ooit echt in Firebase. Alleen dan mag "ontbreekt in Firebase" betekenen: elders verwijderd.
@@ -174,7 +176,7 @@
     if (!top || !S) return;
     const b = document.createElement('a');
     b.className = 'deelst';
-    b.href = '../samen/index.html';
+    b.href = '../samen/index.html' + (S.slot ? '?r=' + encodeURIComponent(S.slot) : '');
     const css = document.createElement('style');
     css.textContent = '.deelst{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:var(--panel);color:var(--muted);text-decoration:none;flex:none;white-space:nowrap}' +
       '.deelst i{width:8px;height:8px;border-radius:4px;background:var(--muted)}.deelst.live i{background:var(--ok)}.deelst.verbinden i{background:#ffc83d}.deelst.fout{color:var(--danger)}.deelst.fout i{background:var(--danger)}';

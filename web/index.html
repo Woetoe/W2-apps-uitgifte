@@ -94,6 +94,7 @@ nav.tabs button.on .pip{background:#3a3220;color:#ffc83d}
 .tile.ri{background:#0f2f2c;color:#eefaf6}
 .tile.kl{background:#2b2414;color:#fbf3df}
 .tile.af{background:#341b22;color:#fdeef0}
+.tile.ko{background:#0f2e24;color:#e6fbf3}
 .tile.hl{background:#1d2c12;color:#f1f8e6}
 .tile.rc{background:#3a1e12;color:#fdf0e6}
 .soon b{display:block;color:var(--text);font-weight:700}
@@ -335,6 +336,14 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
       </svg>
       <div><b>Aftellen</b><span>Toernooien, uitjes en verjaardagen</span></div>
     </a>
+    <a class="tile ko" href="kosten/index.html">
+      <svg class="art" viewBox="0 0 84 84" aria-hidden="true">
+        <rect width="84" height="84" rx="14" fill="#14523f"/>
+        <circle cx="32" cy="46" r="20" fill="#4fd1a5"/><circle cx="32" cy="46" r="13" fill="none" stroke="#14523f" stroke-width="3"/>
+        <circle cx="56" cy="34" r="18" fill="#e6fbf3"/><text x="56" y="41" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="20" fill="#14523f">€</text>
+      </svg>
+      <div><b>Kosten delen</b><span>Wie betaalde wat, en wie krijgt nog geld</span></div>
+    </a>
     </div>
     <p class="who2">Zelfde gegevens als in de app, via je koppelcode. Persoonlijke onderdelen (Kluis, Hardlopen, Judo, Huis) staan alleen in de Android-app.</p>
   </section>
@@ -433,7 +442,7 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
   function draw() {
     const host = document.getElementById('samenwrap');
     if (!S.cfg) {
-      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code uit de Android-app (Samen › tandwiel › Iemand uitnodigen) en kies wie je bent. Daarna zie je hier dezelfde lijsten, reizen, recepten en aftellen.</span><em>Koppelen</em></a>`;
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code die je kreeg (uit de Android-app: Samen › tandwiel › Iemand uitnodigen) en kies wie je bent. Daarna zie je hier dezelfde lijsten en kosten.</span><em>Koppelen</em></a>` + andere();
       return;
     }
     const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };
@@ -442,11 +451,28 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
       return `<a class="dcard" href="samen/index.html#l=${esc(l.id)}" style="--c:${esc(l.kleur || '#ff7eb6')}"><div class="big em">${esc(l.emoji || '📝')}</div>
         <div class="tx"><b>${esc(l.naam)}${l.nieuw ? `<span class="new">${l.nieuw} nieuw</span>` : ''}</b><span>${esc(sub)}</span></div>
         <div class="cnt">${l.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
-    }).join('')}</div><a class="alle" href="samen/index.html">Alle lijsten ›</a>`;
+    }).join('')}</div><a class="alle" href="samen/index.html">Alle lijsten ›</a>` + andere();
+  }
+  // Extra groepen (bv. lijsten en kosten met iemand anders), elk met een eigen code
+  function andere() {
+    const gs = S.groepen ? S.groepen().slice(1) : [];
+    return `${gs.length ? `<p class="who2" style="margin-top:14px">Andere groepen</p><div class="sl">${gs.map(g => {
+      const r = S.ruimte(g.slot), sm = D.get('dash-samen@' + g.slot, null) || { lijsten: [], leden: [] };
+      const mij = r.cfg && r.cfg.me ? r.cfg.me.naam : '';
+      const met = (sm.leden || []).filter(n => n !== mij);
+      const open = (sm.lijsten || []).reduce((n, l) => n + (l.open || 0), 0);
+      return `<a class="dcard" href="samen/index.html?r=${encodeURIComponent(g.slot)}" style="--c:#4fd1a5"><div class="big em">${esc(g.emoji || '🍻')}</div>
+        <div class="tx"><b>${esc(g.naam)}</b><span>${esc(!r.cfg ? 'Nog niet gekoppeld' : met.length ? 'Met ' + met.join(' & ') : 'Nog niemand gekoppeld')} · lijsten en kosten</span></div>
+        <div class="cnt">${open}<small>open</small></div></a>`;
+    }).join('')}</div>` : ''}<a class="alle" href="samen/index.html#groep">+ Groep met iemand anders ›</a>`;
+  }
+  function peekAll() {
+    S.peek().then(draw);
+    if (S.groepen) S.groepen().slice(1).forEach(g => { const r = S.ruimte(g.slot); if (r.cfg) r.peek().then(draw); });
   }
   draw();
-  S.peek().then(draw);
-  addEventListener('pageshow', () => { draw(); S.peek().then(draw); });
+  peekAll();
+  addEventListener('pageshow', () => { draw(); peekAll(); });
 })();
 </script>
 </body>

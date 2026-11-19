@@ -91,6 +91,11 @@
 .mrow b{flex:1}
 .undo{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:31;background:#f2efe8;color:#14161f;border-radius:14px;padding:8px 8px 8px 16px;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .undo span{flex:1}
+/* groepen */
+.groepen{margin:-2px 0 14px}
+.groepen a.chip{text-decoration:none}
+.groepen .chip.nw{color:var(--muted);border-style:dashed}
+.kos{margin-top:12px}
 .undo button{border:0;background:#14161f;color:#f2efe8;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.it.fresh{animation:none}}
 </style>
@@ -103,6 +108,7 @@
 <script src="../w2.js"></script>
 <script src="../w2data.js"></script>
 <script src="../w2ui.js"></script>
+<script>window.W2_GROEPEN = 1;   // ?r=<groep>: een extra groep (bv. met een maat) in plaats van je eerste Samen</script>
 <script src="sync.js"></script>
 <script src="boodschappen.js"></script>
 <script src="herhaal.js"></script>
@@ -146,6 +152,41 @@ function dateLabel(s) {
   return D.date.nice(s, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// ---------------------------------------------------------------- groepen
+// Je eerste Samen (bv. met je vriendin) en extra groepen (bv. met een maat): elk een eigen code en eigen lijsten.
+const GROEP = S.slot;
+const titel = () => GROEP ? `${(S.groepen().find(g => g.slot === GROEP) || {}).emoji || '🍻'} ${S.naam}` : 'Samen';
+const groepHref = slot => slot ? 'index.html?r=' + encodeURIComponent(slot) : 'index.html';
+function groepLabel(g) {
+  if (g.slot) return (g.emoji || '🍻') + ' ' + g.naam;
+  const r = S.ruimte(''), mij = r.cfg && r.cfg.me ? r.cfg.me.naam : '';
+  const sm = D.get('dash-samen', null);
+  const n = ((sm && sm.leden) || []).filter(x => x !== mij);
+  return '👫 ' + (r.cfg && n.length ? n.join(' & ') : 'Samen');
+}
+function groepChips(force) {
+  const gs = S.groepen();
+  if (!force && gs.length < 2) return '';
+  return `<div class="chips groepen">${gs.map(g => `<a class="chip ${g.slot === GROEP ? 'on' : ''}" href="${groepHref(g.slot)}">${esc(groepLabel(g))}</a>`).join('')}
+    <button type="button" class="chip nw" data-act="nieuwegroep">+ Groep</button></div>`;
+}
+function nieuweGroep() {
+  const EMO = ['🍻', '⚽', '🥋', '🏖️', '🏔️', '🎮', '🏠', '🎉', '🚗', '🧳', '👪', '💼'];
+  let emo = EMO[0];
+  const sh = sheet('Nieuwe groep', `
+    <div class="muted">Een eigen Samen met iemand anders, bijvoorbeeld een maat: lijstjes en kosten delen, met een eigen code. Wat je met anderen deelt, ziet hij niet.</div>
+    <label class="f">Naam van de groep<input class="in" name="naam" maxlength="30" placeholder="bv. Jeroen, Weekendje Ardennen"></label>
+    <div class="emojis" id="gemo">${EMO.map(e => `<button type="button" class="${e === emo ? 'on' : ''}">${e}</button>`).join('')}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Verder', value: 'ok', check: f => f.naam.trim() ? '' : 'Geef de groep een naam.' }], { focus: true });
+  sh.el.addEventListener('click', e => { const b = e.target.closest('#gemo button'); if (b) { emo = b.textContent; $$('#gemo button', sh.el).forEach(x => x.classList.toggle('on', x === b)); } });
+  sh.done.then(r => {
+    if (r.value !== 'ok') { if (location.hash === '#groep') location.hash = ''; return; }
+    const slot = S.nieuweGroep(r.form.naam, emo);
+    location.href = groepHref(slot);
+  });
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-act="nieuwegroep"]')) nieuweGroep(); });
+
 // ---------------------------------------------------------------- status
 function renderStatus() {
   const b = $('#st');
@@ -172,6 +213,7 @@ $('#st').onclick = () => {
 // ---------------------------------------------------------------- routes
 let view = null;          // {kind:'home'} | {kind:'lijst', id}
 function route() {
+  if (location.hash === '#groep') { history.replaceState(null, '', location.pathname + location.search); setTimeout(nieuweGroep, 50); }
   const m = /^#l=(.+)$/.exec(location.hash);
   const next = !S.cfg ? { kind: 'setup' } : m && S.data.lijsten[m[1]] ? { kind: 'lijst', id: m[1] } : { kind: 'home' };
   if (view && view.kind === 'lijst' && (next.kind !== 'lijst' || next.id !== view.id)) markSeen(view.id);
@@ -199,7 +241,7 @@ S.on(what => {
 
 // ---------------------------------------------------------------- welkom / koppelen
 function renderSetup() {
-  $('#title').textContent = 'Samen';
+  $('#title').textContent = titel();
   const needUrl = !S.DEFAULT_URL;
   app.innerHTML = `
     <div class="hero">
@@ -207,16 +249,19 @@ function renderSetup() {
         <rect x="18" y="18" width="44" height="54" rx="9" fill="#ff7eb6" transform="rotate(-8 40 45)"/>
         <rect x="34" y="26" width="44" height="54" rx="9" fill="#fff3f8" transform="rotate(6 56 53)"/>
         <g transform="rotate(6 56 53)" stroke="#3a1630" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M42 40l3 3 6-6M42 54l3 3 6-6"/><path d="M57 40h13M57 54h13M42 68h28" stroke-width="3"/></g></svg>
-      <b>Samen</b>
-      <p>Boodschappen en to-do's die je deelt. Wat de een erop zet, ziet de ander meteen. Werkt ook zonder internet; het haalt later in.</p>
+      <b>${GROEP ? esc(S.naam) : 'Samen'}</b>
+      <p>${GROEP ? 'Lijstjes en kosten delen in een eigen groep. Wie hier meedoet, ziet niets van je andere Samen.' : "Boodschappen en to-do's die je deelt. Wat de een erop zet, ziet de ander meteen."} Werkt ook zonder internet; het haalt later in.</p>
     </div>
+    ${groepChips(false)}
     <label class="f">Jouw naam<input class="in" id="naam" autocomplete="given-name" placeholder="bv. Wouter" maxlength="24"></label>
     <div class="seg" id="mode"><button type="button" data-v="nieuw" class="on">Nieuw beginnen</button><button type="button" data-v="code">Ik heb een code</button></div>
-    <div id="m-nieuw" class="card small muted">Je krijgt meteen een lijst <b style="color:var(--text)">🛒 Boodschappen</b> en <b style="color:var(--text)">✅ To-do's</b>, plus een code om je vriendin uit te nodigen.</div>
+    <div id="m-nieuw" class="card small muted">${GROEP ? `Je krijgt meteen een lijst <b style="color:var(--text)">✅ To-do's</b> en <b style="color:var(--text)">💶 Kosten delen</b>, plus een code om de ander uit te nodigen.` : `Je krijgt meteen een lijst <b style="color:var(--text)">🛒 Boodschappen</b> en <b style="color:var(--text)">✅ To-do's</b>, plus een code om je vriendin uit te nodigen.`}</div>
     <label class="f" id="m-code" hidden>Code of het hele uitnodigingsbericht<textarea class="in" id="code" rows="3" placeholder="ABCD-EFGH-JKLM-NPQR"></textarea></label>
     <label class="f" id="m-url" ${needUrl ? '' : 'hidden'}>Database-adres (Firebase)<input class="in" id="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://…firebasedatabase.app"></label>
     <div class="err" id="err" hidden></div>
-    <button class="btn wide" id="go" type="button">Beginnen</button>`;
+    <button class="btn wide" id="go" type="button">Beginnen</button>
+    ${GROEP ? '<button class="btn q wide" id="gweg" type="button" style="margin-top:8px">Deze groep toch niet</button>' : ''}`;
+  const gw = $('#gweg'); if (gw) gw.onclick = () => { S.weg(GROEP); location.href = 'index.html'; };
   let mode = 'nieuw';
   $('#naam').value = (D.get('samen-naam', '') || '');
   $('#mode').onclick = e => {
@@ -275,7 +320,7 @@ function renderSetup() {
       }
       await S.setup({ url, code, naam, kleur, join: mode === 'code', check: mode !== 'code', als });
     } catch (e) { reset(); fail(e.message); return; }
-    toast(mode === 'nieuw' ? 'Klaar! Nodig nu je vriendin uit.' : als ? `Gekoppeld als ${als.naam}` : 'Gekoppeld!');
+    toast(mode === 'nieuw' ? (GROEP ? 'Klaar! Nodig nu de ander uit.' : 'Klaar! Nodig nu je vriendin uit.') : als ? `Gekoppeld als ${als.naam}` : 'Gekoppeld!');
     location.hash = '';
     route();
     if (mode === 'nieuw') setTimeout(inviteSheet, 600);
@@ -284,13 +329,13 @@ function renderSetup() {
 
 // ---------------------------------------------------------------- overzicht van lijsten
 function renderHome() {
-  $('#title').textContent = 'Samen';
+  $('#title').textContent = titel();
   const ls = lijsten(), m = leden(), sum = S.summary();
   const byId = Object.fromEntries(sum.lijsten.map(l => [l.id, l]));
   const alleen = m.length < 2;
-  app.innerHTML = `
+  app.innerHTML = `${groepChips(true)}
     <div class="who">${m.map(x => `${av(x.id)}<span class="nm">${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</span>`).join('')}</div>
-    ${alleen ? `<div class="card acc"><b>Nog niemand gekoppeld</b><div class="muted small" style="margin:4px 0 10px">Stuur je vriendin de code. Zodra ze koppelt, zien jullie allebei dezelfde lijsten.</div><button class="btn" id="inv" type="button">Uitnodigen</button></div>` : ''}
+    ${alleen ? `<div class="card acc"><b>Nog niemand gekoppeld</b><div class="muted small" style="margin:4px 0 10px">${GROEP ? 'Stuur de ander de code. Zodra hij koppelt, zien jullie allebei dezelfde lijsten en kosten. Op een iPhone kan het ook, via de webversie.' : 'Stuur je vriendin de code. Zodra ze koppelt, zien jullie allebei dezelfde lijsten.'}</div><button class="btn" id="inv" type="button">Uitnodigen</button></div>` : ''}
     <div class="list">${ls.map(l => {
       const s = byId[l.id] || { open: 0, klaar: 0, laat: 0, nieuw: 0 };
       const sub = l.soort === 'boodschappen' ? (s.open ? `${s.open} te halen` : 'Alles in huis') + (s.klaar ? ` · ${s.klaar} in mandje` : '')
@@ -299,7 +344,8 @@ function renderHome() {
         <div class="ico">${esc(l.emoji || '📝')}</div>
         <div class="grow"><b>${esc(l.naam)}${s.nieuw ? `<span class="new">${s.nieuw} nieuw</span>` : ''}</b><div class="sub">${esc(sub)}</div></div>
         <div class="cnt">${s.open}<small>${l.soort === 'boodschappen' ? 'te halen' : 'open'}</small></div></a>`;
-    }).join('') || `<div class="empty"><b>Nog geen lijsten</b>Maak er een met de plusknop.</div>`}</div>`;
+    }).join('') || `<div class="empty"><b>Nog geen lijsten</b>Maak er een met de plusknop.</div>`}</div>
+    <div class="list kos"><a class="row lrow" href="../kosten/index.html${GROEP ? '?r=' + encodeURIComponent(GROEP) : ''}" style="--c:#4fd1a5"><div class="ico">💶</div><div class="grow"><b>Kosten delen</b><div class="sub">Wie betaalde wat, en wie krijgt nog geld${GROEP ? ' (alleen in deze groep)' : ''}</div></div></a></div>`;
   const inv = $('#inv'); if (inv) inv.onclick = inviteSheet;
 }
 
@@ -371,14 +417,14 @@ let fresh = new Set();        // nieuw van de ander sinds je de lijst voor het l
 let justAdded = null;
 let next = { wie: '', datum: '', herhaal: '' };   // to-do: geldt voor wat je hierna toevoegt
 let showDone = false;
-function markSeen(id) { const s = D.get('samen-seen', {}) || {}; s[id] = Date.now(); D.set('samen-seen', s); }
+function markSeen(id) { const s = D.get(S.key('samen-seen'), {}) || {}; s[id] = Date.now(); D.set(S.key('samen-seen'), s); }
 
 function renderLijst(first) {
   const l = Object.assign({ id: view.id }, S.data.lijsten[view.id]);
   document.documentElement.style.setProperty('--c', l.kleur || '#ff7eb6');
   $('#title').textContent = (l.emoji ? l.emoji + ' ' : '') + l.naam;
   if (first) {
-    const seen = (D.get('samen-seen', {}) || {})[l.id] || 0;
+    const seen = (D.get(S.key('samen-seen'), {}) || {})[l.id] || 0;
     fresh = new Set(itemsVan(l.id).filter(i => i.door !== me().id && (i.gemaakt || 0) > seen).map(i => i.id));
     markSeen(l.id);
     next = { wie: '', datum: '', herhaal: '' }; showDone = false;
@@ -639,9 +685,9 @@ $('#menu').onclick = () => {
 
 function inviteSheet() {
   const sh = sheet('Uitnodigen', `
-    <div class="muted">Stuur dit naar je vriendin (bv. via WhatsApp). Zij opent W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">Ik heb een code</b> en plakt het bericht.</div>
+    <div class="muted">Stuur dit naar ${GROEP ? 'de ander' : 'je vriendin'} (bv. via WhatsApp). Op Android: W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">Ik heb een code</b> en het bericht plakken. Op een iPhone: de link voor de webversie staat in het bericht.</div>
     <div class="code">${esc(S.prettyCode(S.cfg.code))}</div>
-    <div class="muted small">Iedereen met deze code kan jullie lijsten zien en aanpassen. Deel hem dus alleen met wie mee mag doen.</div>`,
+    <div class="muted small">Iedereen met deze code kan ${GROEP ? 'de lijsten en kosten van deze groep' : 'jullie lijsten'} zien en aanpassen. Deel hem dus alleen met wie mee mag doen.</div>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bericht kopiëren', value: 'copy' }]);
   sh.done.then(async r => {
     if (r.value !== 'copy') return;
@@ -658,15 +704,18 @@ function inviteSheet() {
 
 function settingsSheet() {
   const m = leden();
-  const sh = sheet('Samen', `
+  const gr = GROEP ? S.groepen().find(g => g.slot === GROEP) || {} : null;
+  const sh = sheet(GROEP ? S.naam : 'Samen', `
     <button class="btn wide" type="button" id="s-inv">Iemand uitnodigen</button>
+    ${gr ? `<div class="grid2" style="grid-template-columns:72px 1fr"><label class="f">Icoon<input class="in" name="gemoji" value="${esc(gr.emoji || '🍻')}" maxlength="4" style="text-align:center;font-size:22px"></label><label class="f">Naam van de groep<input class="in" name="gnaam" value="${esc(gr.naam || '')}" maxlength="30"></label></div>` : ''}
     <div class="card" style="padding:4px 14px">${m.map(x => `<div class="mrow">${av(x.id)}<b>${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</b></div>`).join('')}</div>
     <label class="f">Jouw naam<input class="in" name="naam" value="${esc(me().naam)}" maxlength="24"></label>
     <div class="colors" id="mycol">${KLEUREN.map(c => `<button type="button" style="background:${c}" data-c="${c}" class="${c === me().kleur ? 'on' : ''}" aria-label="kleur"></button>`).join('')}</div>
     ${S.canWatch() ? `<div class="toggle"><div class="grow"><b>Meldingen</b><span class="muted small">Als ${esc(anderen())} iets op een lijst zet. De app kijkt ongeveer elk kwartier; ligt je telefoon lang stil, dan soms later.</span></div><button type="button" class="sw ${S.watching ? 'on' : ''}" id="s-notif" aria-label="Meldingen"></button></div>`
-      : W2.inApp ? `<div class="muted small">Meldingen als de ander iets toevoegt: werkt vanaf de nieuwe app-versie (Instellingen › Updates).</div>` : ''}
+      : GROEP ? `<div class="muted small">Meldingen als de ander iets toevoegt zijn er alleen voor je eerste Samen.</div>`
+        : W2.inApp ? `<div class="muted small">Meldingen als de ander iets toevoegt: werkt vanaf de nieuwe app-versie (Instellingen › Updates).</div>` : ''}
     <div class="muted small">Database: ${esc(S.cfg.url.replace('https://', ''))} · <a href="#" id="s-rules">database-regels kopiëren</a></div>
-    <button class="btn danger wide" type="button" id="s-leave">Ontkoppelen op deze telefoon</button>`,
+    <button class="btn danger wide" type="button" id="s-leave">${GROEP ? 'Groep weghalen van deze telefoon' : 'Ontkoppelen op deze telefoon'}</button>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
   let kleur = me().kleur;
   const ru = sh.el.querySelector('#s-rules');
@@ -691,6 +740,10 @@ function settingsSheet() {
     if (e.target.closest('#s-inv')) { sh.close(null); setTimeout(inviteSheet, 250); }
     if (e.target.closest('#s-leave')) {
       sh.close(null);
+      if (GROEP) {
+        if (!await confirm(`Groep “${esc(S.naam)}” weghalen? De lijsten en kosten verdwijnen van deze telefoon, maar blijven bij de ander. Met de code kun je later weer meedoen.`, 'Weghalen', true)) return;
+        S.weg(GROEP); location.href = 'index.html'; return;
+      }
       if (!await confirm('Ontkoppelen? De lijsten verdwijnen van deze telefoon, maar blijven bij de ander. Met de code kun je later weer koppelen.', 'Ontkoppelen', true)) return;
       S.leave(); location.hash = ''; route();
     }
@@ -699,6 +752,7 @@ function settingsSheet() {
     if (r.value !== 'ok') return;
     const naam = (r.form.naam || '').trim() || me().naam;
     if (naam !== me().naam || kleur !== me().kleur) { S.setMe({ naam, kleur }); D.set('samen-naam', naam); }
+    if (gr && ((r.form.gnaam || '').trim() !== gr.naam || (r.form.gemoji || '').trim() !== gr.emoji)) { S.hernoemGroep(GROEP, r.form.gnaam, (r.form.gemoji || '').trim()); route(); }
   });
 }
 

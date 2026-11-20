@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kunstkamer</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2game.css">
+<style>
+/* Museum bij nacht: donker omber, goud als accent, Delfts blauw ernaast. */
+:root{
+  --bg:#130f0b; --bg2:#1d1712; --panel:#271f18; --line:#3b2e22;
+  --text:#f6eedf; --muted:#b8a88f; --accent:#e2b84a; --accent-ink:#2a1d05; --blue:#4c7cc4; --red:#e5533d; --good:#6fbf73; --warn:#ff8a6b;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif; --f-body:"Figtree",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body{background:radial-gradient(120% 70% at 50% 0%,#2a1f15,var(--bg) 62%);background-attachment:fixed;color:var(--text);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#view{height:100%}
+.wrap{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:16px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.top h2{font-size:22px;flex:1;text-align:center}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);display:grid;place-items:center;flex:none;padding:0}
+.btn{border:0;border-radius:14px;padding:14px 16px;min-height:52px;font-weight:700;font-size:17px;background:var(--accent);color:var(--accent-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.quiet{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btn.small{min-height:40px;padding:8px 14px;font-size:15px}
+.note{color:var(--muted);font-size:14px;margin:0}
+/* hero */
+.hero{position:relative;border-radius:20px;overflow:hidden;min-height:190px;display:flex;flex-direction:column;justify-content:flex-end;padding:18px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(19,15,11,.15),rgba(19,15,11,.92) 78%),url(werken/nachtwacht.jpg) center 30%/cover}
+.hero .kick{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:46px;line-height:.95;letter-spacing:-.03em}
+.hero p{color:#e8dcc6;margin-top:6px;font-size:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{display:flex;align-items:center;gap:6px;background:rgba(29,23,18,.85);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:14px;font-weight:700}
+.chip small{font-weight:500;color:var(--muted)}
+/* gereedschap */
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sec-h h2{font-size:20px}
+.sec-h small{color:var(--muted);font-size:13px}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tool{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--muted);text-align:center;line-height:1.15;min-height:92px}
+.tool svg{width:30px;height:30px}
+.tool b{font:800 18px/1 var(--f-display);color:var(--text)}
+.tool.locked{opacity:.45}
+.tool[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--bg2));color:var(--text)}
+.tool:disabled{opacity:.35}
+/* dagelijkse kraak */
+.daily{display:flex;gap:14px;align-items:center;text-align:left;background:linear-gradient(135deg,#22324d,#1a2335);border:1px solid #33496d;border-radius:18px;padding:14px 16px;min-height:84px;width:100%}
+.daily .ic{width:48px;height:48px;border-radius:14px;background:#2c4166;display:grid;place-items:center;flex:none}
+.daily b{display:block;font-size:17px}
+.daily span span{color:#b9c8e2;font-size:14px}
+.daily.done{background:var(--bg2);border-color:var(--line)}
+.daily.done .ic{background:var(--panel)}
+.daily:disabled{opacity:.6}
+.pending{display:flex;gap:12px;align-items:center;background:color-mix(in srgb,var(--accent) 16%,var(--bg2));border:1px solid var(--accent);border-radius:16px;padding:12px 14px;width:100%;text-align:left}
+.pending b{display:block}
+/* wereld en levels */
+.world{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.world-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.world-h h2{font-size:22px}
+.world-h p{color:var(--muted);font-size:14px;margin-top:2px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.lv{aspect-ratio:3/4;border-radius:10px;border:2px solid #5a4528;background:#1a140f center/cover no-repeat;position:relative;padding:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:hidden;box-shadow:inset 0 0 0 2px #2a1f14}
+.lv::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.05) 40%,rgba(0,0,0,.75))}
+.lv>*{position:relative}
+.lv .num{font:800 17px/1 var(--f-display);margin-top:6px;text-shadow:0 1px 3px #000}
+.lv .st{font-size:11px;letter-spacing:1px;margin-bottom:5px;color:#5c4a30}
+.lv .st i{font-style:normal;color:var(--accent)}
+.lv.done{border-color:var(--accent)}
+.lv.next{border-color:var(--accent);animation:glow 1.6s ease-in-out infinite}
+.lv.locked{opacity:.45}
+.lv.locked .num{margin-top:auto;margin-bottom:auto}
+.lv.final{grid-column:span 1}
+.lv.final .num::after{content:"★";color:var(--accent);margin-left:2px;font-size:12px;vertical-align:top}
+@keyframes glow{50%{box-shadow:inset 0 0 0 2px #2a1f14,0 0 14px rgba(226,184,74,.55)}}
+.soon{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.soon div{border:1px dashed var(--line);border-radius:14px;padding:12px 8px;text-align:center;color:var(--muted);font-size:13px;line-height:1.25}
+.soon b{display:block;color:var(--text);font-size:14px;margin-bottom:2px}
+.wide{width:100%}
+/* museum */
+.hall{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px;border-radius:18px;background:linear-gradient(180deg,#3a1f1c,#2a1614);border:1px solid #4a2a26}
+.hall.rare{background:linear-gradient(180deg,#1d2a40,#141d2e);border-color:#2c3d5c}
+.frame{border:0;padding:7px;background:linear-gradient(135deg,#f0cf6f,#a67c25 45%,#e9c35c 70%,#8a6418);border-radius:4px;box-shadow:0 6px 14px rgba(0,0,0,.5);display:flex;flex-direction:column}
+.frame .in{background:#0d0a07;aspect-ratio:4/5;overflow:hidden;display:grid;place-items:center}
+.frame img{width:100%;height:100%;object-fit:cover;display:block}
+.frame.empty{background:linear-gradient(135deg,#4a3b26,#2b2116);opacity:.7}
+.frame.empty .in{color:var(--muted);font:800 26px/1 var(--f-display)}
+.cell{display:flex;flex-direction:column}
+.plate{font-size:12px;color:#e9dfcc;text-align:center;margin-top:6px;line-height:1.2}
+.plate small{display:block;color:var(--muted)}
+/* spelen */
+.play{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) max(10px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(10px,env(safe-area-inset-left,0px));gap:8px}
+.hud{display:flex;align-items:center;gap:10px;flex:none}
+.hud .ttl{flex:1;min-width:0}
+.hud .ttl b{display:block;font-family:var(--f-display);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud .ttl small{color:var(--muted);font-size:13px}
+.alarm{display:flex;gap:5px;flex:none}
+.alarm i{width:14px;height:14px;border-radius:50%;background:#3a2c22;border:1px solid #5a4636}
+.alarm i.on{background:var(--red);border-color:#ff8f7c;box-shadow:0 0 10px var(--red)}
+.hud2{display:flex;gap:8px;flex:none;justify-content:center;flex-wrap:wrap}
+.pill{background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill b{color:var(--text)}
+.pill.over b{color:var(--warn)}
+.stage{flex:1;min-height:0;position:relative;border-radius:16px;overflow:hidden;background:#0b0806;border:1px solid var(--line);touch-action:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.say{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(19,15,11,.9);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:700;font-size:15px;white-space:nowrap;pointer-events:none;transition:opacity .2s}
+.say.hot{border-color:var(--red);color:#ffd2ca}
+.say.gold{border-color:var(--accent);color:#fff2c9}
+.say[hidden]{display:block!important;opacity:0}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.banner>div{background:rgba(19,15,11,.92);border:2px solid var(--accent);border-radius:18px;padding:14px 22px;text-align:center;animation:pop .25s ease-out}
+.banner h2{font-size:28px}
+.banner p{color:var(--muted);margin:2px 0 0}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.ctl{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;min-height:64px}
+.pad{display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:repeat(3,54px);gap:6px}
+.pad button{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--bg2));border-radius:14px;display:grid;place-items:center;padding:0;color:var(--text);touch-action:manipulation;box-shadow:0 3px 0 #0a0705}
+.pad button:active{transform:translateY(2px);box-shadow:0 1px 0 #0a0705;border-color:var(--accent)}
+.pad button svg{width:26px;height:26px}
+.pad .w{font-size:12px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:1px;align-items:center}
+.pad .w svg{width:20px;height:20px}
+.side{display:flex;flex-direction:column;gap:8px}
+.big{min-width:200px;min-height:72px;border-radius:20px;border:0;font:800 22px/1 var(--f-display);color:var(--accent-ink);background:radial-gradient(circle at 40% 30%,#f5d77f,var(--accent) 60%,#b48a2a);box-shadow:0 6px 0 #6e5216;touch-action:none}
+.big.on,.big:active{transform:translateY(4px);box-shadow:0 2px 0 #6e5216}
+.tb{display:flex;gap:8px;justify-content:center;flex:none;min-height:0}
+.tb button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg2);border-radius:12px;padding:6px 12px;min-height:44px;font-weight:700;font-size:14px}
+.tb button svg{width:22px;height:22px}
+.tb button:disabled{opacity:.35}
+.tb .passive{border-style:dashed;color:var(--muted);font-weight:600}
+/* vellen */
+#layer:empty{display:none}
+.scrim{position:fixed;inset:0;background:rgba(8,6,4,.78);z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(20px);opacity:0}}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sheet-head h2{font-size:24px}
+.target{display:flex;gap:14px;align-items:center}
+.target .pic{width:92px;flex:none;padding:5px;background:linear-gradient(135deg,#f0cf6f,#a67c25 45%,#e9c35c 70%,#8a6418);border-radius:3px}
+.target .pic div{aspect-ratio:4/5;background:#000 center/cover;filter:brightness(.55) saturate(.6)}
+.target .pic.got div{filter:none}
+.target b{display:block;font-size:18px;font-family:var(--f-display)}
+.target small{color:var(--muted)}
+.goals{display:flex;flex-direction:column;gap:6px}
+.goal{display:flex;gap:10px;align-items:center;font-size:15px}
+.goal .s{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--panel);color:#5c4a30;font-size:15px;flex:none}
+.goal .s.on{background:color-mix(in srgb,var(--accent) 22%,var(--panel));color:var(--accent)}
+.goal .new{font-size:11px;font-weight:800;background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:1px 6px;margin-left:4px}
+.modeic{display:flex;gap:10px;align-items:center;background:var(--panel);border-radius:14px;padding:10px 12px;color:var(--muted);font-size:14px}
+.modeic svg{width:30px;height:30px;flex:none}
+.modeic b{color:var(--text);display:block;font-size:15px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.row .d{color:var(--muted);font-size:14px}
+.toggle{position:relative;width:52px;height:30px;border-radius:15px;border:0;background:var(--line);flex:none}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .15s}
+.result{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.result h2{font-size:36px;line-height:1}
+.result .big-pic{width:min(70%,260px);padding:9px;background:linear-gradient(135deg,#f0cf6f,#a67c25 45%,#e9c35c 70%,#8a6418);border-radius:4px;box-shadow:0 10px 30px rgba(226,184,74,.25);animation:reveal .6s ease-out}
+.result .big-pic img{width:100%;display:block}
+@keyframes reveal{from{transform:scale(.8) rotate(-3deg);opacity:0}}
+.stars3{display:flex;gap:6px;justify-content:center;font-size:38px;line-height:1}
+.stars3 span{color:#3b2e22}
+.stars3 span.on{color:var(--accent);animation:pop .3s ease-out backwards}
+.stars3 span.on:nth-child(2){animation-delay:.15s}.stars3 span.on:nth-child(3){animation-delay:.3s}
+.reward{width:100%;background:var(--panel);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.reward b{display:block}
+.picks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.lost{color:var(--warn);font-weight:600}
+.btns{display:flex;flex-direction:column;gap:8px;width:100%}
+.btns .two{display:flex;gap:8px}
+.btns .two .btn{flex:1}
+.viewer img{width:100%;border-radius:4px;display:block}
+.viewer .vf{padding:10px;background:linear-gradient(135deg,#f0cf6f,#a67c25 45%,#e9c35c 70%,#8a6418);border-radius:4px}
+.rules ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:15px}
+.rules b{color:var(--text)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="layer"></div>
+<script src="../w2.js"></script>
+<script src="engine.js"></script>
+<script src="art.js"></script>
+<script>
+(function () {
+'use strict';
+const K = window.KUNSTKAMER, A = window.KUNSTKAMER_ART;
+const $view = document.getElementById('view'), $layer = document.getElementById('layer');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  close: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l8 11H4z"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 19L4 8h16z"/></svg>',
+  left: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 12l11-8v16z"/></svg>',
+  right: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12L8 20V4z"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/></svg>',
+  museum: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 9l9-5 9 5zM5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20h18"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#e2b84a" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9.5 14.5l2 2 3.5-4" stroke="#9fd0ff"/></svg>',
+  star: '★'
+};
+// gereedschap-iconen
+const TI = {
+  sleutel: '<svg viewBox="0 0 32 32"><circle cx="10" cy="16" r="6" fill="none" stroke="#e2b84a" stroke-width="3"/><path d="M16 16h12M24 16v5M28 16v4" stroke="#e2b84a" stroke-width="3" stroke-linecap="round"/></svg>',
+  fluit: '<svg viewBox="0 0 32 32"><path d="M4 13h16a6 6 0 1 1 0 8H4z" fill="#c9ced4"/><circle cx="20" cy="17" r="3" fill="#6b737c"/><path d="M8 13v-3h6v3" fill="none" stroke="#c9ced4" stroke-width="2"/><path d="M27 8l3-3M28 13h3M27 18l3 2" stroke="#e2b84a" stroke-width="2" stroke-linecap="round"/></svg>',
+  zand: '<svg viewBox="0 0 32 32"><path d="M8 4h16M8 28h16" stroke="#b8913d" stroke-width="3" stroke-linecap="round"/><path d="M10 5c0 7 12 7 12 11s-12 4-12 11h12c0-7-12-7-12-11S22 12 22 5z" fill="none" stroke="#e8dcc6" stroke-width="2"/><path d="M12 25c2-3 6-3 8 0z" fill="#e2b84a"/><path d="M13 9h6l-3 4z" fill="#e2b84a"/></svg>',
+  kaart: '<svg viewBox="0 0 32 32"><path d="M4 7l8-3 8 3 8-3v21l-8 3-8-3-8 3z" fill="#e8dcc6"/><path d="M12 4v21M20 7v21" stroke="#b8a88f" stroke-width="1.5"/><path d="M7 20l4-4 4 3 5-6 4 2" fill="none" stroke="#e5533d" stroke-width="2" stroke-dasharray="2 2"/></svg>'
+};
+const MODE = {
+  sluip: { name: 'Sluipen', how: 'In beurten. Pijltjes of vegen om te lopen, zandloper = een beurt wachten. Elke stap van jou is een stap van de bewakers.', ic: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#2f7a3a"/><circle cx="19" cy="16" r="5" fill="#e9c49f"/><rect x="21" y="11" width="3" height="10" fill="#151515"/></svg>' },
+  schuif: { name: 'Schuifpuzzel', how: 'Tik op een tegel naast het gat (of in dezelfde rij) om te schuiven. Houd "Voorbeeld" ingedrukt om het hele werk te zien.', ic: '<svg viewBox="0 0 32 32"><rect x="4" y="4" width="11" height="11" rx="2" fill="#e2b84a"/><rect x="17" y="4" width="11" height="11" rx="2" fill="#9a7424"/><rect x="4" y="17" width="11" height="11" rx="2" fill="#9a7424"/><rect x="17" y="17" width="11" height="11" rx="2" fill="none" stroke="#5c4632" stroke-dasharray="3 2"/></svg>' },
+  kluis: { name: 'Kluis kraken', how: 'Tik als de wijzer in het groene vak staat. Elke misser is een alarmlampje.', ic: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#5d6670"/><path d="M8 11a10 10 0 0 1 8-5" stroke="#4fc25a" stroke-width="4" fill="none"/><path d="M16 16l5-8" stroke="#e2b84a" stroke-width="3" stroke-linecap="round"/></svg>' },
+  gang: { name: 'Door de gang', how: 'Houd de knop ingedrukt om te sluipen. Knippert een lamp, dan gaat hij zo aan: sta dan stil vóór het licht.', ic: '<svg viewBox="0 0 32 32"><path d="M10 4h12l-3 6h-6z" fill="#ffe28a"/><path d="M13 10h6l7 18H6z" fill="rgba(255,220,130,.45)"/><rect x="2" y="27" width="28" height="3" fill="#3d3429"/></svg>' },
+  kraak: { name: 'Meesterkraak', how: 'Drie fases achter elkaar: gang, kluis en schuifpuzzel. Het alarm telt voor alle fases samen.', ic: '<svg viewBox="0 0 32 32"><path d="M16 3l3.7 8 8.3.8-6.3 5.6 1.9 8.6L16 21.6 8.4 26l1.9-8.6L4 11.8l8.3-.8z" fill="#e2b84a"/></svg>' }
+};
+
+/* ---------------- opslag */
+const PKEY = 'kunstkamer', SKEY = 'kunstkamer-settings';
+const load = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+let P = K.fixProgress(load(PKEY));
+if (typeof P.pending !== 'number') P.pending = 0;
+const save = () => { try { localStorage.setItem(PKEY, JSON.stringify(P)); } catch (e) {} };
+const S = Object.assign({ sound: true, vibrate: true, numbers: false }, load(SKEY) || {});
+const saveS = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+/* ---------------- afbeeldingen */
+const IMG = {};
+function img(id) {
+  if (!IMG[id]) { const im = new Image(); im.decoding = 'async'; im.src = 'werken/' + id + '.jpg'; im.onload = () => { if (run) draw(); }; IMG[id] = im; }
+  return IMG[id];
+}
+
+/* ---------------- geluid en trillen */
+let AC = null;
+function ac() { if (!S.sound) return null; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; } return AC; }
+function tone(f, d, type, vol, when) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+}
+const SFX = {
+  step: () => tone(180, 0.05, 'triangle', 0.05),
+  push: () => tone(90, 0.12, 'square', 0.08),
+  pick: () => { tone(880, 0.12, 'sine', 0.12); tone(1320, 0.18, 'sine', 0.1, 0.08); },
+  key: () => { tone(1200, 0.08, 'triangle', 0.08); tone(1600, 0.1, 'triangle', 0.07, 0.06); },
+  door: () => { tone(140, 0.2, 'sawtooth', 0.05); tone(110, 0.25, 'sawtooth', 0.04, 0.1); },
+  click: () => tone(2400, 0.03, 'square', 0.06),
+  hit: () => { tone(1800, 0.04, 'square', 0.08); tone(900, 0.08, 'triangle', 0.08, 0.03); },
+  alarm: () => { tone(620, 0.16, 'sawtooth', 0.12); tone(460, 0.2, 'sawtooth', 0.12, 0.17); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.1, i * 0.1)),
+  lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.07, i * 0.14)),
+  tool: () => { tone(660, 0.1, 'sine', 0.1); tone(990, 0.12, 'sine', 0.08, 0.07); },
+  slide: () => tone(300, 0.05, 'triangle', 0.05)
+};
+const sfx = k => { try { SFX[k] && SFX[k](); } catch (e) {} };
+const buzz = p => { if (S.vibrate) try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* ---------------- toestand */
+let view = 'home';
+let sheet = null;          // { type, ... }
+let run = null;            // lopend level
+let raf = 0, lastT = 0;
+const fmtT = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const starsHtml = m => [0, 1, 2].map(i => (m >> i & 1 ? '<i>★</i>' : '★')).join('');
+
+/* ================================================================ schermen */
+function render() {
+  stopLoop();
+  if (view === 'home') $view.innerHTML = homeHtml();
+  else if (view === 'museum') $view.innerHTML = museumHtml();
+  else if (view === 'play') { $view.innerHTML = playHtml(); setupStage(); startLoop(); }
+  renderSheet();
+}
+
+function homeHtml() {
+  const tot = K.totalStars(P), works = P.works.length, rare = P.rare.length;
+  const top = K.topLevel(P), unl = K.toolsUnlocked(P);
+  const day = today(), dn = K.dailyLevel(P, day), dDone = P.daily.day === day && P.daily.done;
+  const W = K.WORLDS[0];
+  const lvls = K.LEVELS.map(l => {
+    const m = K.starMask(P, l.n), done = K.isDone(P, l.n), open = K.unlocked(P, l.n);
+    const cls = ['lv', done ? 'done' : '', !open ? 'locked' : '', open && !done ? 'next' : '', l.mode === 'kraak' ? 'final' : ''].join(' ');
+    const bg = done ? ` style="background-image:url(werken/${l.work}.jpg)"` : '';
+    return `<button class="${cls}" data-a="level" data-n="${l.n}"${bg} ${open ? '' : 'disabled'} aria-label="Level ${l.n}${done ? ', ' + K.starCount(P, l.n) + ' sterren' : open ? '' : ', op slot'}">
+      <span class="num">${open ? l.n : IC.lock}</span>${open ? `<span class="st">${starsHtml(m)}</span>` : ''}</button>`;
+  }).join('');
+  const toolHtml = K.TOOLS.map(t => {
+    const ok = unl.includes(t.id);
+    return `<button class="tool ${ok ? '' : 'locked'}" data-a="toolinfo" data-id="${t.id}">${TI[t.id]}<b>${ok ? (P.tools[t.id] | 0) : '–'}</b>${esc(t.name)}</button>`;
+  }).join('');
+  let daily;
+  if (!dn) daily = `<button class="daily" disabled><span class="ic">${IC.calendar}</span><span><b>Dagelijkse kraak</b><span>Haal eerst ${K.DAILY_FROM} levels; dan staat hier elke dag een kraak klaar met een zeldzaam werk.</span></span></button>`;
+  else if (dDone) daily = `<button class="daily done" data-a="daily"><span class="ic">${IC.calendar}</span><span><b>Kraak van vandaag gelukt ✓</b><span>${P.daily.streak > 1 ? P.daily.streak + ' dagen op rij · ' : ''}morgen weer een nieuwe. Tik om nog eens te spelen.</span></span></button>`;
+  else daily = `<button class="daily" data-a="daily"><span class="ic">${IC.calendar}</span><span><b>Dagelijkse kraak</b><span>Vandaag: level ${dn} · ${esc(K.levelDef(dn).titel)}. Beloning: 2 gereedschap${P.rare.length < K.RARE.length ? ' + een zeldzaam werk' : ''}.</span></span></button>`;
+  return `<div class="wrap">
+    <div class="top"><button class="iconbtn" data-a="exit" aria-label="Terug">${IC.back}</button><button class="iconbtn" data-a="settings" aria-label="Instellingen">${IC.gear}</button></div>
+    <section class="hero">
+      <div class="kick">De Robin Hood van de kunst</div>
+      <h1>Kunstkamer</h1>
+      <p>Steel de mooiste werken terug van hebzuchtige verzamelaars en hang ze in jouw gratis museum.</p>
+      <div class="chips"><span class="chip">★ ${tot}<small>/ ${K.LEVELS.length * 3}</small></span><span class="chip">🖼 ${works}<small>/ ${K.LEVELS.length}</small></span><span class="chip">💎 ${rare}<small>/ ${K.RARE.length}</small></span></div>
+    </section>
+    ${P.pending > 0 ? `<button class="pending" data-a="pickpending"><span style="font-size:26px">🎁</span><span><b>Kies je beloning (${P.pending})</b><span class="note">Je hebt nog gereedschap tegoed.</span></span></button>` : ''}
+    <div class="sec-h"><h2>Gereedschap</h2><small>Verdien je met sterren · op = op</small></div>
+    <div class="tools">${toolHtml}</div>
+    ${daily}
+    <section class="world">
+      <div class="world-h"><div><h2>${esc(W.name)}</h2><p>Het grachtenpand van ${esc(W.villain)}</p></div><span class="chip">${K.LEVELS.filter(l => K.isDone(P, l.n)).length}/15</span></div>
+      <div class="bar"><i style="width:${Math.round(K.LEVELS.filter(l => K.isDone(P, l.n)).length / K.LEVELS.length * 100)}%"></i></div>
+      <div class="grid">${lvls}</div>
+      ${top === 1 && !K.isDone(P, 1) ? '<p class="note">Tik op level 1 om te beginnen.</p>' : ''}
+    </section>
+    <button class="btn wide" data-a="museum">Naar je museum</button>
+    <div class="sec-h"><h2>Volgende werelden</h2><small>Binnenkort</small></div>
+    <div class="soon">${K.WORLDS.slice(1).map(w => `<div><b>${esc(w.name)}</b>komt eraan</div>`).join('')}</div>
+  </div>`;
+}
+
+function museumHtml() {
+  const cell = (id, got, emptyIcon, emptyLabel) => {
+    const w = K.WORKS[id];
+    return got
+      ? `<div class="cell"><button class="frame" data-a="work" data-id="${id}"><span class="in"><img src="werken/${id}.jpg" alt="${esc(w.t)}" loading="lazy"></span></button><div class="plate">${esc(w.t)}<small>${esc(w.a)}</small></div></div>`
+      : `<div class="cell"><div class="frame empty"><span class="in">${emptyIcon}</span></div><div class="plate"><small>${esc(emptyLabel)}</small></div></div>`;
+  };
+  const zaal = K.LEVELS.map(l => cell(l.work, P.works.includes(l.work), '?', 'Level ' + l.n)).join('');
+  const schat = K.RARE.map(id => cell(id, P.rare.includes(id), '💎', 'Dagelijkse kraak')).join('');
+  return `<div class="wrap">
+    <div class="top"><button class="iconbtn" data-a="home" aria-label="Terug">${IC.back}</button><h2>Jouw museum</h2><span class="iconbtn" style="border:0;background:none"></span></div>
+    <p class="note">Gratis toegang, voor iedereen. ${P.works.length} van ${K.LEVELS.length} werken hangen er al.</p>
+    <div class="sec-h"><h2>Zaal 1 · Hollandse Meesters</h2></div>
+    <div class="hall">${zaal}</div>
+    <div class="sec-h"><h2>Schatkamer</h2><small>${P.rare.length}/${K.RARE.length} · uit de dagelijkse kraak</small></div>
+    <div class="hall rare">${schat}</div>
+  </div>`;
+}
+
+/* ---------------- vellen */
+function renderSheet() {
+  if (!sheet) { $layer.innerHTML = ''; return; }
+  let h = '';
+  if (sheet.type === 'intro') h = introHtml();
+  else if (sheet.type === 'result') h = resultHtml();
+  else if (sheet.type === 'menu') h = menuHtml();
+  else if (sheet.type === 'settings') h = settingsHtml();
+  else if (sheet.type === 'work') h = workHtml();
+  else if (sheet.type === 'toolinfo') h = toolInfoHtml();
+  else if (sheet.type === 'welcome') h = welcomeHtml();
+  else if (sheet.type === 'pick') h = pickHtml();
+  $layer.innerHTML = `<div class="scrim" data-a="scrim"><div class="sheet" role="dialog" aria-modal="true">${h}</div></div>`;
+}
+function closeSheet() { sheet = null; renderSheet(); }
+
+function goalsHtml(l, mask, gotMask) {
+  const rows = [{ text: 'Werk gestolen' }].concat(l.stars.map(st => ({ text: K.starText(st) })));
+  return `<div class="goals">${rows.map((r, i) => {
+    const on = mask >> i & 1, isNew = gotMask !== undefined && (gotMask >> i & 1) && !((sheet.before | 0) >> i & 1);
+    return `<div class="goal"><span class="s ${on ? 'on' : ''}">★</span><span>${esc(r.text)}${isNew ? '<span class="new">NIEUW</span>' : ''}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function introHtml() {
+  const l = K.levelDef(sheet.n), w = K.WORKS[l.work], m = MODE[l.mode], daily = !!sheet.daily;
+  const usable = K.toolsFor(l).filter(id => K.toolsUnlocked(P).includes(id));
+  const sel = sheet.carry || [];
+  const tools = usable.length ? `<div class="sec-h"><h3>Gereedschap mee</h3><small>max. ${K.MAX_CARRY} · alleen wat je gebruikt raakt op</small></div>
+    <div class="tools">${usable.map(id => { const t = K.TOOL[id], n = P.tools[id] | 0; return `<button class="tool" data-a="carry" data-id="${id}" aria-pressed="${sel.includes(id)}" ${n ? '' : 'disabled'}>${TI[id]}<b>${n}</b>${esc(t.name)}</button>`; }).join('')}</div>` : '';
+  return `<div class="sheet-head"><h2>${daily ? 'Dagelijkse kraak' : 'Level ' + l.n}</h2><button class="iconbtn" data-a="close" aria-label="Sluiten">${IC.close}</button></div>
+    <div class="target"><div class="pic ${P.works.includes(l.work) ? 'got' : ''}"><div style="background-image:url(werken/${l.work}.jpg)"></div></div>
+      <div><small>${esc(l.titel)}</small><b>${esc(w.t)}</b><small>${esc(w.a)}${w.j ? ' · ' + esc(w.j) : ''}</small></div></div>
+    <p>${esc(l.intro)}</p>
+    <div class="modeic">${m.ic}<span><b>${m.name}</b>${esc(m.how)}</span></div>
+    ${daily ? '<p class="note">Sterren tellen hier niet; de beloning krijg je één keer per dag.</p>' : goalsHtml(l, K.starMask(P, l.n))}
+    ${tools}
+    <button class="btn" data-a="start">${daily ? 'Kraak beginnen' : 'Beginnen'}</button>`;
+}
+
+function resultHtml() {
+  const r = sheet, l = K.levelDef(r.n), w = K.WORKS[l.work];
+  if (!r.won) {
+    return `<div class="result">
+      <h2>Gepakt!</h2>
+      <p>${r.why ? esc(r.why) + ' ' : ''}De buit van deze poging ben je kwijt${r.used.length ? ', en het gereedschap dat je gebruikte (' + r.used.map(id => K.TOOL[id].name.toLowerCase()).join(', ') + ')' : ''}. Je collectie en je andere gereedschap blijven.</p>
+      <div class="btns"><button class="btn" data-a="again">Opnieuw proberen</button><button class="btn quiet" data-a="tohome">Naar de kaart</button></div>
+    </div>`;
+  }
+  const sc = (r.mask & 1) + (r.mask >> 1 & 1) + (r.mask >> 2 & 1);
+  let rew = '';
+  if (r.daily) {
+    rew = r.dailyRes ? `<div class="reward"><b>Beloning van vandaag</b>${r.dailyRes.rare ? `<span>💎 Zeldzaam werk: <b style="display:inline">${esc(K.WORKS[r.dailyRes.rare].t)}</b> hangt nu in je schatkamer.</span>` : ''}<span>Gereedschap: ${r.dailyRes.tools.map(id => K.TOOL[id].name).join(' + ')}.</span>${r.dailyRes.streak > 1 ? `<span>🔥 ${r.dailyRes.streak} dagen op rij!</span>` : ''}</div>`
+      : '<div class="reward"><span>Vandaag had je de beloning al. Morgen een nieuwe kraak!</span></div>';
+  } else {
+    const parts = [];
+    if (r.firstWork) parts.push(`<span>🖼 <b style="display:inline">${esc(w.t)}</b> hangt nu in je museum.</span>`);
+    if (r.bonus) parts.push(`<span>🎁 Zonder gereedschap gehaald: <b style="display:inline">${esc(K.TOOL[r.bonus].name)}</b> erbij.</span>`);
+    if (P.pending > 0) parts.push(`<b>Kies je beloning (${P.pending} over)</b><div class="picks">${pickButtons()}</div>`);
+    else if (r.newStars) parts.push(`<span>${r.newStars === 1 ? 'Nieuwe ster' : r.newStars + ' nieuwe sterren'}: beloning gekozen ✓</span>`);
+    else if (!r.firstWork) parts.push('<span class="note">Geen nieuwe sterren: speel nog eens voor een betere score.</span>');
+    if (parts.length) rew = `<div class="reward">${parts.join('')}</div>`;
+  }
+  const next = !r.daily && K.levelDef(r.n + 1);
+  return `<div class="result">
+    <h2>Gestolen!</h2>
+    <div class="big-pic"><img src="werken/${l.work}.jpg" alt="${esc(w.t)}"></div>
+    <div><b>${esc(w.t)}</b><br><small class="note">${esc(w.a)}${w.j ? ' · ' + esc(w.j) : ''}</small></div>
+    ${r.daily ? '' : `<div class="stars3">${[0, 1, 2].map(i => `<span class="${r.gotMask >> i & 1 ? 'on' : ''}">★</span>`).join('')}</div>${goalsHtml(l, r.mask, r.gotMask)}`}
+    ${rew}
+    <div class="btns">
+      ${next ? `<button class="btn" data-a="next" ${P.pending > 0 ? 'disabled' : ''}>Volgende level</button>` : ''}
+      <div class="two"><button class="btn quiet" data-a="again" ${P.pending > 0 ? 'disabled' : ''}>Opnieuw</button><button class="btn quiet" data-a="tohome" ${P.pending > 0 ? 'disabled' : ''}>Kaart</button></div>
+      ${!r.daily && sc < 3 ? '<p class="note">Opnieuw spelen kan voor de sterren die je nog mist.</p>' : ''}
+    </div>
+  </div>`;
+}
+function pickButtons() {
+  return K.toolsUnlocked(P).map(id => `<button class="tool" data-a="pick" data-id="${id}">${TI[id]}<b>${P.tools[id] | 0}</b>${esc(K.TOOL[id].name)}</button>`).join('');
+}
+function pickHtml() {
+  return `<div class="sheet-head"><h2>Kies je beloning</h2><button class="iconbtn" data-a="close" aria-label="Sluiten">${IC.close}</button></div>
+    <p class="note">Nog ${P.pending} te kiezen. Elk nieuw sterretje is één gereedschap naar keuze.</p>
+    <div class="picks">${pickButtons()}</div>`;
+}
+function menuHtml() {
+  return `<div class="sheet-head"><h2>Pauze</h2><button class="iconbtn" data-a="close" aria-label="Verder">${IC.close}</button></div>
+    <div class="btns"><button class="btn" data-a="close">Verder spelen</button>
+    <button class="btn quiet" data-a="restart">Opnieuw beginnen</button>
+    <button class="btn quiet" data-a="quit">Stoppen (naar de kaart)</button></div>
+    <p class="note">Opnieuw of stoppen telt als mislukt: de buit van deze poging en het gereedschap dat je al gebruikte ben je kwijt.</p>
+    ${settingsRows()}`;
+}
+const tog = (k, label, d) => `<div class="row"><span>${label}${d ? `<br><span class="d">${d}</span>` : ''}</span><button class="toggle" data-a="tog" data-k="${k}" aria-pressed="${!!S[k]}" aria-label="${label}"></button></div>`;
+const settingsRows = () => tog('sound', 'Geluid') + tog('vibrate', 'Trillen') + tog('numbers', 'Cijfers op schuiftegels', 'Handig bij 4×4');
+function settingsHtml() {
+  return `<div class="sheet-head"><h2>Instellingen</h2><button class="iconbtn" data-a="close" aria-label="Sluiten">${IC.close}</button></div>
+    ${settingsRows()}
+    <div class="rules">${rulesHtml()}</div>
+    <button class="btn quiet" data-a="reset">${sheet.confirm ? 'Echt alles wissen? Tik nog eens' : 'Voortgang wissen'}</button>`;
+}
+const rulesHtml = () => `<ul>
+  <li><b>Elk level</b> is een andere kraak: sluipen langs bewakers, een schuifpuzzel, een kluis of een gang met lampen.</li>
+  <li><b>Sterren:</b> 1 voor het werk, 2 en 3 voor de doelen van dat level. Opnieuw spelen mag altijd.</li>
+  <li><b>Elke nieuwe ster</b> = één gereedschap naar keuze. Eerste keer zonder gereedschap gehaald = een bonus.</li>
+  <li><b>Gereedschap</b> neem je mee (max. 2) en is op als je het gebruikt.</li>
+  <li><b>Gepakt?</b> Dan ben je alleen de buit van die poging kwijt. Je collectie blijft.</li>
+  <li><b>Dagelijkse kraak:</b> elke dag een level met een zeldzaam werk voor je schatkamer.</li></ul>`;
+function welcomeHtml() {
+  return `<div class="sheet-head"><h2>Welkom, meesterdief</h2></div>
+    <p>De rijke Baron van Grachtenhuys heeft de mooiste Hollandse Meesters opgekocht en verstopt in zijn grachtenpand. Jij steelt ze terug en hangt ze in je eigen museum, gratis voor iedereen.</p>
+    <div class="rules">${rulesHtml()}</div>
+    <button class="btn" data-a="welcomed">Aan de slag</button>`;
+}
+function workHtml() {
+  const w = K.WORKS[sheet.id];
+  return `<div class="sheet-head"><h2>${esc(w.t)}</h2><button class="iconbtn" data-a="close" aria-label="Sluiten">${IC.close}</button></div>
+    <div class="viewer"><div class="vf"><img src="werken/${sheet.id}.jpg" alt="${esc(w.t)}"></div></div>
+    <p><b>${esc(w.a)}</b>${w.j ? ' · ' + esc(w.j) : ''}</p><p class="note">${esc(w.z)}</p>`;
+}
+function toolInfoHtml() {
+  const t = K.TOOL[sheet.id], ok = K.toolsUnlocked(P).includes(t.id);
+  return `<div class="sheet-head"><h2>${esc(t.name)}</h2><button class="iconbtn" data-a="close" aria-label="Sluiten">${IC.close}</button></div>
+    <div class="modeic">${TI[t.id]}<span><b>${ok ? 'Je hebt er ' + (P.tools[t.id] | 0) : 'Komt vrij bij level ' + t.from}</b>${esc(t.desc)}</span></div>
+    <p class="note">Werkt bij: ${t.modes.map(m => MODE[m].name.toLowerCase()).join(', ')}. Je krijgt gereedschap voor elke nieuwe ster en uit de dagelijkse kraak.</p>`;
+}
+
+/* ================================================================ een level spelen */
+function openLevel(n, daily) {
+  sheet = { type: 'intro', n, daily: !!daily, carry: [] };
+  const l = K.levelDef(n); img(l.work);
+  renderSheet();
+}
+function startRun(n, daily, carry) {
+  const l = K.levelDef(n), day = today();
+  const phases = l.mode === 'kraak' ? l.phases.map(p => ({ mode: p.mode, cfg: Object.assign({}, p.cfg) })) : [{ mode: l.mode, cfg: Object.assign({}, l.cfg || {}) }];
+  if (daily) phases.forEach((p, i) => { if (p.cfg.seed) p.cfg.seed = K.dailySeed(day) + i; });
+  run = { n, l, daily: !!daily, day, carry: carry.slice(), used: [], phases, pi: 0, alarms: 0, time: 0, moves: 0, purse: false, over: false, say: '', sayHot: false, sayT: 0, banner: null, fx: {} };
+  img(l.work);
+  initPhase();
+  view = 'play'; sheet = null;
+  render();
+}
+const carries = id => run && run.carry.includes(id) && !run.used.includes(id);
+function spend(id) {
+  if (!carries(id)) return false;
+  if (!K.useTool(P, id)) return false;
+  run.used.push(id); save(); sfx('tool'); buzz(20);
+  say(K.TOOL[id].name + ' gebruikt');
+  updateToolbar();
+  return true;
+}
+function initPhase() {
+  const ph = run.phases[run.pi], left = 3 - run.alarms;
+  run.mode = ph.mode;
+  if (ph.mode === 'sluip') {
+    run.g = K.gridOf(run.n); run.s = K.gridState(run.g); run.dir = 'U'; run.anim = null; run.hint = null;
+  } else if (ph.mode === 'schuif') {
+    run.o = K.createSchuif(Object.assign({}, ph.cfg, { maxAlarm: left })); run.tileAnim = {}; run.peek = false;
+  } else if (ph.mode === 'kluis') {
+    run.o = K.createKluis(Object.assign({}, ph.cfg, { maxMiss: left })); run.fx = { hit: 0, miss: 0 };
+  } else if (ph.mode === 'gang') {
+    run.o = K.createGang(Object.assign({}, ph.cfg, { maxAlarm: left }));
+    run.gimgs = ['melkmeisje', 'drinker', 'cavalier', 'flora', 'geograaf', 'liefdesbrief'].map(img);
+  }
+}
+
+function playHtml() {
+  const l = run.l, ph = run.phases.length > 1 ? ` · fase ${run.pi + 1}/${run.phases.length}` : '';
+  const m = run.mode;
+  let ctl = '';
+  if (m === 'sluip') ctl = `<div class="pad">
+      <span></span><button data-a="mv" data-d="U" aria-label="Omhoog">${IC.up}</button><span></span>
+      <button data-a="mv" data-d="L" aria-label="Links">${IC.left}</button><button data-a="mv" data-d="W" class="w" aria-label="Wachten">${IC.wait}wacht</button><button data-a="mv" data-d="R" aria-label="Rechts">${IC.right}</button>
+      <span></span><button data-a="mv" data-d="D" aria-label="Omlaag">${IC.down}</button><span></span></div>`;
+  else if (m === 'schuif') ctl = `<button class="big" data-hold="peek" style="min-width:180px;font-size:19px">Voorbeeld</button>`;
+  else if (m === 'kluis') ctl = `<button class="big" data-a="klik">Klik!</button>`;
+  else if (m === 'gang') ctl = `<button class="big" data-hold="sneak">Houd vast: sluip</button>`;
+  return `<div class="play">
+    <div class="hud"><button class="iconbtn" data-a="pause" aria-label="Pauze">${IC.menu}</button>
+      <div class="ttl"><b>${esc(run.daily ? 'Dagelijkse kraak' : l.titel)}</b><small>${run.daily ? 'Level ' + l.n : 'Level ' + l.n}${ph} · ${MODE[m].name}</small></div>
+      <div class="alarm" aria-label="Alarm">${[0, 1, 2].map(() => '<i></i>').join('')}</div></div>
+    <div class="hud2" id="hud2"></div>
+    <div class="stage" id="stage"><canvas id="cv"></canvas><div class="say" id="say" hidden></div><div class="banner" id="banner" hidden></div></div>
+    <div class="tb" id="tb"></div>
+    <div class="ctl">${ctl}</div>
+  </div>`;
+}
+function updateToolbar() {
+  const tb = document.getElementById('tb'); if (!tb || !run) return;
+  const m = run.mode, items = [];
+  const act = { sluip: ['fluit', 'kaart'], schuif: ['zand'], kluis: ['sleutel', 'zand'], gang: ['zand', 'fluit'] }[m] || [];
+  run.carry.forEach(id => {
+    const used = run.used.includes(id);
+    if (act.includes(id)) items.push(`<button data-a="use" data-id="${id}" ${used || (P.tools[id] | 0) <= 0 ? 'disabled' : ''}>${TI[id]}${esc(K.TOOL[id].name)}${used ? ' ✓' : ''}</button>`);
+    else if (m === 'sluip' && id === 'sleutel') items.push(`<button class="passive" disabled>${TI[id]}${used ? 'Lopersleutel gebruikt' : 'Lopersleutel: werkt vanzelf bij een deur'}</button>`);
+  });
+  tb.innerHTML = items.join('');
+}
+function updateHud() {
+  if (!run) return;
+  const h = document.getElementById('hud2'); if (!h) return;
+  const l = run.l, alarms = run.alarms + curAlarms();
+  document.querySelectorAll('.alarm i').forEach((el, i) => el.classList.toggle('on', i < alarms));
+  const bits = [];
+  for (const st of l.stars) {
+    if (st.k === 'moves') { const mv = run.mode === 'sluip' ? run.s.moves : run.o ? run.o.moves : 0; bits.push(`<span class="pill ${mv > st.v ? 'over' : ''}">Zetten <b>${mv}</b> / ${st.v}</span>`); }
+    if (st.k === 'time') { const t = run.time + curTime(); bits.push(`<span class="pill ${t > st.v ? 'over' : ''}">Tijd <b>${fmtT(t)}</b> / ${fmtT(st.v)}</span>`); }
+    if (st.k === 'purse') bits.push(`<span class="pill">Buidel <b>${run.mode === 'sluip' && run.s.purse ? '✓' : '–'}</b></span>`);
+  }
+  if (run.mode === 'kluis') bits.push(`<span class="pill">Slot <b>${Math.min(run.o.idx + 1, run.o.tumblers.length)}</b> / ${run.o.tumblers.length}</span>`);
+  if (run.mode === 'gang') bits.push(`<span class="pill"><b>${Math.round(run.o.x / run.o.len * 100)}%</b></span>`);
+  if (run.mode === 'sluip' && !run.s.art) bits.push('<span class="pill">Werk <b>–</b></span>');
+  if (run.mode === 'sluip' && run.s.art) bits.push('<span class="pill">Werk <b>✓</b> → uitgang</span>');
+  const html = bits.join('');
+  if (h.innerHTML !== html) h.innerHTML = html;
+}
+const curAlarms = () => (!run || !run.o || run.mode === 'sluip' ? 0 : run.mode === 'kluis' ? run.o.misses : run.o.spotted);
+const curTime = () => (!run || !run.o || run.mode === 'sluip' ? 0 : run.o.t);
+function say(text, hot, gold) {
+  if (!run) return;
+  run.say = text; run.sayHot = !!hot; run.sayGold = !!gold; run.sayT = 1.8;
+  const el = document.getElementById('say');
+  if (el) { el.textContent = text; el.hidden = false; el.className = 'say' + (hot ? ' hot' : '') + (gold ? ' gold' : ''); }
+}
+function banner(title, sub, ms) {
+  const el = document.getElementById('banner'); if (!el) return;
+  el.innerHTML = `<div><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`; el.hidden = false;
+  clearTimeout(banner.t); banner.t = setTimeout(() => { el.hidden = true; }, ms || 1400);
+}
+
+/* ---------------- canvas */
+let cv = null, ctx = null, CW = 0, CH = 0;
+function setupStage() {
+  cv = document.getElementById('cv'); ctx = cv.getContext('2d');
+  sizeCanvas(); updateToolbar(); updateHud();
+  const st = document.getElementById('stage');
+  st.addEventListener('pointerdown', stageDown);
+  st.addEventListener('pointerup', stageUp);
+  st.addEventListener('pointercancel', stageUp);
+  if (run.phases.length > 1 && run.pi === 0 && !run.introShown) { run.introShown = true; banner('Fase 1: ' + MODE[run.mode].name, '', 1400); }
+}
+function sizeCanvas() {
+  if (!cv) return;
+  const r = cv.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
+  CW = r.width; CH = r.height;
+  cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+window.addEventListener('resize', () => { if (view === 'play') sizeCanvas(); });
+
+function startLoop() { lastT = performance.now(); raf = requestAnimationFrame(loop); }
+function stopLoop() { cancelAnimationFrame(raf); raf = 0; }
+function loop(now) {
+  raf = requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (!run || run.over) { draw(); return; }
+  const paused = !!sheet || document.hidden;
+  if (run.sayT > 0) { run.sayT -= dt; if (run.sayT <= 0) { const el = document.getElementById('say'); if (el) el.hidden = true; } }
+  if (!paused && !run.wait) tick(dt);
+  draw(); updateHud();
+}
+function tick(dt) {
+  const o = run.o;
+  if (run.mode === 'schuif') {
+    const before = o.lightState(); o.step(dt); const now = o.lightState();
+    if (before !== now) { if (now === 'warn') { say('Lantaarn komt eraan…', false, true); sfx('click'); } if (now === 'on') { say('Niet bewegen!', true); buzz(30); } }
+    for (const k in run.tileAnim) { run.tileAnim[k] -= dt * 9; if (run.tileAnim[k] <= 0) delete run.tileAnim[k]; }
+  } else if (run.mode === 'kluis') {
+    o.step(dt);
+    if (run.fx.hit > 0) run.fx.hit = Math.max(0, run.fx.hit - dt * 2.5);
+    if (run.fx.miss > 0) run.fx.miss = Math.max(0, run.fx.miss - dt * 2.5);
+  } else if (run.mode === 'gang') {
+    const before = o.zones.map(z => o.zoneState(z));
+    if (run.holding && o.inv <= 0) o.hold = true;
+    const ev = o.step(dt);
+    o.zones.forEach((z, i) => { if (before[i] !== 'warn' && o.zoneState(z) === 'warn' && Math.abs(o.x - (z.a + z.b) / 2) < 30) sfx('click'); });
+    if (ev.includes('spotted')) { sfx('alarm'); buzz([60, 40, 60]); say('Gezien! Terug naar de schaduw', true); run.holding = false; setHold(false); }
+    if (o.status === 'caught') return fail('Het alarm ging drie keer af.');
+    if (o.status === 'won') return phaseWon();
+  }
+}
+
+function draw() {
+  if (!ctx || !run) return;
+  if (run.mode === 'sluip') drawGrid();
+  else if (run.mode === 'schuif') drawSchuif();
+  else if (run.mode === 'kluis') A.dial(ctx, CW, CH, run.o, run.fx);
+  else if (run.mode === 'gang') A.corridor(ctx, CW, CH, run.o, run.gimgs, performance.now() / 1000);
+}
+
+/* ---------------- sluipen */
+function gridLayout() {
+  const g = run.g, ts = Math.floor(Math.min(CW / g.w, CH / g.h));
+  return { ts, ox: Math.floor((CW - ts * g.w) / 2), oy: Math.floor((CH - ts * g.h) / 2) };
+}
+function drawGrid() {
+  const g = run.g, s = run.s, L = gridLayout(), now = performance.now();
+  let k = 1;
+  if (run.anim) { k = Math.min(1, (now - run.anim.t0) / 130); if (k >= 1) run.anim = null; }
+  const xy = i => ({ x: i % g.w, y: (i / g.w) | 0 });
+  const lerp = (a, b) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+  const an = run.anim;
+  const pos = an ? lerp(xy(an.pos), xy(s.pos)) : xy(s.pos);
+  const gs = K.guardsAt(g, s.gt), gp = an ? K.guardsAt(g, an.gt) : gs;
+  const guards = gs.map((gu, i) => Object.assign(an ? lerp(xy(gp[i].pos), xy(gu.pos)) : xy(gu.pos), { dir: gu.dir, listen: s.frozen > 0 }));
+  const crates = s.crates.map((c, i) => (an ? lerp(xy(an.crates[i]), xy(c)) : xy(c)));
+  const lit = s.status === 'play' || s.status === 'caught' ? K.litCells(g, s) : new Set();
+  // waar gaan de bewakers straks heen?
+  let next = null;
+  if (s.status === 'play' && s.frozen === 0) {
+    const ng = K.guardsAt(g, s.gt + 1);
+    next = ng.map((gu, i) => (gu.pos !== gs[i].pos ? { i: gu.pos, dir: gu.dir } : null)).filter(Boolean);
+  }
+  A.grid(ctx, CW, CH, {
+    g, ts: L.ts, ox: L.ox, oy: L.oy, pos, dir: run.dir, guards, crates, lit, next, hint: run.hint ? run.hint.cells : null,
+    img: IMG[run.l.work], t: now / 1000, art: s.art, purse: s.purse, taken: s.taken, opened: s.opened, gatesOpen: K.gatesOpen(g, s), caught: s.status === 'caught', flash: s.status === 'caught'
+  });
+}
+function gridMove(act) {
+  if (!run || run.mode !== 'sluip' || run.over || sheet || run.s.status !== 'play') return;
+  const s0 = run.s, tools = { sleutel: carries('sleutel') && (P.tools.sleutel | 0) > 0 ? 1 : 0 };
+  const { s, ev } = K.gridStep(run.g, s0, act, tools);
+  if (ev.invalid) {
+    if (ev.events.includes('locked')) say('Op slot. Zoek een sleutel' + (K.toolsUnlocked(P).includes('sleutel') ? ' of neem een lopersleutel mee' : ''), true);
+    else if (ev.events.includes('gate')) say('Het hek is dicht. Zet een kist op de drukplaat');
+    else if (ev.events.includes('stuck')) say('De kist kan daar niet heen');
+    buzz(15);
+    return;
+  }
+  if (ev.events.includes('tool:sleutel')) { K.useTool(P, 'sleutel'); run.used.push('sleutel'); save(); updateToolbar(); say('Lopersleutel gebruikt', false, true); }
+  run.anim = { t0: performance.now(), pos: s0.pos, gt: s0.gt, crates: s0.crates.slice() };
+  if (act !== 'W') run.dir = act;
+  run.s = s;
+  // hint bijwerken
+  if (run.hint) { if (run.hint.acts[0] === act) { run.hint.acts.shift(); run.hint.cells.shift(); if (!run.hint.acts.length) run.hint = null; } else run.hint = null; }
+  const e = ev.events;
+  if (e.includes('push')) sfx('push'); else sfx('step');
+  if (e.includes('door')) sfx('door');
+  if (e.includes('gateopen')) { say('Het hek gaat open', false, true); sfx('key'); }
+  if (e.includes('gateclose')) say('Het hek gaat weer dicht');
+  if (e.includes('key')) { say('Sleutel gepakt', false, true); sfx('key'); }
+  if (e.includes('art')) { say('Het werk is binnen! Nu naar de uitgang', false, true); sfx('pick'); buzz(30); }
+  if (e.includes('purse')) { say('Buidel voor de armen ✓', false, true); sfx('pick'); }
+  if (run.hint && run.hint.acts[0] === 'W') say('Plattegrond: nu een beurt wachten', false, true);
+  run.moves = s.moves; run.purse = s.purse;
+  updateHud();
+  if (s.status === 'caught') { sfx('alarm'); buzz([80, 50, 80]); run.wait = true; setTimeout(() => fail('Een bewaker zag je.'), 900); }
+  else if (s.status === 'won') { run.wait = true; setTimeout(phaseWon, 350); }
+}
+function useGridTool(id) {
+  if (id === 'fluit') {
+    if (run.s.status !== 'play' || !spend('fluit')) return;
+    run.s = K.cloneState(run.s); run.s.frozen = 3; run.s.usedTools.push('fluit');
+    say('Fluitje! Bewakers staan 3 beurten stil', false, true);
+    if (run.hint) run.hint = hintFrom(run.s);   // de route klopt niet meer: opnieuw uitrekenen
+  } else if (id === 'kaart') {
+    if (run.s.status !== 'play') return;
+    const h = hintFrom(run.s);
+    if (!h) { say('Geen veilige route vanaf hier. Begin opnieuw', true); return; }
+    if (!spend('kaart')) return;
+    run.hint = h;
+    if (h.acts[0] === 'W') say('Plattegrond: nu een beurt wachten', false, true);
+  }
+}
+// veilige route voor de komende 10 beurten (of null)
+function hintFrom(s0) {
+  const sol = K.solveGrid(run.g, s0, { limit: 250000 });
+  if (!sol) return null;
+  const acts = sol.path.slice(0, 10).split(''), cells = [];
+  let st = s0;
+  for (const a of acts) { st = K.gridStep(run.g, st, a, null).s; cells.push(st.pos); }
+  return acts.length ? { acts, cells } : null;
+}
+
+/* ---------------- schuifpuzzel */
+function boardRect() {
+  const n = run.o.n, size = Math.floor(Math.min(CW, CH) - 16), ts = Math.floor(size / n);
+  return { ts, ox: Math.floor((CW - ts * n) / 2), oy: Math.floor((CH - ts * n) / 2), n };
+}
+function drawSchuif() {
+  const o = run.o, B = boardRect(), im = IMG[run.l.work], n = o.n, ts = B.ts;
+  ctx.fillStyle = '#0b0806'; ctx.fillRect(0, 0, CW, CH);
+  // lijst
+  ctx.fillStyle = '#8a6418'; ctx.fillRect(B.ox - 8, B.oy - 8, ts * n + 16, ts * n + 16);
+  ctx.fillStyle = '#e2b84a'; ctx.fillRect(B.ox - 5, B.oy - 5, ts * n + 10, ts * n + 10);
+  ctx.fillStyle = '#100c08'; ctx.fillRect(B.ox, B.oy, ts * n, ts * n);
+  // werk passend in een vierkant
+  const ready = im && im.complete && im.naturalWidth;
+  let sx = 0, sy = 0, sw = 1, sh = 1;
+  if (ready) { const m = Math.min(im.naturalWidth, im.naturalHeight); sw = sh = m; sx = (im.naturalWidth - m) / 2; sy = (im.naturalHeight - m) / 2; }
+  const N = n * n;
+  if (run.peek && ready) { ctx.drawImage(im, sx, sy, sw, sh, B.ox, B.oy, ts * n, ts * n); }
+  else for (let i = 0; i < N; i++) {
+    const v = o.tiles[i]; if (v === N - 1 && o.status !== 'won') continue;
+    let x = i % n, y = (i / n) | 0;
+    const a = run.tileAnim[v];
+    if (a && run.tileFrom && run.tileFrom[v] !== undefined) { const f = run.tileFrom[v]; x = x + (f % n - x) * a; y = y + (((f / n) | 0) - y) * a; }
+    const px = B.ox + x * ts, py = B.oy + y * ts;
+    if (ready) ctx.drawImage(im, sx + (v % n) * sw / n, sy + ((v / n) | 0) * sh / n, sw / n, sh / n, px + 1, py + 1, ts - 2, ts - 2);
+    else { ctx.fillStyle = '#5a4630'; ctx.fillRect(px + 1, py + 1, ts - 2, ts - 2); }
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1; ctx.strokeRect(px + 1.5, py + 1.5, ts - 3, ts - 3);
+    if (S.numbers && o.status !== 'won') { ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(px + 15, py + 15, 11, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(v + 1), px + 15, py + 15.5); }
+  }
+  // lantaarn
+  const ls = o.lightState(), t = performance.now() / 1000;
+  if (ls === 'warn') { ctx.strokeStyle = `rgba(255,214,120,${0.4 + 0.4 * Math.sin(t * 18)})`; ctx.lineWidth = 6; ctx.strokeRect(3, 3, CW - 6, CH - 6); }
+  if (ls === 'on') {
+    const gr = ctx.createRadialGradient(CW * 0.85, CH * 0.1, 10, CW * 0.6, CH * 0.4, Math.max(CW, CH));
+    gr.addColorStop(0, 'rgba(255,225,140,.55)'); gr.addColorStop(1, 'rgba(255,200,90,.12)');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, CW, CH);
+    A.guard(ctx, CW - 34, 34, 54, 'L');
+  }
+  if (o.inv > 50 && ls === 'on') { ctx.fillStyle = 'rgba(229,83,61,.18)'; ctx.fillRect(0, 0, CW, CH); }
+  if (o.light && ls === 'off' && o.lightOff <= 0) {
+    const ph = (o.t + (o.light.offset || 0)) % o.light.every, left = o.light.every - o.light.on - o.light.warn - ph;
+    if (left > 0) { ctx.fillStyle = 'rgba(184,168,143,.8)'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('lantaarn over ' + Math.ceil(left) + ' s', CW - 10, 8); }
+  }
+  if (o.lightOff > 0) { ctx.fillStyle = 'rgba(226,184,74,.9)'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('zandloper: ' + Math.ceil(o.lightOff) + ' s geen lantaarn', CW - 10, 8); }
+}
+function schuifTap(px, py) {
+  const o = run.o, B = boardRect();
+  const x = Math.floor((px - B.ox) / B.ts), y = Math.floor((py - B.oy) / B.ts);
+  if (x < 0 || y < 0 || x >= o.n || y >= o.n) return;
+  const before = o.tiles.slice();
+  const ev = o.tap(y * o.n + x);
+  if (!ev) { buzz(10); return; }
+  run.tileFrom = {}; run.tileAnim = {};
+  ev.moved.forEach(m => { run.tileFrom[m.tile] = m.from; run.tileAnim[m.tile] = 1; });
+  void before;
+  sfx('slide');
+  if (ev.spotted) { sfx('alarm'); buzz([60, 40, 60]); say('Gezien! Wacht tot het donker is', true); }
+  run.moves = o.moves;
+  if (o.status === 'caught') return fail('Het alarm ging drie keer af.');
+  if (o.status === 'won') { run.wait = true; sfx('pick'); setTimeout(phaseWon, 500); }
+}
+
+/* ---------------- kluis */
+function kluisTap() {
+  const o = run.o; if (o.status !== 'play' || run.wait) return;
+  const r = o.tap();
+  if (r === 'hit') { sfx('hit'); buzz(25); run.fx.hit = 1; if (o.status === 'won') { run.wait = true; setTimeout(phaseWon, 450); } }
+  else if (r === 'miss') { sfx('alarm'); buzz([60, 40, 60]); run.fx.miss = 1; say('Mis! Alarmlampje erbij', true); if (o.status === 'caught') fail('Drie keer mis: het alarm ging af.'); }
+}
+
+/* ---------------- gang */
+function setHold(on) {
+  const b = document.querySelector('[data-hold="sneak"]'); if (b) b.classList.toggle('on', !!on);
+  if (run && run.mode === 'gang') { run.holding = !!on; if (!on) run.o.hold = false; }
+}
+
+/* ---------------- fases, winst en verlies */
+function phaseWon() {
+  if (!run || run.over) return;
+  const o = run.o;
+  if (run.mode !== 'sluip') { run.time += o.t; run.alarms += run.mode === 'kluis' ? o.misses : o.spotted; if (run.mode === 'schuif') run.moves = o.moves; }
+  if (run.pi < run.phases.length - 1) {
+    run.pi++; initPhase(); run.wait = false;
+    $view.innerHTML = playHtml(); setupStage(); startLoop();
+    banner('Fase ' + (run.pi + 1) + ': ' + MODE[run.mode].name, run.mode === 'kluis' ? 'Kraak de kluis' : run.mode === 'schuif' ? 'Zet het werk in elkaar' : '', 1600);
+    sfx('tool');
+    return;
+  }
+  win();
+}
+function win() {
+  run.over = true; stopLoop();
+  const l = run.l;
+  const res = { moves: run.mode === 'sluip' ? run.s.moves : run.moves, time: run.time, alarms: run.alarms, purse: run.mode === 'sluip' ? run.s.purse : false };
+  const got = K.starsFor(l, res);
+  sfx('win'); buzz([30, 40, 30, 40, 80]);
+  if (run.daily) {
+    const dr = K.finishDaily(P, run.day);
+    save();
+    sheet = { type: 'result', won: true, n: run.n, daily: true, dailyRes: dr, used: run.used.slice(), mask: 0, gotMask: 0 };
+  } else {
+    const before = K.starMask(P, run.n);
+    const r = K.finishLevel(P, run.n, got, run.used);
+    P.pending = (P.pending | 0) + r.picks;
+    save();
+    sheet = { type: 'result', won: true, n: run.n, before, mask: r.mask, gotMask: r.gotMask, newStars: r.newStars, bonus: r.bonus, firstWork: r.firstWork, used: run.used.slice() };
+  }
+  renderSheet();
+}
+function fail(why) {
+  if (!run || run.over) return;
+  run.over = true; stopLoop(); setHold(false);
+  sfx('lose');
+  sheet = { type: 'result', won: false, n: run.n, why, used: run.used.slice(), daily: run.daily };
+  renderSheet();
+}
+function leaveRun() { run = null; stopLoop(); view = 'home'; sheet = null; render(); }
+
+/* ================================================================ invoer */
+let down = null;
+function stageDown(e) {
+  if (!run || run.over || sheet) return;
+  const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  down = { x, y, t: performance.now() };
+  if (run.mode === 'kluis') { e.preventDefault(); kluisTap(); }
+  if (run.mode === 'gang') { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); setHold(true); ac(); }
+}
+function stageUp(e) {
+  if (!run) return;
+  if (run.mode === 'gang') { setHold(false); return; }
+  if (!down || run.over || sheet) { down = null; return; }
+  const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const dx = x - down.x, dy = y - down.y; down = null;
+  if (run.mode === 'schuif') { if (Math.hypot(dx, dy) < 30) schuifTap(x, y); else { const ax = Math.abs(dx) > Math.abs(dy); schuifSwipe(ax ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U')); } return; }
+  if (run.mode === 'sluip') {
+    if (Math.hypot(dx, dy) >= 24) { gridMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U')); return; }
+    // tik op een buurvakje
+    const L = gridLayout(), g = run.g, cx = Math.floor((x - L.ox) / L.ts), cy = Math.floor((y - L.oy) / L.ts);
+    const px = run.s.pos % g.w, py = (run.s.pos / g.w) | 0;
+    if (cx === px && cy === py) gridMove('W');
+    else if (Math.abs(cx - px) + Math.abs(cy - py) === 1) gridMove(cx > px ? 'R' : cx < px ? 'L' : cy > py ? 'D' : 'U');
+  }
+}
+// vegen bij de schuifpuzzel: de tegel naast het gat schuift die kant op
+function schuifSwipe(d) {
+  const o = run.o, n = o.n, bx = o.blank % n, by = (o.blank / n) | 0;
+  const from = { R: [bx - 1, by], L: [bx + 1, by], D: [bx, by - 1], U: [bx, by + 1] }[d];
+  if (from[0] < 0 || from[1] < 0 || from[0] >= n || from[1] >= n) return;
+  const B = boardRect();
+  schuifTap(B.ox + from[0] * B.ts + B.ts / 2, B.oy + from[1] * B.ts + B.ts / 2);
+}
+
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-hold]'); if (!h || !run) return;
+  e.preventDefault(); ac();
+  if (h.dataset.hold === 'peek') { run.peek = true; h.classList.add('on'); }
+  if (h.dataset.hold === 'sneak') setHold(true);
+});
+const holdOff = e => {
+  if (!run) return;
+  const pk = document.querySelector('[data-hold="peek"]'); if (pk && run.peek) { run.peek = false; pk.classList.remove('on'); }
+  if (run.mode === 'gang' && run.holding && !(e.target.closest && e.target.closest('#stage'))) setHold(false);
+};
+document.addEventListener('pointerup', holdOff);
+document.addEventListener('pointercancel', holdOff);
+document.addEventListener('contextmenu', e => { if (view === 'play') e.preventDefault(); });
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const a = el.dataset.a;
+  if (a === 'scrim') { if (e.target !== el) return; if (sheet && (sheet.type === 'result' || sheet.type === 'welcome')) return; if (sheet && sheet.type === 'menu') { closeSheet(); return; } closeSheet(); return; }
+  ac();
+  switch (a) {
+    case 'exit': location.href = '../index.html'; return;
+    case 'home': view = 'home'; render(); return;
+    case 'museum': view = 'museum'; render(); window.scrollTo(0, 0); return;
+    case 'settings': sheet = { type: 'settings' }; renderSheet(); return;
+    case 'close': closeSheet(); return;
+    case 'level': openLevel(+el.dataset.n, false); return;
+    case 'daily': { const dn = K.dailyLevel(P, today()); if (dn) openLevel(dn, true); return; }
+    case 'carry': {
+      const id = el.dataset.id, c = sheet.carry;
+      if (c.includes(id)) c.splice(c.indexOf(id), 1);
+      else if (c.length < K.MAX_CARRY && (P.tools[id] | 0) > 0) c.push(id);
+      else if (c.length >= K.MAX_CARRY) { c.shift(); c.push(id); }
+      renderSheet(); return;
+    }
+    case 'start': startRun(sheet.n, sheet.daily, sheet.carry || []); return;
+    case 'toolinfo': sheet = { type: 'toolinfo', id: el.dataset.id }; renderSheet(); return;
+    case 'work': sheet = { type: 'work', id: el.dataset.id }; renderSheet(); return;
+    case 'pickpending': sheet = { type: 'pick' }; renderSheet(); return;
+    case 'pick': {
+      if ((P.pending | 0) <= 0) return;
+      K.addTool(P, el.dataset.id, 1); P.pending--; save(); sfx('tool');
+      if (sheet && sheet.type === 'pick' && P.pending <= 0) { closeSheet(); render(); return; }
+      renderSheet(); if (view === 'home' && sheet && sheet.type === 'pick') { const hv = homeHtml(); $view.innerHTML = hv; }
+      return;
+    }
+    case 'welcomed': P.seen = true; save(); closeSheet(); return;
+    case 'tog': S[el.dataset.k] = !S[el.dataset.k]; saveS(); if (el.dataset.k === 'vibrate') buzz(30); if (el.dataset.k === 'sound') sfx('pick'); renderSheet(); return;
+    case 'reset':
+      if (!sheet.confirm) { sheet.confirm = true; renderSheet(); return; }
+      P = K.fixProgress(null); P.pending = 0; P.seen = true; save(); closeSheet(); render(); return;
+    case 'pause': if (run && !run.over) { sheet = { type: 'menu' }; renderSheet(); setHold(false); } return;
+    case 'restart': { const n = run.n, d = run.daily, c = run.carry.filter(id => (P.tools[id] | 0) > 0); run.over = true; startRun(n, d, c); return; }
+    case 'quit': leaveRun(); return;
+    case 'again': { const n = sheet.n, d = sheet.daily, c = run ? run.carry.filter(id => (P.tools[id] | 0) > 0) : []; startRun(n, d, c); return; }
+    case 'next': { const n = sheet.n + 1; run = null; view = 'home'; sheet = null; render(); if (K.levelDef(n)) openLevel(n, false); return; }
+    case 'tohome': leaveRun(); return;
+    case 'mv': gridMove(el.dataset.d); return;
+    case 'klik': kluisTap(); return;
+    case 'use': {
+      const id = el.dataset.id; if (!run || run.over) return;
+      if (run.mode === 'sluip') useGridTool(id);
+      else if (run.mode === 'schuif' && id === 'zand') { if (spend('zand')) { run.o.useZand(); say('Zandloper: 20 s geen lantaarn', false, true); } }
+      else if (run.mode === 'kluis') {
+        if (id === 'sleutel' && spend('sleutel')) { run.o.useSleutel(); run.fx.hit = 1; if (run.o.status === 'won') { run.wait = true; setTimeout(phaseWon, 450); } }
+        if (id === 'zand' && spend('zand')) run.o.useZand();
+      } else if (run.mode === 'gang') {
+        if (id === 'zand' && spend('zand')) { run.o.useZand(); say('Zandloper: lampen trager', false, true); }
+        if (id === 'fluit' && spend('fluit')) { run.o.useFluit(); say('Fluitje: lampen 4 s uit', false, true); }
+      }
+      updateToolbar(); return;
+    }
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (!run || view !== 'play' || sheet || run.over) return;
+  const k = e.key;
+  const map = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R', w: 'U', s: 'D', a: 'L', d: 'R' };
+  if (run.mode === 'sluip') { if (map[k]) { e.preventDefault(); gridMove(map[k]); } else if (k === ' ' || k === '.') { e.preventDefault(); gridMove('W'); } }
+  else if (run.mode === 'schuif' && map[k]) { e.preventDefault(); schuifSwipe(map[k]); }
+  else if (run.mode === 'kluis' && (k === ' ' || k === 'Enter')) { e.preventDefault(); if (!e.repeat) kluisTap(); }
+  else if (run.mode === 'gang' && (k === ' ' || k === 'ArrowRight')) { e.preventDefault(); setHold(true); }
+});
+document.addEventListener('keyup', e => { if (run && run.mode === 'gang' && (e.key === ' ' || e.key === 'ArrowRight')) setHold(false); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && run && !run.over && view === 'play' && !sheet) { sheet = { type: 'menu' }; renderSheet(); setHold(false); } });
+
+window.__w2back = function () {
+  if (sheet) {
+    if (sheet.type === 'result') { if (P.pending > 0) return true; leaveRun(); return true; }
+    if (sheet.type === 'welcome') return true;
+    closeSheet(); return true;
+  }
+  if (view === 'play' && run && !run.over) { sheet = { type: 'menu' }; renderSheet(); setHold(false); return true; }
+  if (view !== 'home') { run = null; view = 'home'; render(); return true; }
+  return false;
+};
+if (!P.seen) sheet = { type: 'welcome' };
+render();
+// voor de browsertest
+window.__kunstkamer = { get run() { return run; }, get P() { return P; }, get view() { return view; }, get sheet() { return sheet; }, gridMove, kluisTap, schuifTap, startRun, win, fail };
+})();
+</script>
+</body>
+</html>

@@ -73,10 +73,31 @@ $('#menu').innerHTML = icon('more');
 D.recent('kosten');
 
 const CATS = ['🛒', '🍽️', '🏨', '✈️', '🚗', '⛽', '🎟️', '🍹', '🏠', '🎁', '💊', '📦'];
-const VALUTA = ['EUR', 'USD', 'GBP', 'NOK', 'SEK', 'DKK', 'CHF', 'ANG', 'AWG'];
+const VALUTA = ['EUR', 'USD', 'GBP', 'NOK', 'SEK', 'DKK', 'CHF', 'XCG', 'ANG', 'AWG'];
 // Alles wordt in euro afgerekend. Een uitgave in een andere munt kan, met een koers (euro voor 1 eenheid).
 const START_KOERS = K.START_KOERS;
-const NAAM_MUNT = { EUR: 'euro', USD: 'dollar', GBP: 'pond', NOK: 'Noorse kroon', SEK: 'Zweedse kroon', DKK: 'Deense kroon', CHF: 'Zwitserse frank', ANG: 'gulden (Antillen)', AWG: 'florin (Aruba)' };
+const NAAM_MUNT = { EUR: 'euro', USD: 'dollar', GBP: 'pond', NOK: 'Noorse kroon', SEK: 'Zweedse kroon', DKK: 'Deense kroon', CHF: 'Zwitserse frank', XCG: 'Caribische gulden', ANG: 'Antilliaanse gulden', AWG: 'florin (Aruba)' };
+// Dagkoersen (ECB, via frankfurter.dev): euro per eenheid. Hooguit om de 6 uur opgehaald; zonder internet de laatste.
+const KOERS_URL = 'https://api.frankfurter.dev/v1/latest?from=EUR';
+let dag = D.get('kosten-dagkoersen', null);   // { t, datum, k: { USD: 0.91, ... } }
+async function haalKoersen(nu) {
+  if (!nu && dag && Date.now() - dag.t < 6 * 3600e3) return false;
+  if (navigator.onLine === false) return false;
+  try {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 8000);
+    const r = await fetch(KOERS_URL, { cache: 'no-store', signal: ac.signal });
+    clearTimeout(tm);
+    if (!r.ok) return false;
+    const j = await r.json(), k = K.dagkoersen(j);
+    if (!k) return false;
+    dag = { t: Date.now(), datum: j.date || D.date.today(), k };
+    D.set('kosten-dagkoersen', dag);
+    return true;
+  } catch (e) { return false; }
+}
+const dagK = v => (dag && dag.k[v]) || 0;
+const koersTxt = (g, v) => `1 ${v} = € ${K.koers(g, v).toLocaleString('nl-NL', { maximumFractionDigits: 4 })}`;
+function koersen() { return data.groepen.map(g => K.koersenBijwerken(g, uitVan(g), dag && dag.k)).some(Boolean); }
 
 let data = Object.assign({ groepen: [], uitgaven: [] }, D.get(KEY('kosten'), null) || {});
 // Oude groepen in dollars e.d.: omzetten naar euro (bedragen blijven, met een koers erbij).
@@ -98,7 +119,8 @@ function koppelDeel() {
     schrijf: async map => {
       const pick = pre => Object.entries(map).filter(([k]) => k.startsWith(pre)).map(([, v]) => JSON.parse(JSON.stringify(v)));
       data.groepen = pick('g:'); data.uitgaven = pick('u:');
-      if (allesInEuro()) setTimeout(save, 0); else D.set(KEY('kosten'), data);
+      const a = allesInEuro(), b = koersen();
+      if (a || b) setTimeout(save, 0); else D.set(KEY('kosten'), data);
       if (cur && !groep(cur)) cur = null;
       render();
     }
@@ -216,6 +238,7 @@ async function uitForm(g, u) {
   const s = sheet(isNew ? 'Uitgave' : 'Uitgave', `
     <label class="f">Wat<input class="in" name="wat" value="${esc(u.wat)}" placeholder="Bv. boodschappen, huurauto"></label>
     <div class="amt"><input class="in" name="bedrag" inputmode="decimal" value="${u.bedrag ? (u.bedrag / 100).toFixed(2).replace('.', ',') : ''}" placeholder="0,00"><button class="in munt" type="button" data-munt="1">${esc(K.SYMBOOL[u.valuta || 'EUR'] || u.valuta)} ${esc(u.valuta || 'EUR')}</button><input type="hidden" name="valuta" value="${esc(u.valuta || 'EUR')}"></div>
+    <div class="muted small" id="koersregel" ${(u.valuta || 'EUR') === 'EUR' ? 'hidden' : ''}>${(u.valuta || 'EUR') === 'EUR' ? '' : esc(koersTxt(g, u.valuta))}</div>
     <div class="who" id="munten" ${(u.valuta || 'EUR') === 'EUR' ? 'hidden' : ''}>${VALUTA.map(v => `<button type="button" data-m="${v}" class="${v === (u.valuta || 'EUR') ? 'on' : ''}">${esc((K.SYMBOOL[v] || v) + ' ' + NAAM_MUNT[v])}</button>`).join('')}</div>
     <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Betaald door</div><div class="who" id="bet">${g.mensen.map(m => `<button type="button" data-b="${m.id}" class="${m.id === betaald ? 'on' : ''}">${esc(m.naam)}</button>`).join('')}</div></div>
     <div><div class="muted small" style="font-weight:600;margin-bottom:6px">Voor wie (gelijk verdeeld)</div><div class="who" id="voor">${g.mensen.map(m => `<button type="button" data-v="${m.id}" class="${voor.has(m.id) ? 'on' : ''}">${esc(m.naam)}</button>`).join('')}</div></div>
@@ -225,7 +248,8 @@ async function uitForm(g, u) {
   s.el.addEventListener('click', e => {
     const b = e.target.closest('[data-b]'), v = e.target.closest('[data-v]'), c = e.target.closest('[data-c]'), mu = e.target.closest('[data-munt]'), mk = e.target.closest('[data-m]');
     if (mu) { const l = $('#munten', s.el); l.hidden = !l.hidden; }
-    if (mk) { const m = mk.dataset.m; $('[name=valuta]', s.el).value = m; $('[data-munt]', s.el).textContent = (K.SYMBOOL[m] || m) + ' ' + m; $$('[data-m]', s.el).forEach(x => x.classList.toggle('on', x === mk)); $('#munten', s.el).hidden = true; }
+    if (mk) { const m = mk.dataset.m; $('[name=valuta]', s.el).value = m; $('[data-munt]', s.el).textContent = (K.SYMBOOL[m] || m) + ' ' + m; $$('[data-m]', s.el).forEach(x => x.classList.toggle('on', x === mk)); $('#munten', s.el).hidden = true;
+      const kr = $('#koersregel', s.el); kr.hidden = m === 'EUR'; kr.textContent = m === 'EUR' ? '' : koersTxt(Object.assign({}, g, { koersen: Object.assign({}, g.koersen, dagK(m) && !(g.eigenKoers || {})[m] ? { [m]: dagK(m) } : {}) }), m); }
     if (b) { betaald = b.dataset.b; $$('[data-b]', s.el).forEach(x => x.classList.toggle('on', x === b)); }
     if (v) { const id = v.dataset.v; voor.has(id) ? voor.delete(id) : voor.add(id); v.classList.toggle('on', voor.has(id)); }
     if (c) { cat = cat === c.dataset.c ? '' : c.dataset.c; $$('[data-c]', s.el).forEach(x => x.classList.toggle('on', x.dataset.c === cat)); }
@@ -235,7 +259,13 @@ async function uitForm(g, u) {
   if (r.value !== 'ok') return;
   Object.assign(u, { wat: r.form.wat.trim(), bedrag: K.leesBedrag(r.form.bedrag), valuta: r.form.valuta, betaald, voor: Object.fromEntries([...voor].map(id => [id, 1])), datum: r.form.datum, cat });
   if (isNew) { u.id = D.uid(); u.groep = g.id; u.t = Date.now(); data.uitgaven.push(u); }
-  if (u.valuta !== g.valuta && !(g.koersen || {})[u.valuta]) { g.koersen = Object.assign({}, g.koersen, { [u.valuta]: START_KOERS[u.valuta] || 1 }); toast(`Koers ${u.valuta} gezet op ${String(g.koersen[u.valuta]).replace('.', ',')} ${g.valuta}. Aanpassen via ⋮.`, 4500); }
+  if (u.valuta !== g.valuta) {
+    const nieuw = !((g.koersen || {})[u.valuta] > 0);
+    if (K.koersenBijwerken(g, [u], dag && dag.k) || nieuw) {
+      if (!((g.koersen || {})[u.valuta] > 0)) g.koersen = Object.assign({}, g.koersen, { [u.valuta]: START_KOERS[u.valuta] || 1 });
+      toast(`${koersTxt(g, u.valuta)}${dagK(u.valuta) ? ' (dagkoers ' + D.date.nice(dag.datum, { day: 'numeric', month: 'short' }) + ')' : ' (geschat, geen internet)'}. Aanpassen via ⋮.`, 4500);
+    }
+  }
   save(); render();
 }
 
@@ -261,7 +291,8 @@ async function menu(g) {
   const vreemd = [...new Set(uitVan(g).map(u => u.valuta).filter(v => v && v !== g.valuta))];
   const r = await sheet(g.naam, `
     <label class="f">Wie ben jij in deze groep?<select class="in" name="ik"><option value="">–</option>${g.mensen.map(m => `<option value="${esc(m.naam)}" ${m.id === ik(g) ? 'selected' : ''}>${esc(m.naam)}</option>`).join('')}</select></label>
-    ${vreemd.length ? `<div class="muted small" style="font-weight:600">Koersen (1 vreemde munt = … ${esc(g.valuta)})</div>${vreemd.map(v => `<label class="f">1 ${v} =<input class="in" name="k_${v}" inputmode="decimal" value="${String((g.koersen || {})[v] || START_KOERS[v] || 1).replace('.', ',')}"></label>`).join('')}` : ''}
+    ${vreemd.length ? `<div class="muted small" style="font-weight:600">Koersen in euro${dag ? ' · dagkoers ECB van ' + esc(D.date.nice(dag.datum, { day: 'numeric', month: 'short' })) : ' · nog geen dagkoers (geen internet)'}</div>${vreemd.map(v => `<label class="f">1 ${v} = € ${(g.eigenKoers || {})[v] ? '(zelf gezet)' : ''}<input class="in" name="k_${v}" inputmode="decimal" value="${String(K.koers(g, v)).replace('.', ',')}"></label>`).join('')}
+      ${Object.keys(g.eigenKoers || {}).length ? `<button class="btn q wide" data-x="dag" type="button">↻ Dagkoersen gebruiken</button>` : ''}` : ''}
     <button class="btn q wide" data-x="groep" type="button">${icon('edit')}Naam en mensen</button>
     <button class="btn q wide" data-x="terug" type="button">↩️ Terugbetaling bijschrijven</button>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]);
@@ -269,9 +300,15 @@ async function menu(g) {
   const res = await r.done;
   if (res.value === 'groep') return groepForm(g);
   if (res.value === 'terug') return terugForm(g);
+  if (res.value === 'dag') { delete g.eigenKoers; await haalKoersen(true); K.koersenBijwerken(g, uitVan(g), dag && dag.k); save(); render(); toast(dag ? 'Dagkoersen overgenomen.' : 'Geen internet: koersen blijven zoals ze waren.'); return; }
   if (res.value !== 'ok') return;
   if (!(window.Samen && Samen.cfg)) D.set(KEY('kosten-ik'), res.form.ik);
-  vreemd.forEach(v => { const k = parseFloat(String(res.form['k_' + v]).replace(',', '.')); if (k > 0) g.koersen = Object.assign({}, g.koersen, { [v]: k }); });
+  vreemd.forEach(v => {
+    const k = parseFloat(String(res.form['k_' + v]).replace(',', '.'));
+    if (!(k > 0) || Math.abs(k - K.koers(g, v)) < 1e-9) return;
+    g.koersen = Object.assign({}, g.koersen, { [v]: k });
+    g.eigenKoers = Object.assign({}, g.eigenKoers, { [v]: true });   // zelf gezet: dagkoers neemt het niet meer over
+  });
   save(); render();
 }
 
@@ -291,8 +328,9 @@ $('#fab').onclick = () => cur && groep(cur) ? uitForm(groep(cur)) : groepForm();
 $('#menu').onclick = () => menu(groep(cur));
 window.__w2back = () => { if (cur) { open(null); return true; } return false; };
 
-if (allesInEuro()) D.set(KEY('kosten'), data);
+if (allesInEuro() | koersen()) D.set(KEY('kosten'), data);
 koppelDeel();
+haalKoersen().then(n => { if (n && koersen()) { save(); render(); } });
 const h = location.hash.slice(1);
 open(h && groep(h) ? h : null);
 </script>

@@ -5,8 +5,8 @@
   /** Omrekenen naar de hoofdvaluta van de groep (koersen[valuta] = hoeveel hoofdvaluta voor 1 eenheid). */
   function inHoofd(u, groep) {
     if (!u.valuta || u.valuta === groep.valuta) return u.bedrag;
-    const k = (groep.koersen || {})[u.valuta];
-    return Math.round(u.bedrag * (k > 0 ? k : 1));
+    const k = koers(groep, u.valuta);
+    return Math.round(u.bedrag * k);
   }
 
   /** Verdeel centen naar gewicht; restcenten naar de grootste aandelen, zodat het altijd precies klopt. */
@@ -63,7 +63,7 @@
     return isFinite(n) ? Math.round(n * 100) : NaN;
   }
 
-  const SYMBOOL = { EUR: '€', USD: '$', GBP: '£', NOK: 'kr', SEK: 'kr', DKK: 'kr', CHF: 'CHF', ANG: 'ƒ', AWG: 'ƒ', JPY: '¥' };
+  const SYMBOOL = { EUR: '€', USD: '$', GBP: '£', NOK: 'kr', SEK: 'kr', DKK: 'kr', CHF: 'CHF', ANG: 'ƒ', AWG: 'ƒ', XCG: 'Cg', JPY: '¥' };
   function geld(cent, valuta) {
     const neg = cent < 0, a = Math.abs(cent) / 100;
     const s = a.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,8 +71,46 @@
     return (neg ? '−' : '') + (sym.length > 1 && sym !== 'kr' ? s + ' ' + sym : sym === 'kr' ? s + ' kr' : sym + ' ' + s);
   }
 
-  /** Ruwe koers als begin: hoeveel euro voor 1 eenheid (aanpassen in de groep). */
-  const START_KOERS = { USD: 0.92, GBP: 1.17, NOK: 0.085, SEK: 0.087, DKK: 0.134, CHF: 1.05, ANG: 0.51, AWG: 0.51 };
+  /** Noodkoers als er nog geen dagkoers is (geen internet): hoeveel euro voor 1 eenheid. Nooit 1 op 1. */
+  const START_KOERS = { USD: 0.91, GBP: 1.19, NOK: 0.093, SEK: 0.089, DKK: 0.134, CHF: 1.08, ANG: 0.51, AWG: 0.51, XCG: 0.51 };
+  const PEG_USD = { ANG: 1.79, AWG: 1.79, XCG: 1.79 };   // Antilliaanse/Caribische gulden en florin: vast aan de dollar
+
+  /** Koers voor een munt in deze groep: eigen/dagkoers, anders de noodkoers. */
+  function koers(groep, v) {
+    if (!v || v === (groep.valuta || 'EUR')) return 1;
+    const k = (groep.koersen || {})[v];
+    // koers 1 voor een vreemde munt kwam uit de oude versie (niet ingevuld), tenzij je hem zelf zo zette
+    if (k > 0 && (k !== 1 || (groep.eigenKoers || {})[v] || !START_KOERS[v])) return k;
+    return START_KOERS[v] || 1;
+  }
+
+  /** Antwoord van de koersendienst (ECB via frankfurter: { base:'EUR', date, rates:{USD:1.09,...} }) → euro per eenheid. */
+  function dagkoersen(json) {
+    const r = (json && json.rates) || {};
+    if (!json || (json.base && json.base !== 'EUR')) return null;
+    const out = {};
+    Object.entries(r).forEach(([v, x]) => { if (x > 0) out[v] = rond(1 / x); });
+    if (out.USD) Object.entries(PEG_USD).forEach(([v, n]) => { out[v] = rond(out.USD / n); });
+    return Object.keys(out).length ? out : null;
+  }
+  const rond = x => Math.round(x * 1e6) / 1e6;
+
+  /** Dagkoersen overnemen in een groep, voor elke munt die erin gebruikt wordt (niet als je die koers zelf hebt gezet).
+      Alleen bij een verschil van meer dan 0,2%, zodat telefoons niet om de paar cent blijven schrijven. Geeft true bij verandering. */
+  function koersenBijwerken(groep, uitgaven, dag) {
+    if (!dag) return false;
+    const eigen = groep.eigenKoers || {};
+    const munten = new Set(uitgaven.map(u => u.valuta).filter(v => v && v !== (groep.valuta || 'EUR')));
+    let veranderd = false;
+    munten.forEach(v => {
+      if (eigen[v] || !(dag[v] > 0)) return;
+      const nu = (groep.koersen || {})[v];
+      if (nu > 0 && Math.abs(nu - dag[v]) / dag[v] <= 0.002) return;
+      groep.koersen = Object.assign({}, groep.koersen, { [v]: dag[v] });
+      veranderd = true;
+    });
+    return veranderd;
+  }
 
   /** Groep in een andere munt dan euro omzetten naar euro: elke uitgave houdt zijn eigen bedrag en munt,
       de koersen worden euro per eenheid. Geeft true als er iets veranderde. */
@@ -80,7 +118,8 @@
     const oud = groep.valuta || 'EUR';
     if (oud === 'EUR') { if (!groep.valuta) { groep.valuta = 'EUR'; return true; } return false; }
     const k = groep.koersen || {};
-    const r = k.EUR > 0 ? 1 / k.EUR : START_KOERS[oud] || 1;   // euro voor 1 oude eenheid
+    // Let op: de oude versie zette een euro-uitgave in een dollargroep op koers 1 (geen echte koers); die telt niet.
+    const r = k.EUR > 0 && k.EUR !== 1 ? 1 / k.EUR : START_KOERS[oud] || 1;   // euro voor 1 oude eenheid
     const nieuw = { [oud]: Math.round(r * 1e6) / 1e6 };
     Object.entries(k).forEach(([v, x]) => { if (v !== 'EUR' && v !== oud && x > 0) nieuw[v] = Math.round(x * r * 1e6) / 1e6; });
     uitgaven.forEach(u => { if (!u.valuta) u.valuta = oud; });
@@ -90,7 +129,7 @@
     return true;
   }
 
-  const api = { inHoofd, verdeel, saldi, verrekenen, leesBedrag, geld, naarEuro, SYMBOOL, START_KOERS };
+  const api = { inHoofd, verdeel, saldi, verrekenen, leesBedrag, geld, naarEuro, koers, dagkoersen, koersenBijwerken, SYMBOOL, START_KOERS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Kosten = api;
 })(typeof window !== 'undefined' ? window : globalThis);

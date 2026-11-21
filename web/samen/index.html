@@ -736,13 +736,14 @@ $('#menu').onclick = () => {
 
 function inviteSheet() {
   const sh = sheet('Uitnodigen', `
-    <div class="muted">Stuur dit naar ${GROEP ? 'de ander' : 'je vriendin'} (bv. via WhatsApp). Op Android: W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">🔑 Code invoeren</b> en het bericht plakken (of het bericht vanuit WhatsApp delen naar W2 Apps). Op een iPhone: de link voor de webversie staat in het bericht.</div>
+    <div class="muted">Stuur deze code naar ${GROEP ? 'de ander' : 'je vriendin'} (bv. via WhatsApp). In W2 Apps: <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">🔑 Code invoeren</b>. Heeft iemand de app nog niet, of een iPhone? Kies dan <b style="color:var(--text)">Met links</b>: dan gaan de download-link en de link voor de webversie mee.</div>
     <div class="code">${esc(S.prettyCode(S.cfg.code))}</div>
     <div class="muted small">Iedereen met deze code kan ${GROEP ? 'de lijsten en kosten van deze groep' : 'jullie lijsten'} zien en aanpassen. Deel hem dus alleen met wie mee mag doen.</div>`,
-  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bericht kopiëren', value: 'copy' }]);
+  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Met links', value: 'links', kind: 'q' }, { label: 'Code kopiëren', value: 'copy' }]);
   sh.done.then(async r => {
-    if (r.value !== 'copy') return;
-    const text = S.invite();
+    if (r.value !== 'copy' && r.value !== 'links') return;
+    // Gewoon de code; het lange bericht met download-links alleen voor wie de app nog niet heeft.
+    const text = r.value === 'copy' ? S.prettyCode(S.cfg.code) : S.invite();
     try { await navigator.clipboard.writeText(text); toast('Gekopieerd. Plak het in WhatsApp.'); }
     catch (e) {
       const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();

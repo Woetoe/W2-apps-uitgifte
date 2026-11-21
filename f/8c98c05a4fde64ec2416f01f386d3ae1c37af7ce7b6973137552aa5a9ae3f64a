@@ -1,0 +1,62 @@
+// Delen naar W2: wat is er gedeeld, en waar kan het heen? Los te testen (tests/delen.test.js); in de pagina window.Regels.
+(function (root) {
+  'use strict';
+  const WR = root.WebRecept || (typeof require === 'function' ? require('../recepten/web.js') : null);
+
+  /** Eén regel uit een gedeelde tekst als lijstitem: opsommingstekens en vinkjes eraf. */
+  function schoon(l) {
+    return String(l || '')
+      .replace(/^\s*(?:[-–•*·▪◦]|\[\s?[xX ]?\s?\]|[☐☑✅✔️]+|\d{1,2}[.)])\s*/u, '')
+      .replace(/\s+/g, ' ').trim().slice(0, 120);
+  }
+
+  /**
+   * info = {text, subject, files:[{naam, mime, fout?}]}
+   * → { url, text, regels:[{tekst, notitie?}], doelen:[{id, emoji, titel, uitleg}] }
+   */
+  function kies(info) {
+    info = info || {};
+    const text = String(info.text || '').trim();
+    const subject = String(info.subject || '').trim();
+    const url = WR ? (WR.findUrl(text) || (text ? '' : WR.findUrl(subject))) : '';
+    const rest = url ? text.replace(url, '').trim() : text;
+    const files = (info.files || []).filter(f => f && !f.fout);
+    const docx = files.filter(f => /\.docx$/i.test(f.naam || ''));
+
+    let regels = [];
+    if (url) {
+      const first = rest.split(/\n+/).map(schoon).find(Boolean);
+      regels = [{ tekst: schoon(subject) || first || (WR ? WR.host(url) : url), notitie: url }];
+    } else if (text) {
+      let l = text.split(/\r?\n/).map(schoon).filter(Boolean);
+      if (l.length > 1) l = l.filter(x => !/:$/.test(x));   // kopje als "Boodschappen:" is geen item
+      regels = l.slice(0, 50).map(tekst => ({ tekst }));
+    }
+
+    const doelen = [];
+    // Uitnodiging voor Samen (code van 16 tekens, bv. uit WhatsApp): eerst meedoen aanbieden.
+    const code = uitnodiging(text + '\n' + subject);
+    if (code && !files.length) return { url: '', text, regels: [], doelen: [{ id: 'samencode', emoji: '🔑', titel: 'Meedoen in Samen', uitleg: 'Lijstjes en kosten delen met deze code', code }] };
+    if (url) doelen.push({ id: 'recept', emoji: '🍲', titel: 'Recept van deze website', uitleg: 'Ingrediënten, bereiding en foto naar Recepten' });
+    if (docx.length) doelen.push({ id: 'docx', emoji: '🍲', titel: 'Recepten importeren', uitleg: docx.length === 1 ? 'Uit dit Word-bestand' : `Uit ${docx.length} Word-bestanden` });
+    if (files.length) {
+      doelen.push({ id: 'reis', emoji: '✈️', titel: 'Bij een reis', uitleg: 'Als document, zoals een ticket of boeking' });
+      doelen.push({ id: 'kluis', emoji: '🔐', titel: 'In de kluis', uitleg: 'Versleuteld bewaard, met verloopdatum' });
+    } else if (regels.length) {
+      doelen.push({ id: 'lijst', emoji: '🛒', titel: 'Op een lijst in Samen', uitleg: regels.length > 1 ? `Elke regel een eigen item (${regels.length})` : 'Boodschappen, to-do of een gewone lijst' });
+      doelen.push({ id: 'reis', emoji: '✈️', titel: 'Bij een reis', uitleg: 'Bij de planning en notities' });
+      doelen.push({ id: 'kluis', emoji: '🔐', titel: 'In de kluis', uitleg: 'Als notitie, versleuteld' });
+    }
+    return { url, text: rest || text, regels, doelen };
+  }
+
+  /** Code uit een W2-uitnodiging ("Code: ABCD-EFGH-JKLM-NPQR"), anders ''. */
+  function uitnodiging(t) {
+    const m = /code\s*[:=]?\s*([A-Z0-9]{4}[\s-]?[A-Z0-9]{4}[\s-]?[A-Z0-9]{4}[\s-]?[A-Z0-9]{4})(?![A-Z0-9])/i.exec(String(t || ''));
+    return m ? m[1].toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+  }
+
+  const api = { kies, schoon, uitnodiging };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.Regels = api;
+})(typeof window !== 'undefined' ? window : this);

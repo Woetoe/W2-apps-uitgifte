@@ -530,7 +530,7 @@
       return (groep ? 'Doe mee met de groep "' + groep + '" in W2 Apps: lijstjes en kosten delen.\n' : 'Doe mee met onze gedeelde lijstjes in W2 Apps.\n') +
         'Code: ' + prettyCode(cfg.code) + '\n' +
         (cfg.url !== DEFAULT_URL ? 'Server: ' + cfg.url + '\n' : '') +
-        'Android: W2 Apps › Samen › Ik heb een code' + (groep ? ' (deel je Samen al met iemand anders? Tik dan in Samen op + Groep)' : '') + '. App nog niet? ' + APK_LINK + '\n' +
+        'Android: W2 Apps › Samen › 🔑 Code invoeren, of deel dit bericht naar W2 Apps. App nog niet? ' + APK_LINK + '\n' +
         'iPhone of laptop: open ' + WEB_LINK + ' in Safari of Chrome › Samen › Koppelen.';
     }
 
@@ -577,6 +577,16 @@
       const slot = Array.from(a, b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
       D.set(REG, lijst().concat([{ slot, naam: String(naam || '').trim() || 'Groep', emoji: emoji || '🍻', sinds: Date.now() }]));
       return slot;
+    },
+    /** Doe je al mee met deze code? Geeft de groep ('' = je eerste Samen) of null. */
+    bijCode(code) {
+      const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!c) return null;
+      for (const slot of [''].concat(lijst().map(r => r.slot))) {
+        const cfg = D.get(slot ? 'samen-cfg@' + slot : 'samen-cfg', null);
+        if (cfg && cfg.code === c) return slot;
+      }
+      return null;
     },
     hernoemGroep(slot, naam, emoji) {
       D.set(REG, lijst().map(r => (r.slot === slot ? Object.assign({}, r, { naam: String(naam || '').trim() || r.naam, emoji: emoji || r.emoji }) : r)));

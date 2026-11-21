@@ -71,7 +71,26 @@
     return (neg ? '−' : '') + (sym.length > 1 && sym !== 'kr' ? s + ' ' + sym : sym === 'kr' ? s + ' kr' : sym + ' ' + s);
   }
 
-  const api = { inHoofd, verdeel, saldi, verrekenen, leesBedrag, geld, SYMBOOL };
+  /** Ruwe koers als begin: hoeveel euro voor 1 eenheid (aanpassen in de groep). */
+  const START_KOERS = { USD: 0.92, GBP: 1.17, NOK: 0.085, SEK: 0.087, DKK: 0.134, CHF: 1.05, ANG: 0.51, AWG: 0.51 };
+
+  /** Groep in een andere munt dan euro omzetten naar euro: elke uitgave houdt zijn eigen bedrag en munt,
+      de koersen worden euro per eenheid. Geeft true als er iets veranderde. */
+  function naarEuro(groep, uitgaven) {
+    const oud = groep.valuta || 'EUR';
+    if (oud === 'EUR') { if (!groep.valuta) { groep.valuta = 'EUR'; return true; } return false; }
+    const k = groep.koersen || {};
+    const r = k.EUR > 0 ? 1 / k.EUR : START_KOERS[oud] || 1;   // euro voor 1 oude eenheid
+    const nieuw = { [oud]: Math.round(r * 1e6) / 1e6 };
+    Object.entries(k).forEach(([v, x]) => { if (v !== 'EUR' && v !== oud && x > 0) nieuw[v] = Math.round(x * r * 1e6) / 1e6; });
+    uitgaven.forEach(u => { if (!u.valuta) u.valuta = oud; });
+    groep.valuta = 'EUR';
+    groep.koersen = nieuw;
+    delete groep.lastValuta;
+    return true;
+  }
+
+  const api = { inHoofd, verdeel, saldi, verrekenen, leesBedrag, geld, naarEuro, SYMBOOL, START_KOERS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Kosten = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -168,7 +168,7 @@ function groepChips(force) {
   const gs = S.groepen();
   if (!force && gs.length < 2) return '';
   return `<div class="chips groepen">${gs.map(g => `<a class="chip ${g.slot === GROEP ? 'on' : ''}" href="${groepHref(g.slot)}">${esc(groepLabel(g))}</a>`).join('')}
-    <button type="button" class="chip nw" data-act="nieuwegroep">+ Groep</button></div>`;
+    <button type="button" class="chip nw" data-act="nieuwegroep">+ Groep</button><button type="button" class="chip nw" data-act="code">🔑 Code invoeren</button></div>`;
 }
 function nieuweGroep() {
   const EMO = ['🍻', '⚽', '🥋', '🏖️', '🏔️', '🎮', '🏠', '🎉', '🚗', '🧳', '👪', '💼'];
@@ -185,7 +185,46 @@ function nieuweGroep() {
     location.href = groepHref(slot);
   });
 }
-document.addEventListener('click', e => { if (e.target.closest('[data-act="nieuwegroep"]')) nieuweGroep(); });
+document.addEventListener('click', e => { if (e.target.closest('[data-act="nieuwegroep"]')) nieuweGroep(); if (e.target.closest('[data-act="code"]')) codeSheet(); });
+
+// Meedoen met een code van iemand anders, ook als je Samen al met iemand deelt: dan wordt het vanzelf een eigen groep.
+function codeSheet(pre) {
+  const sh = sheet('Code invoeren', `
+    <div class="muted">Kreeg je een uitnodiging voor W2 Apps (bv. via WhatsApp)? Plak de code of het hele bericht. Deel je Samen al met iemand, dan komt dit als eigen groep ernaast; daar zie je niets van elkaars andere lijsten.</div>
+    <textarea class="in" name="code" rows="3" placeholder="ABCD-EFGH-JKLM-NPQR">${esc(pre || '')}</textarea>
+    <button class="btn q wide" type="button" id="c-plak">${icon('copy')}Plakken uit klembord</button>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Meedoen', value: 'ok', check: f => S.parseInvite(f.code).code ? '' : 'Geen geldige code gevonden. Een code heeft 16 tekens, zoals ABCD-EFGH-JKLM-NPQR.' }], { focus: !pre });
+  const pl = sh.el.querySelector('#c-plak');
+  pl.onclick = async () => {
+    try { const t = await navigator.clipboard.readText(); if (t) { sh.el.querySelector('[name=code]').value = t; return; } } catch (e) {}
+    toast('Plakken lukte niet. Houd het vakje ingedrukt en kies Plakken.');
+    sh.el.querySelector('[name=code]').focus();
+  };
+  sh.done.then(r => { if (r.value === 'ok') meedoen(r.form.code); });
+}
+
+async function meedoen(text) {
+  const p = S.parseInvite(text);
+  if (!p.code) { toast('Geen geldige code gevonden.'); return; }
+  const al = S.bijCode(p.code);
+  const extra = '#code=' + p.code + (p.url ? '&url=' + encodeURIComponent(p.url) : '');
+  if (al != null) { toast('Daar doe je al aan mee.'); if (al !== GROEP) location.href = groepHref(al); return; }
+  // Nog helemaal geen Samen? Dan wordt dit je eerste Samen.
+  if (!S.ruimte('').cfg) {
+    if (GROEP) { location.href = groepHref('') + extra; return; }
+    history.replaceState(null, '', location.pathname + location.search + extra); route(); return;
+  }
+  let naam = 'Groep';
+  toast('Even kijken bij deze code…');
+  try {
+    const pv = await S.preview(p.url || S.DEFAULT_URL, p.code);
+    const mij = (me() && me().naam || D.get('samen-naam', '') || '').toLowerCase();
+    const n = pv.leden.map(m => m.naam).filter(x => x && x.toLowerCase() !== mij);
+    if (n.length) naam = n.slice(0, 3).join(' & ');
+  } catch (e) { toast(e.message, 5000); return; }
+  const slot = S.nieuweGroep(naam, '🍻');
+  location.href = groepHref(slot) + extra;
+}
 
 // ---------------------------------------------------------------- status
 function renderStatus() {
@@ -214,6 +253,8 @@ $('#st').onclick = () => {
 let view = null;          // {kind:'home'} | {kind:'lijst', id}
 function route() {
   if (location.hash === '#groep') { history.replaceState(null, '', location.pathname + location.search); setTimeout(nieuweGroep, 50); }
+  const md = /^#meedoen=(.+)$/.exec(location.hash);
+  if (md) { history.replaceState(null, '', location.pathname + location.search); if (S.cfg || S.ruimte('').cfg) { setTimeout(() => codeSheet(decodeURIComponent(md[1])), 50); } else { const pi = S.parseInvite(decodeURIComponent(md[1])); if (pi.code) history.replaceState(null, '', location.pathname + location.search + '#code=' + pi.code + (pi.url ? '&url=' + encodeURIComponent(pi.url) : '')); } }
   const m = /^#l=(.+)$/.exec(location.hash);
   const next = !S.cfg ? { kind: 'setup' } : m && S.data.lijsten[m[1]] ? { kind: 'lijst', id: m[1] } : { kind: 'home' };
   if (view && view.kind === 'lijst' && (next.kind !== 'lijst' || next.id !== view.id)) markSeen(view.id);
@@ -277,6 +318,16 @@ function renderSetup() {
     if (p.url) { $('#url').value = p.url; $('#m-url').hidden = true; }
   });
   const fail = msg => { const e = $('#err'); e.textContent = msg; e.hidden = !msg; };
+  // Komt van "Code invoeren": code staat al klaar; weten we je naam, dan meteen koppelen.
+  const pre = /^#code=([^&]+)(?:&url=(.+))?$/.exec(location.hash);
+  if (pre) {
+    history.replaceState(null, '', location.pathname + location.search);
+    $('#mode [data-v="code"]').click();
+    $('#code').value = decodeURIComponent(pre[1]);
+    if (pre[2]) { $('#url').value = decodeURIComponent(pre[2]); }
+    if ($('#naam').value.trim()) setTimeout(() => $('#go').click(), 60);
+    else setTimeout(() => $('#naam').focus(), 60);
+  }
   const chooseWho = (leden, naam) => sheet('Wie ben jij?', `<div class="muted">Ben je al lid (bijvoorbeeld op je telefoon) en koppel je nu een tweede apparaat? Kies dan je naam, dan tel je als één persoon.</div>
     <div class="list">${leden.map((m, i) => `<button class="row" type="button" data-m="${i}">${av0(m)}<div class="grow"><b>Ik ben ${esc(m.naam)}</b><div class="sub">Zelfde persoon, ander apparaat</div></div></button>`).join('')}
     <button class="row" type="button" data-m="new"><span class="av" style="--c:#ff7eb6">+</span><div class="grow"><b>${naam ? 'Ik ben ' + esc(naam) + ' (nieuw)' : 'Iemand nieuw'}</b><div class="sub">Nog niet eerder gekoppeld</div></div></button></div>`, []);
@@ -685,7 +736,7 @@ $('#menu').onclick = () => {
 
 function inviteSheet() {
   const sh = sheet('Uitnodigen', `
-    <div class="muted">Stuur dit naar ${GROEP ? 'de ander' : 'je vriendin'} (bv. via WhatsApp). Op Android: W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">Ik heb een code</b> en het bericht plakken. Op een iPhone: de link voor de webversie staat in het bericht.</div>
+    <div class="muted">Stuur dit naar ${GROEP ? 'de ander' : 'je vriendin'} (bv. via WhatsApp). Op Android: W2 Apps › <b style="color:var(--text)">Samen</b> › <b style="color:var(--text)">🔑 Code invoeren</b> en het bericht plakken (of het bericht vanuit WhatsApp delen naar W2 Apps). Op een iPhone: de link voor de webversie staat in het bericht.</div>
     <div class="code">${esc(S.prettyCode(S.cfg.code))}</div>
     <div class="muted small">Iedereen met deze code kan ${GROEP ? 'de lijsten en kosten van deze groep' : 'jullie lijsten'} zien en aanpassen. Deel hem dus alleen met wie mee mag doen.</div>`,
   [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Bericht kopiëren', value: 'copy' }]);
@@ -707,6 +758,7 @@ function settingsSheet() {
   const gr = GROEP ? S.groepen().find(g => g.slot === GROEP) || {} : null;
   const sh = sheet(GROEP ? S.naam : 'Samen', `
     <button class="btn wide" type="button" id="s-inv">Iemand uitnodigen</button>
+    <button class="btn q wide" type="button" id="s-code">🔑 Code invoeren (meedoen bij iemand anders)</button>
     ${gr ? `<div class="grid2" style="grid-template-columns:72px 1fr"><label class="f">Icoon<input class="in" name="gemoji" value="${esc(gr.emoji || '🍻')}" maxlength="4" style="text-align:center;font-size:22px"></label><label class="f">Naam van de groep<input class="in" name="gnaam" value="${esc(gr.naam || '')}" maxlength="30"></label></div>` : ''}
     <div class="card" style="padding:4px 14px">${m.map(x => `<div class="mrow">${av(x.id)}<b>${esc(x.naam)}${x.id === me().id ? ' <span class="muted small">(jij)</span>' : ''}</b></div>`).join('')}</div>
     <label class="f">Jouw naam<input class="in" name="naam" value="${esc(me().naam)}" maxlength="24"></label>
@@ -738,6 +790,7 @@ function settingsSheet() {
     const c = e.target.closest('#mycol [data-c]');
     if (c) { kleur = c.dataset.c; $$('#mycol button', sh.el).forEach(b => b.classList.toggle('on', b === c)); }
     if (e.target.closest('#s-inv')) { sh.close(null); setTimeout(inviteSheet, 250); }
+    if (e.target.closest('#s-code')) { sh.close(null); setTimeout(() => codeSheet(), 250); }
     if (e.target.closest('#s-leave')) {
       sh.close(null);
       if (GROEP) {

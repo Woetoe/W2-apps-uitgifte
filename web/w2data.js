@@ -446,8 +446,8 @@
       });
       // Vanavond op het menu
       const wmd = ((D.get('weekmenu', null) || {}).dagen || {})[t];
-      const wm = wmd ? { titel: wmd.recept ? wmd.titel : String(wmd.tekst || '').replace(/^\S{1,2}\s/, ''), id: wmd.recept } : null;
-      if (wm && wm.titel) items.push({ days: 0.5, href: wm.id ? 'recepten/index.html#' + wm.id : 'weekmenu/index.html', c: '#ffb347', ci: '#2b1500', big: '<b>🍲</b><small>vanavond</small>', title: wm.titel, sub: 'Op het weekmenu', chips: [] });
+      const wm = wmd ? { titel: wmd.recept || wmd.opt ? wmd.titel : String(wmd.tekst || '').replace(/^\S{1,2}\s/, ''), id: wmd.recept } : null;
+      if (wm && wm.titel) items.push({ days: 0.5, href: wm.id ? 'recepten/index.html#' + wm.id : 'weekmenu/index.html#dag=' + t, c: '#ffb347', ci: '#2b1500', big: '<b>🍲</b><small>vanavond</small>', title: wm.titel, sub: 'Op het weekmenu', chips: [] });
       items.sort((a, b) => a.days - b.days);
       return items;
     },

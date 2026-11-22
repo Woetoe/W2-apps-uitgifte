@@ -155,11 +155,47 @@
    * HTML van een receptpagina → { titel, personen, tijd, ingr, stappen, tips, intro, bron, fotoUrl }.
    * Gooit een fout met een begrijpelijke tekst als er geen recept in staat.
    */
+  /**
+   * Laatste poging voor sites zonder schema.org (zoals de receptkaartjes van de Vomar): een kop "Ingrediënten"
+   * met een lijst eronder, en een kop "Bereiding" (of "Werkwijze", "Aan de slag") met de stappen.
+   */
+  function koppen(html) {
+    const body = html.replace(/<(script|style|noscript|svg)\b[\s\S]*?<\/\1\s*>/gi, ' ');
+    const kopRe = /<(h[1-6]|strong|b|dt|p)\b[^>]*>([\s\S]{1,120}?)<\/\1\s*>/gi;
+    const ks = [];
+    let m;
+    while ((m = kopRe.exec(body))) ks.push({ at: m.index, end: kopRe.lastIndex, tag: m[1].toLowerCase(), t: clean(m[2]).toLowerCase() });
+    const ingr = ks.find(k => /^ingredi[eë]nten\b/.test(k.t));
+    if (!ingr) return null;
+    const bereid = ks.find(k => k.at > ingr.at && /^(bereiding|bereidingswijze|werkwijze|aan de slag|zo maak je het|instructies)\b/.test(k.t));
+    const blok = (van, tot) => body.slice(van, tot == null ? Math.min(body.length, van + 20000) : tot);
+    const items = s => {
+      const li = [];
+      const rx = /<li\b[^>]*>([\s\S]*?)<\/li\s*>/gi;
+      let x;
+      while ((x = rx.exec(s))) { const t = clean(x[1]); if (t) li.push(t); }
+      if (li.length) return li;
+      return text(s).split(/\n+/).map(t => t.trim()).filter(t => t && t.length < 300);
+    };
+    const naIngr = ks.find(k => k.at > ingr.end && /^h[1-4]$/.test(k.tag));
+    const ingrBlok = blok(ingr.end, bereid ? bereid.at : naIngr ? naIngr.at : null);
+    const lijst = items(ingrBlok).filter(t => !/^(personen|aantal personen|\d+ personen)$/i.test(t));
+    if (lijst.length < 2) return null;
+    let stappen = [];
+    if (bereid) {
+      const volgende = ks.find(k => k.at > bereid.end && /^h[1-4]$/.test(k.tag));
+      stappen = items(blok(bereid.end, volgende ? volgende.at : null)).slice(0, 40);
+    }
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1\s*>/i.exec(body);
+    return { '@type': 'Recipe', name: h1 ? clean(h1[1]) : '', recipeIngredient: lijst.slice(0, 60), recipeInstructions: stappen };
+  }
+
   function parse(html, url) {
     html = String(html || '');
     let r = null;
     for (const j of jsonLd(html)) { r = findRecipe(j, 0); if (r) break; }
     if (!r) r = microdata(html);
+    if (!r) r = koppen(html);
     if (!r) {
       const err = new Error('Op deze pagina staat geen recept dat de app kan lezen. Je kunt het recept zelf typen of de tekst plakken.');
       err.code = 'geen-recept';

@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Weekmenu</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#ffb347;--acc-ink:#2b1500}
+.top .ib.r{margin-left:auto}
+.wknav{display:flex;align-items:center;gap:8px}
+.wknav b{flex:1;text-align:center;font:800 18px var(--f-display)}
+.wknav b small{display:block;font:600 13px var(--f-body);color:var(--muted)}
+.wat{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:18px;padding:14px 16px;background:var(--acc);color:var(--acc-ink);cursor:pointer;text-align:left}
+.wat .e{font-size:30px;line-height:1}
+.wat b{display:block;font:800 18px var(--f-display)}
+.wat span{display:block;font-size:14px;opacity:.85}
+.day{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 8px 10px 12px;min-height:68px;width:100%;color:inherit}
+.day.today{border-color:var(--acc)}
+.day .hit{display:flex;gap:10px;align-items:center;flex:1;min-width:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;padding:0}
+.day .dt{width:42px;text-align:center;flex:none}
+.day .dt b{display:block;font:800 20px/1 var(--f-display)}
+.day .dt span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.day.today .dt b{color:var(--acc)}
+.day .ph{width:44px;height:44px;border-radius:12px;background:var(--panel2);flex:none;display:grid;place-items:center;font-size:22px;overflow:hidden}
+.day .ph img{width:100%;height:100%;object-fit:cover}
+.day .grow{flex:1;min-width:0}
+.day .grow b{display:block;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day .grow span{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day.empty0 .grow b{color:var(--muted);font-weight:600}
+.day .swap{flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.day .swap svg{width:18px;height:18px}
+.tag{color:var(--acc);font-weight:700;font-style:normal}
+.kok{width:10px;height:10px;border-radius:5px;display:inline-block;margin-right:5px;vertical-align:0}
+.s5{display:flex;flex-wrap:wrap;gap:6px}
+.s5 .pill{cursor:pointer}
+.pill.ok{background:#173a2a;color:#7fe0a8}
+.rlist{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
+.opt{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer;color:inherit;width:100%}
+.rlist .opt{background:var(--bg)}
+.opt .e{font-size:22px;flex:none;width:28px;text-align:center}
+.opt .grow{flex:1;min-width:0}
+.opt b{display:block;font-weight:700}
+.opt span.sub{display:block;font-size:13px;color:var(--muted)}
+.opt.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--bg))}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 12px;font-size:14px;cursor:pointer;white-space:nowrap;color:inherit}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.zoekbalk{position:sticky;top:0;z-index:2;background:var(--bg);padding:4px 0 8px;display:flex;flex-direction:column;gap:8px}
+.ing{max-height:46vh;overflow:auto}
+.voorstel{display:flex;flex-direction:column;gap:8px}
+.voorstel .opt{flex-wrap:wrap}
+.why{display:flex;flex-wrap:wrap;gap:4px;width:100%;padding-left:38px}
+.why .pill{font-size:12px;padding:2px 8px}
+.aitem{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:10px 2px;cursor:pointer}
+.aitem .grow{flex:1;min-width:0}
+.aitem .p{font-weight:800;color:var(--acc)}
+.aitem.niet{opacity:.55}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Weekmenu</h1><button class="ib r" id="inst" type="button" aria-label="Instellingen"></button></div>
+<main class="page">
+  <div class="seg" id="tabs"><button type="button" data-tab="week" class="on">Week</button><button type="button" data-tab="ideeen">Ideeën</button><button type="button" data-tab="aanb">Aanbiedingen</button></div>
+
+  <section id="t-week" class="list">
+    <button class="wat" id="wat" type="button"><span class="e">🍽️</span><span><b>Wat eten we?</b><span id="wat-sub">Drie voorstellen voor vanavond</span></span></button>
+    <div class="wknav"><button class="ib" id="prev" type="button" aria-label="Vorige week"></button><b id="wk"></b><button class="ib" id="next" type="button" aria-label="Volgende week"></button></div>
+    <div class="list" id="days"></div>
+    <button class="btn wide q" id="maak" type="button"></button>
+    <div class="card" id="s5"></div>
+    <button class="btn wide" id="shop" type="button"></button>
+    <p class="muted small" id="hint"></p>
+  </section>
+
+  <section id="t-ideeen" hidden>
+    <div class="zoekbalk">
+      <input class="in" id="q" type="search" placeholder="Zoek op gerecht of ingrediënt" autocomplete="off">
+      <div class="chips scroll" id="filters"></div>
+    </div>
+    <div class="muted small" id="q-n"></div>
+    <div class="list" id="opties" style="gap:6px"></div>
+    <button class="btn wide q" id="meer" type="button" hidden>Meer laten zien</button>
+  </section>
+
+  <section id="t-aanb" class="list" hidden>
+    <div class="card" id="a-kop"></div>
+    <div class="btns" style="margin:0"><button class="btn q" id="a-ververs" type="button"></button><button class="btn q" id="a-zelf" type="button">Zelf invullen</button></div>
+    <div id="a-lijst"></div>
+    <p class="muted small">De aanbiedingen komen uit de Vomar-folder van deze week (via folderz.nl, de grote producten per pagina). Staat iets er niet bij? Met Zelf invullen zet je het erbij, bv. vanuit de Vomar-app.</p>
+  </section>
+</main>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="../samen/boodschappen.js"></script>
+<script src="../recepten/web.js"></script>
+<script src="catalogus.js"></script>
+<script src="plan.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, B = Boodschappen, P = WMPlan;
+const recepten = D.idb('w2-recepten'), fotos = D.idb('w2-recepten-foto');
+$('#back').innerHTML = icon('back');
+$('#prev').innerHTML = icon('back');
+$('#inst').innerHTML = icon('gear');
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+$('#next').innerHTML = CHEV;
+D.recent('weekmenu');
+
+const DAG = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+const VRIJ = ['🍕 Pizza', '🍽️ Uit eten', '🥡 Afhalen', '♻️ Restjes', '🥪 Brood', '🍳 Iets snels', '🎉 Bij vrienden'];
+const FOLDERZ = 'https://www.folderz.nl/winkels/vomar/folders-aanbiedingen';
+let data = Object.assign({ dagen: {}, porties: 2, aanb: null, smaak: {}, inst: {} }, D.get('weekmenu', null) || {});
+data.smaak = data.smaak || {}; data.inst = Object.assign({ snel: 45 }, data.inst || {});
+let rec = [], offset = 0, pool = [], byId = {}, aanb = [], tab = 'week';
+const save = () => { D.set('weekmenu', data); if (deel) deel.push(); publish(); };
+
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => D.date.today();
+function weekDays(off) {
+  const t = D.date.parse(today()), dow = (t.getDay() + 6) % 7;
+  return [...Array(7)].map((_, i) => iso(new Date(t.getFullYear(), t.getMonth(), t.getDate() - dow + i + off * 7)));
+}
+function weekNr(s) {
+  const d = D.date.parse(s), t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y) / 864e5 + 1) / 7);
+}
+const leden = () => window.Samen && Samen.cfg ? Object.entries(Samen.data.leden || {}).map(([id, m]) => ({ id, ...m })) : [];
+const recOf = id => rec.find(r => r.id === id);
+const soortEmoji = o => o && o.soort ? (P.SOORT[o.soort[0]] || {}).emoji || '🍽️' : '🍽️';
+const soortNaam = o => o && o.soort ? o.soort.map(s => (P.SOORT[s] || {}).naam).filter(Boolean).join(' + ') : '';
+
+// ---------------------------------------------------------------- opties: receptenlijst + eigen recepten
+function bouwPool() {
+  const perBron = {};
+  rec.forEach(r => { if (r.bron) perBron[r.bron.replace(/[?#].*$/, '').replace(/\/$/, '')] = r; });
+  const cat = WMCatalogus.lijst.map(c => {
+    const r = perBron[c.url.replace(/\/$/, '')];
+    return P.optie(Object.assign({}, c, r ? { rid: r.id, fav: !!r.fav, heeftFoto: !!r.heeftFoto } : {}));
+  });
+  const gekoppeld = new Set(cat.filter(c => c.rid).map(c => c.rid));
+  const eigen = rec.filter(r => !gekoppeld.has(r.id)).map(r => P.optie({
+    id: 'r-' + r.id, rid: r.id, titel: r.titel, ingr: r.ingr || [], tijd: r.tijd || null, bron: 'eigen', bronNaam: r.boek || 'Eigen recepten',
+    url: r.bron || '', eigen: true, fav: !!r.fav, heeftFoto: !!r.heeftFoto, sv5: false
+  }));
+  pool = eigen.concat(cat);
+  byId = Object.fromEntries(pool.map(o => [o.id, o]));
+  aanb = P.aanbiedingen(data.aanb && aanbGeldig() ? data.aanb.items : []);
+}
+function aanbGeldig() { const a = data.aanb; return !!(a && a.items && a.items.length && (!a.tot || D.date.days(a.tot) >= 0)); }
+
+/** De optie bij een dag uit het menu (of een losse optie voor vrije tekst). */
+function optVan(m) {
+  if (!m) return null;
+  if (m.opt && byId[m.opt]) return byId[m.opt];
+  if (m.recept) { const o = pool.find(x => x.rid === m.recept); if (o) return o; }
+  const t = String(m.tekst || m.titel || '');
+  if (!t) return null;
+  if (VRIJ.includes(t)) return { id: null, titel: t.replace(/^\S{1,2}\s/, ''), vrij: true, emoji: t.split(' ')[0] };
+  const ts = P.termen(t);
+  return { id: null, titel: t, vrij: true, termen: ts, soort: ts.length ? P.soortVan(ts) : null, basis: '' };
+}
+const weekOpts = days => days.map(d => { const o = optVan(data.dagen[d]); return o && o.soort ? o : null; });
+const gebruikt = () => new Set(Object.entries(data.dagen).filter(([d]) => Math.abs(D.date.days(d)) <= 21).map(([, m]) => { const o = optVan(m); return o && o.id; }).filter(Boolean));
+
+function zet(d, o, extra) {
+  const oud = data.dagen[d];
+  data.dagen[d] = Object.assign({ datum: d, opt: o.id, recept: o.rid || '', titel: o.titel, tekst: '', porties: (oud && oud.porties) || data.porties, kok: (oud && oud.kok) || '' }, extra || {});
+}
+
+// ---------------------------------------------------------------- delen via Samen
+let deel = null;
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'weekmenu',
+    lees: async () => {
+      const out = Object.fromEntries(Object.entries(data.dagen).filter(([d]) => D.date.days(d) >= -21));
+      if (data.aanb) out.aanbiedingen = data.aanb;
+      if (Object.keys(data.smaak).length) out.smaak = data.smaak;
+      out.instellingen = data.inst;
+      return out;
+    },
+    schrijf: async map => {
+      const m = JSON.parse(JSON.stringify(map));
+      data.aanb = m.aanbiedingen || data.aanb; delete m.aanbiedingen;
+      data.smaak = m.smaak || {}; delete m.smaak;
+      if (m.instellingen) data.inst = Object.assign({ snel: 45 }, m.instellingen); delete m.instellingen;
+      data.dagen = m;
+      D.set('weekmenu', data); bouwPool(); render();
+    }
+  });
+  W2Deel.badge();
+}
+
+// ---------------------------------------------------------------- tekenen: week
+function sub(m, o) {
+  const ls = leden(), kok = m && m.kok ? ls.find(l => l.id === m.kok) : null;
+  const hits = o && o.termen ? P.inAanbieding(o, aanb).hits : [];
+  const delen = [o && o.soort && !o.vrij ? soortNaam(o) : '', o && o.tijd ? o.tijd + ' min' : '', o && o.bronNaam ? o.bronNaam : '', kok ? kok.naam + ' kookt' : '', m && m.porties && m.porties !== data.porties ? m.porties + ' pers.' : ''].filter(Boolean);
+  return `${kok ? `<i class="kok" style="background:${esc(kok.kleur || 'var(--acc)')}"></i>` : ''}${hits.length ? '<em class="tag">🏷️ </em>' : ''}${esc(delen.join(' · '))}`;
+}
+async function render() {
+  const days = weekDays(offset), t = today();
+  $('#wk').innerHTML = `Week ${weekNr(days[0])}<small>${esc(D.date.nice(days[0], { day: 'numeric', month: 'short' }))} – ${esc(D.date.nice(days[6], { day: 'numeric', month: 'short' }))}${offset === 0 ? ' · deze week' : offset === 1 ? ' · volgende week' : ''}</small>`;
+  $('#days').innerHTML = days.map((d, i) => {
+    const m = data.dagen[d], o = optVan(m);
+    const foto = o && o.rid && o.heeftFoto;
+    return `<div class="day${d === t ? ' today' : ''}${m ? '' : ' empty0'}"><button class="hit" data-d="${d}" type="button"><div class="dt"><span>${DAG[i]}</span><b>${D.date.parse(d).getDate()}</b></div>
+      <div class="ph">${foto ? `<img data-foto="${esc(o.rid)}" alt="">` : m ? esc(o && o.vrij && o.emoji ? o.emoji : soortEmoji(o)) : '+'}</div>
+      <div class="grow"><b>${m && o ? esc(o.titel) : 'Nog niets gepland'}</b>${m ? `<span>${sub(m, o)}</span>` : ''}</div></button>
+      ${D.date.days(d) >= 0 ? `<button class="swap" data-swap="${d}" type="button" aria-label="Ander voorstel">${icon('refresh')}</button>` : ''}</div>`;
+  }).join('');
+  const leeg = days.filter(d => !data.dagen[d] && D.date.days(d) >= 0).length;
+  const bijnaOm = days.filter(d => D.date.days(d) >= 0).length <= 2;   // za/zo: dan de volgende week plannen
+  $('#maak').innerHTML = `✨ ${bijnaOm ? 'Weekplan voor volgende week maken' : leeg ? `Weekplan maken (${leeg} ${leeg === 1 ? 'dag' : 'dagen'} leeg)` : 'Weekplan opnieuw maken'}`;
+  $('#maak').dataset.volgende = bijnaOm ? '1' : '';
+  $('#maak').hidden = days.every(d => D.date.days(d) < 0);
+  // Schijf van Vijf
+  const b = P.balans(weekOpts(days));
+  $('#s5').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Schijf van Vijf · week ${weekNr(days[0])}</b><span class="muted small">${b.aantal} van 7 gepland</span></div>
+    <div class="s5">${b.regels.map(r => `<span class="pill ${r.ok ? 'ok' : 'warn'}" data-regel="${r.k}">${r.emoji} ${esc(r.tekst)} ${r.ok ? '✓' : '!'}</span>`).join('')}</div>
+    ${b.aantal ? `<div class="muted small" style="margin-top:8px">${b.sv5} van ${b.aantal} recepten passen volgens de bron in de Schijf van Vijf. Tik op een vakje voor uitleg.</div>` : ''}`;
+  const n = days.filter(d => { const o = optVan(data.dagen[d]); return o && (o.rid || o.url); }).length;
+  $('#shop').innerHTML = `${icon('plus')}Boodschappen voor ${n ? n + ' recept' + (n === 1 ? '' : 'en') : 'deze week'}`;
+  $('#shop').disabled = !n;
+  $('#hint').textContent = !(window.Samen && Samen.cfg) ? 'Koppel Samen om het weekmenu met je partner te delen en de boodschappen op jullie gedeelde lijst te zetten.' : '';
+  const vm = optVan(data.dagen[t]);
+  $('#wat-sub').textContent = vm ? 'Vanavond: ' + vm.titel : 'Drie voorstellen voor vanavond';
+  for (const img of $$('img[data-foto]')) { const v = await fotos.get(img.dataset.foto); if (v) img.src = v; }
+}
+
+// ---------------------------------------------------------------- context voor voorstellen
+function ctxVoor(d) {
+  const days = weekDays(Math.floor(Math.round((D.date.parse(d) - D.date.parse(weekDays(0)[0])) / 864e5) / 7));
+  const i = days.indexOf(d);
+  const week = weekOpts(days); week[i] = null;
+  return { week, i, gebruikt: gebruikt(), aanb, smaak: data.smaak, doordeweeks: i < 5, snel: data.inst.snel || 0, rng: null };
+}
+const kiesbaar = () => pool.filter(o => data.smaak[o.id] !== -1);
+
+// ---------------------------------------------------------------- Wat eten we?
+async function watEtenWe(d) {
+  d = d || today();
+  const m = data.dagen[d], huidig = optVan(m);
+  let n = 0;
+  const lijst = () => P.voorstellen(kiesbaar().filter(o => !huidig || o.id !== huidig.id), Object.assign(ctxVoor(d), { rng: P.rngVan(Date.now() + n * 7919) }), 3);
+  let vs = lijst();
+  const kaart = x => `<button class="opt" type="button" data-kies="${esc(x.o.id)}"><span class="e">${soortEmoji(x.o)}</span><span class="grow"><b>${esc(x.o.titel)}</b><span class="sub">${esc([soortNaam(x.o), x.o.tijd ? x.o.tijd + ' min' : '', x.o.bronNaam].filter(Boolean).join(' · '))}</span></span>
+      <span class="why">${x.waarom.slice(0, 3).map(w => `<span class="pill acc">${esc(w)}</span>`).join('')}</span></button>`;
+  const titel = d === today() ? 'Wat eten we vanavond?' : 'Wat eten we op ' + D.date.nice(d, { weekday: 'long' }) + '?';
+  const s = sheet(titel, `
+    ${huidig ? `<div class="card acc"><div class="muted small">Op het menu</div><b style="font-size:17px">${esc(huidig.titel)}</b>
+      <div class="btns" style="margin-top:8px">${huidig.id ? `<button class="btn q" type="button" data-x="recept">${icon('open')}Recept</button>` : ''}</div></div>
+      <div class="muted small">Of liever iets anders:</div>` : '<div class="muted small">Gekozen op afwisseling, de Schijf van Vijf en wat er in de aanbieding is:</div>'}
+    <div class="voorstel" id="vs">${vs.map(kaart).join('')}</div>
+    <button class="btn wide q" type="button" data-x="ander">${icon('refresh')}Andere voorstellen</button>
+    <button class="btn wide q" type="button" data-x="zoek">${icon('search')}Zelf zoeken in alle recepten</button>`,
+  [{ label: 'Sluiten', value: null, kind: 'q' }]);
+  s.el.addEventListener('click', e => {
+    const k = e.target.closest('[data-kies]'), x = e.target.closest('[data-x]');
+    if (k) s.close('kies:' + k.dataset.kies);
+    if (x && x.dataset.x === 'ander') { n++; vs = lijst(); $('#vs', s.el).innerHTML = vs.map(kaart).join(''); }
+    if (x && x.dataset.x === 'zoek') s.close('zoek');
+    if (x && x.dataset.x === 'recept') s.close('recept');
+  });
+  const r = await s.done;
+  if (!r.value) return;
+  if (r.value === 'zoek') { naarTab('ideeen'); $('#q').focus(); return; }
+  if (r.value === 'recept') return openRecept(huidig);
+  const o = byId[r.value.slice(5)];
+  if (!o) return;
+  zet(d, o); save(); render();
+  toast(`${o.titel} staat op ${d === today() ? 'vanavond' : D.date.nice(d, { weekday: 'long' })}`, 3000);
+}
+
+// ---------------------------------------------------------------- ander voorstel (🔄)
+const wissels = {};
+function wissel(d) {
+  const m = data.dagen[d], huidig = optVan(m);
+  const ctx = Object.assign(ctxVoor(d), { rng: P.rngVan(1 + (wissels[d] || 0)) });
+  const vs = P.voorstellen(kiesbaar().filter(o => !huidig || o.id !== huidig.id), ctx, 6);
+  if (!vs.length) return toast('Geen ander voorstel gevonden');
+  const x = vs[(wissels[d] = (wissels[d] || 0) + 1) % vs.length];
+  zet(d, x.o, { auto: true }); save(); render();
+  toast(`${DAG[(D.date.parse(d).getDay() + 6) % 7]}: ${x.o.titel}`, 2500);
+}
+
+// ---------------------------------------------------------------- weekplan maken
+async function weekplan() {
+  const days = weekDays(offset);
+  const open = days.map((d, i) => ({ d, i })).filter(x => D.date.days(x.d) >= 0);
+  const autoN = open.filter(x => data.dagen[x.d] && data.dagen[x.d].auto).length;
+  const aan = new Set(open.filter(x => !data.dagen[x.d]).map(x => x.i));
+  const s = sheet('Weekplan maken', `
+    <div class="muted">De app kiest recepten van het Voedingscentrum, de Vomar, Allerhande en je eigen recepten. Met de Schijf van Vijf als leidraad (1× vis, 2× peulvruchten, hooguit 1× rood vlees), afwisselend, en waar het kan met de aanbiedingen${aanb.length ? ' van deze week' : ''}.</div>
+    <div class="muted small">Welke avonden?</div>
+    <div class="chips" id="pd">${open.map(x => `<button type="button" class="chip${aan.has(x.i) ? ' on' : ''}" data-i="${x.i}">${DAG[x.i]} ${D.date.parse(x.d).getDate()}${data.dagen[x.d] ? ' •' : ''}</button>`).join('')}</div>
+    <div class="muted small">• staat al iets. Dat vervangt de app alleen als je die dag aanzet.${autoN ? '' : ''}</div>
+    ${!aanb.length ? `<div class="notice">Nog geen aanbiedingen van deze week. Haal ze eerst op bij Aanbiedingen, dan kiest de app daar ook op.</div>` : ''}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: '✨ Maken', value: 'ok' }]);
+  s.el.addEventListener('click', e => { const c = e.target.closest('[data-i]'); if (!c) return; const i = +c.dataset.i; aan.has(i) ? aan.delete(i) : aan.add(i); c.classList.toggle('on', aan.has(i)); });
+  const r = await s.done;
+  if (r.value !== 'ok' || !aan.size) return;
+  const week = weekOpts(days);
+  aan.forEach(i => { week[i] = null; });
+  const vrij = [...Array(7).keys()].filter(i => !aan.has(i) && !week[i]);
+  const uit = P.plan(kiesbaar(), { week, vrij, gebruikt: gebruikt(), aanb, smaak: data.smaak, snel: data.inst.snel || 0, seed: Date.now() });
+  aan.forEach(i => { if (uit[i]) zet(days[i], uit[i], { auto: true }); });
+  save(); render();
+  const b = P.balans(weekOpts(days));
+  toast(b.ok ? 'Weekplan klaar ✓ Past in de Schijf van Vijf' : 'Weekplan klaar. Kijk even bij de Schijf van Vijf hieronder.', 3500);
+}
+
+// ---------------------------------------------------------------- dag kiezen
+async function dagSheet(d) {
+  const m = data.dagen[d], huidig = optVan(m);
+  const titel = D.date.nice(d, { weekday: 'long', day: 'numeric', month: 'long' });
+  const ls = leden();
+  const tips = D.date.days(d) >= 0 ? P.voorstellen(kiesbaar().filter(o => !huidig || o.id !== huidig.id), ctxVoor(d), 3) : [];
+  let gekozen = huidig && huidig.id ? huidig.id : null;
+  const andereDagen = [...weekDays(offset), ...weekDays(offset + 1)].filter(x => x !== d && D.date.days(x) >= -1);
+  const s = sheet(titel, `
+    <input class="in" id="zoek" placeholder="Zoek een recept of typ zelf iets" value="${esc(m && !gekozen ? m.tekst || '' : '')}" autocomplete="off">
+    <div class="chips">${VRIJ.map(v => `<button type="button" class="chip" data-vrij="${esc(v)}">${esc(v)}</button>`).join('')}</div>
+    ${tips.length ? `<div class="muted small">Voorstellen: ${tips.map(t => `<a href="#" data-rid="${esc(t.o.id)}">${esc(t.o.titel)}</a>`).join(' · ')}</div>` : ''}
+    <div class="rlist" id="rl"></div>
+    <div class="grid2"><label class="f">Personen<input class="in" name="porties" type="number" inputmode="numeric" min="1" value="${(m && m.porties) || data.porties}"></label>
+      ${ls.length ? `<label class="f">Wie kookt<select class="in" name="kok"><option value="">–</option>${ls.map(l => `<option value="${esc(l.id)}" ${m && l.id === m.kok ? 'selected' : ''}>${esc(l.naam)}</option>`).join('')}</select></label>` : '<span></span>'}</div>
+    ${m ? `<label class="f">Verplaatsen of ruilen met<select class="in" name="naar"><option value="">–</option>${andereDagen.map(x => `<option value="${x}">${esc(D.date.nice(x, { weekday: 'long', day: 'numeric', month: 'short' }))}${data.dagen[x] ? ' (ruilen)' : ''}</option>`).join('')}</select></label>
+      <div class="btns">${huidig && huidig.id ? `<button class="btn q" data-x="recept" type="button">${icon('open')}Recept</button>` : ''}<button class="btn danger" data-x="weg" type="button">${icon('trash')}Weghalen</button></div>` : ''}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }], { focus: !m });
+  const zoek = $('#zoek', s.el), rl = $('#rl', s.el);
+  const draw = () => {
+    const q = P.N(zoek.value.trim());
+    const list = (q ? pool.filter(x => P.N(x.titel + ' ' + (x.ingr || []).join(' ') + ' ' + (x.bronNaam || '')).includes(q)) : pool.filter(x => x.eigen || x.id === gekozen || data.smaak[x.id] === 1))
+      .sort((a, b) => (b.id === gekozen) - (a.id === gekozen) || (b.eigen ? 1 : 0) - (a.eigen ? 1 : 0) || a.titel.localeCompare(b.titel, 'nl')).slice(0, 40);
+    rl.innerHTML = list.map(x => `<button type="button" class="opt${x.id === gekozen ? ' on' : ''}" data-rid="${esc(x.id)}"><span class="e">${soortEmoji(x)}</span><span class="grow"><b>${esc(x.titel)}</b><span class="sub">${esc([x.bronNaam, x.tijd ? x.tijd + ' min' : ''].filter(Boolean).join(' · '))}</span></span></button>`).join('') ||
+      `<div class="muted small">${q ? 'Geen recept gevonden: wat je typt wordt het menu.' : 'Typ om te zoeken in alle recepten.'}</div>`;
+  };
+  draw();
+  zoek.addEventListener('input', () => { gekozen = null; draw(); });
+  s.el.addEventListener('click', e => {
+    const rb = e.target.closest('[data-rid]'), vb = e.target.closest('[data-vrij]'), x = e.target.closest('[data-x]');
+    if (rb) { e.preventDefault(); gekozen = rb.dataset.rid; zoek.value = byId[gekozen].titel; draw(); }
+    if (vb) { gekozen = null; zoek.value = vb.dataset.vrij; draw(); }
+    if (x) s.close(x.dataset.x);
+  });
+  const res = await s.done;
+  if (res.value === 'recept') return openRecept(huidig);
+  if (res.value === 'weg') { delete data.dagen[d]; save(); return render(); }
+  if (res.value !== 'ok') return;
+  const tekst = zoek.value.trim();
+  if (!gekozen && !tekst) { delete data.dagen[d]; save(); return render(); }
+  if (!gekozen) { const ex = pool.find(x => x.titel.toLowerCase() === tekst.toLowerCase()); if (ex) gekozen = ex.id; }
+  const porties = Math.max(1, +res.form.porties || data.porties), kok = res.form.kok || '';
+  if (gekozen) zet(d, byId[gekozen], { porties, kok });
+  else data.dagen[d] = { datum: d, opt: '', recept: '', titel: '', tekst, porties, kok };
+  data.porties = porties;
+  const naar = res.form.naar;
+  if (naar) { const a = data.dagen[d], b = data.dagen[naar]; data.dagen[naar] = Object.assign({}, a, { datum: naar }); if (b) data.dagen[d] = Object.assign({}, b, { datum: d }); else delete data.dagen[d]; }
+  save(); render();
+}
+
+// ---------------------------------------------------------------- recept openen of ophalen
+async function openRecept(o) {
+  if (!o) return;
+  if (o.rid && recOf(o.rid)) { location.href = '../recepten/index.html#' + o.rid; return; }
+  if (!o.url) return toast('Bij dit gerecht hoort geen recept');
+  const kan = W2.page.available();
+  const r = await sheet(o.titel, `<div class="muted">Recept van ${esc(o.bronNaam || WebRecept.host(o.url))}.${kan ? ' Ophalen zet het in Recepten (ook offline te lezen, met kookmodus), en dan kunnen de ingrediënten met hoeveelheden op de boodschappenlijst.' : ''}</div>`,
+    [{ label: 'Website', value: 'web', kind: 'q' }].concat(kan ? [{ label: 'Ophalen', value: 'get' }] : [])).done;
+  if (r.value === 'web') { if (!W2.openLink(o.url)) toast('Openen lukte niet'); return; }
+  if (r.value !== 'get') return;
+  toast('Recept ophalen…', 45000);
+  const rid = await ophalen(o);
+  toast('');
+  if (rid) location.href = '../recepten/index.html#' + rid;
+}
+
+/** Recept van de website halen en bewaren in Recepten. Geeft het id, of null (met melding als stil uit staat). */
+async function ophalen(o, stil) {
+  if (!W2.page.available()) { if (!stil) toast(W2.inApp ? 'Hiervoor is de nieuwe app-versie nodig: Instellingen › Updates.' : 'Recepten ophalen kan alleen in de app op je telefoon.', 5000); return null; }
+  const res = await W2.page.get(o.url);
+  if (!res.status || res.status >= 400 || res.body == null) { if (!stil) toast('Ophalen lukte niet: ' + (res.fout || 'fout ' + res.status), 4000); return null; }
+  let r;
+  try { r = WebRecept.parse(res.body, res.url || o.url); } catch (e) { if (!stil) toast(e.message, 5000); return null; }
+  delete r.fotoUrl;
+  const id = D.uid();
+  const out = Object.assign({}, r, { id, titel: r.titel && r.titel !== 'Recept' ? r.titel : o.titel, boek: o.bronNaam || 'Van internet', bron: o.url, fav: data.smaak[o.id] === 1, added: Date.now(), heeftFoto: false });
+  if (!out.personen && o.bron === 'vc') out.personen = 2;
+  await recepten.put(id, out);
+  rec = (await recepten.all()) || [];
+  Object.values(data.dagen).forEach(m => { if (m.opt === o.id) m.recept = id; });
+  bouwPool();
+  D.set('weekmenu', data); if (deel) deel.push();
+  return id;
+}
+
+// ---------------------------------------------------------------- een optie bekijken (Ideeën, widget)
+async function optieSheet(id) {
+  const o = byId[id];
+  if (!o) return;
+  const hits = P.inAanbieding(o, aanb).hits;
+  const dagen = [...weekDays(0), ...weekDays(1)].filter(x => D.date.days(x) >= 0);
+  const smaak = data.smaak[o.id] || 0;
+  const s = sheet(o.titel, `
+    <div class="chips"><span class="pill">${soortEmoji(o)} ${esc(soortNaam(o))}</span>${o.tijd ? `<span class="pill">⏱️ ${o.tijd} min</span>` : ''}${o.sv5 ? '<span class="pill ok">✓ Schijf van Vijf</span>' : ''}<span class="pill">${esc(o.bronNaam || '')}</span></div>
+    ${hits.length ? `<div class="card acc"><b>🏷️ In de aanbieding</b><div class="muted small">${hits.map(h => esc(h.n) + (h.p ? ' €' + h.p.toFixed(2).replace('.', ',') : '')).join(' · ')}</div></div>` : ''}
+    ${o.ingr && o.ingr.length ? `<div class="muted small">Met o.a. ${esc(o.ingr.slice(0, 8).join(', '))}</div>` : ''}
+    <label class="f">Op het menu zetten<select class="in" name="dag">${dagen.map(x => `<option value="${x}">${esc(D.date.nice(x, { weekday: 'long', day: 'numeric', month: 'short' }))}${x === today() ? ' (vanavond)' : ''}${data.dagen[x] ? ' · vervangt ' + esc(optVan(data.dagen[x]) ? optVan(data.dagen[x]).titel : '') : ''}</option>`).join('')}</select></label>
+    <div class="chips"><button class="chip${smaak === 1 ? ' on' : ''}" type="button" data-sm="1">👍 Lekker</button><button class="chip${smaak === -1 ? ' on' : ''}" type="button" data-sm="-1">👎 Liever niet</button>
+      <button class="chip" type="button" data-x="recept">${o.rid ? '📖 Recept' : '🌐 Recept bekijken'}</button></div>`,
+  [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Op het menu', value: 'zet' }]);
+  s.el.addEventListener('click', e => {
+    const sm = e.target.closest('[data-sm]'), x = e.target.closest('[data-x]');
+    if (sm) {
+      const v = +sm.dataset.sm;
+      if (data.smaak[o.id] === v) delete data.smaak[o.id]; else data.smaak[o.id] = v;
+      $$('[data-sm]', s.el).forEach(b => b.classList.toggle('on', data.smaak[o.id] === +b.dataset.sm));
+      save();
+      if (v === -1 && data.smaak[o.id] === -1) toast('Komt niet meer voor in de voorstellen');
+    }
+    if (x) s.close('recept');
+  });
+  const r = await s.done;
+  if (r.value === 'recept') return openRecept(o);
+  if (r.value !== 'zet' || !r.form.dag) return;
+  zet(r.form.dag, o); save();
+  const nu = weekDays(0).includes(r.form.dag) ? 0 : 1;
+  offset = nu; naarTab('week');
+  toast(`${o.titel} op ${r.form.dag === today() ? 'vanavond' : D.date.nice(r.form.dag, { weekday: 'long' })}`, 2500);
+}
+
+// ---------------------------------------------------------------- Ideeën
+const FILTERS = [
+  { k: 'aanb', l: '🏷️ Aanbieding', f: o => P.inAanbieding(o, aanb).score > 0 },
+  { k: 'vis', l: '🐟 Vis', f: o => o.soort.includes('vis') }, { k: 'kip', l: '🍗 Kip', f: o => o.soort.includes('kip') },
+  { k: 'rood', l: '🥩 Vlees', f: o => o.soort.includes('rood') }, { k: 'peul', l: '🫘 Peulvruchten', f: o => o.soort.includes('peul') },
+  { k: 'ei', l: '🥚 Ei', f: o => o.soort.includes('ei') }, { k: 'vega', l: '🌱 Vega', f: o => !o.soort.some(s => s === 'vis' || s === 'kip' || s === 'rood') },
+  { k: 'snel', l: '⏱️ ≤ 30 min', f: o => o.tijd && o.tijd <= 30 }, { k: 'fav', l: '👍 Lekker', f: o => data.smaak[o.id] === 1 || o.fav },
+  { k: 'sv5', l: '✓ Schijf van Vijf', f: o => o.sv5 },
+  { k: 'b-vc', l: 'Voedingscentrum', f: o => o.bron === 'vc' }, { k: 'b-vo', l: 'Vomar', f: o => o.bron === 'vo' },
+  { k: 'b-ah', l: 'Allerhande', f: o => o.bron === 'ah' }, { k: 'b-eigen', l: 'Eigen recepten', f: o => o.bron === 'eigen' }
+];
+const filt = new Set();
+let product = null, toon = 60;
+function drawFilters() {
+  $('#filters').innerHTML = (product ? `<button class="chip on" type="button" data-prod="x">🏷️ ${esc(product.n)} ✕</button>` : '') +
+    FILTERS.filter(f => f.k !== 'aanb' || aanb.length).map(f => `<button class="chip${filt.has(f.k) ? ' on' : ''}" type="button" data-f="${f.k}">${esc(f.l)}</button>`).join('');
+}
+function drawIdeeen() {
+  const q = P.N($('#q').value.trim());
+  const ctx = ctxVoor(today());
+  let list = pool.filter(o => data.smaak[o.id] !== -1 || filt.has('fav'));
+  if (q) list = list.filter(o => P.N(o.titel + ' ' + (o.ingr || []).join(' ') + ' ' + (o.bronNaam || '')).includes(q));
+  const bronF = FILTERS.filter(f => f.k.startsWith('b-') && filt.has(f.k));
+  const andereF = FILTERS.filter(f => !f.k.startsWith('b-') && filt.has(f.k));
+  if (bronF.length) list = list.filter(o => bronF.some(f => f.f(o)));
+  andereF.forEach(f => { list = list.filter(f.f); });
+  if (product) list = list.filter(o => product.termen.some(t => o.termen.includes(t)));
+  const sc = new Map(list.map(o => [o, P.inAanbieding(o, aanb)]));
+  list.sort((a, b) => (q ? 0 : sc.get(b).score - sc.get(a).score) || (data.smaak[b.id] === 1) - (data.smaak[a.id] === 1) || (b.sv5 - a.sv5) || a.titel.localeCompare(b.titel, 'nl'));
+  $('#q-n').textContent = `${list.length} ${list.length === 1 ? 'recept' : 'recepten'}${q || filt.size || product ? '' : ' om uit te kiezen'}`;
+  $('#opties').innerHTML = list.slice(0, toon).map(o => {
+    const h = sc.get(o).hits;
+    return `<button class="opt" type="button" data-o="${esc(o.id)}"><span class="e">${soortEmoji(o)}</span><span class="grow"><b>${data.smaak[o.id] === 1 ? '👍 ' : ''}${esc(o.titel)}</b><span class="sub">${h.length ? `<span class="tag">🏷️ ${esc(h.slice(0, 2).map(x => x.n).join(', '))}</span> · ` : ''}${esc([o.bronNaam, o.tijd ? o.tijd + ' min' : '', o.sv5 ? '✓ Schijf van Vijf' : ''].filter(Boolean).join(' · '))}</span></span></button>`;
+  }).join('') || '<div class="muted">Niets gevonden. Probeer een ander woord of zet een filter uit.</div>';
+  $('#meer').hidden = list.length <= toon;
+  void ctx;
+}
+
+// ---------------------------------------------------------------- Aanbiedingen
+function drawAanb() {
+  const a = data.aanb, geldig = aanbGeldig(), kan = W2.page.available();
+  $('#a-ververs').innerHTML = `${icon('refresh')}${kan ? 'Ophalen' : 'Folder openen'}`;
+  if (!a || !a.items || !a.items.length) {
+    $('#a-kop').innerHTML = `<b>Nog geen aanbiedingen</b><div class="muted small">${kan ? 'Tik op Ophalen voor de Vomar-folder van deze week.' : 'Ophalen kan in de app op je telefoon; daarna zie je ze hier ook (via Samen). Of vul ze zelf in.'}</div>`;
+    $('#a-lijst').innerHTML = '';
+    return;
+  }
+  const per = a.van && a.tot ? `${D.date.nice(a.van, { day: 'numeric', month: 'short' })} – ${D.date.nice(a.tot, { day: 'numeric', month: 'short' })}` : a.tot ? 't/m ' + D.date.nice(a.tot, { day: 'numeric', month: 'short' }) : '';
+  $('#a-kop').innerHTML = `<b>${a.bron === 'zelf' ? 'Zelf ingevuld' : 'Vomar'}${a.week ? ' · week ' + a.week : ''}${per ? ' · ' + esc(per) : ''}</b>
+    <div class="muted small">${geldig ? `${aanb.filter(x => x.eten).length} om mee te koken, van ${a.items.length} aanbiedingen` : '⚠️ Deze aanbiedingen zijn verlopen. Haal de nieuwe op.'}${a.at ? ' · opgehaald ' + esc(new Date(a.at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })) : ''}</div>`;
+  const items = P.aanbiedingen(a.items).sort((x, y) => (y.eten - x.eten) || (x.pagina || 0) - (y.pagina || 0));
+  $('#a-lijst').innerHTML = items.map((it, i) => {
+    const n = it.eten ? pool.filter(o => it.termen.some(t => o.termen.includes(t))).length : 0;
+    return `<div class="aitem${it.eten ? '' : ' niet'}" data-ai="${i}"><div class="grow"><b>${esc(it.n)}</b><div class="muted small">${it.eten ? `${n} recept${n === 1 ? '' : 'en'} met ${esc(it.termen.map(t => P.TERM[t].naam).join(', '))}` : 'geen kookproduct'}</div></div>${it.p ? `<span class="p">€${it.p.toFixed(2).replace('.', ',')}</span>` : ''}</div>`;
+  }).join('');
+  $('#a-lijst').onclick = e => {
+    const r = e.target.closest('[data-ai]'); if (!r) return;
+    const it = items[+r.dataset.ai]; if (!it.eten) return;
+    product = it; filt.clear(); $('#q').value = ''; naarTab('ideeen');
+  };
+}
+
+let haalBezig = false;
+async function haalAanb(stil) {
+  if (haalBezig) return;
+  if (!W2.page.available()) { if (!stil) W2.openLink('https://www.vomar.nl/aanbiedingen'); return; }
+  haalBezig = true;
+  try {
+    if (!stil) toast('Vomar-folder ophalen…', 45000);
+    const lijst = await W2.page.get(FOLDERZ);
+    if (!lijst.status || lijst.status >= 400) throw new Error(lijst.fout || 'folderz.nl gaf fout ' + lijst.status);
+    const links = P.folderLinks(lijst.body).slice(0, 3);
+    if (!links.length) throw new Error('geen folder gevonden op folderz.nl');
+    const folders = [];
+    for (const u of links) {
+      const p = await W2.page.get(u);
+      if (!p.status || p.status >= 400) continue;
+      const f = P.folder(p.body, new Date().getFullYear());
+      if (f.tot && D.date.days(f.tot) < 0) continue;      // verlopen folder
+      if (f.items.length) folders.push(f);
+    }
+    // Wat nu geldt eerst; de folder van volgende week alleen als er niets anders is.
+    const nu = folders.filter(f => !f.van || D.date.days(f.van) <= 0);
+    const gebruik = nu.length ? nu : folders;
+    const kop = gebruik.find(f => f.week) || gebruik[0] || null;
+    const alle = [], seen = new Set();
+    gebruik.forEach(f => f.items.forEach(it => { const k = P.N(it.n); if (!seen.has(k)) { seen.add(k); alle.push(it); } }));
+    if (!alle.length) throw new Error('in de folder stonden geen producten die de app kon lezen');
+    data.aanb = { bron: 'vomar', week: kop && kop.week, van: kop && kop.van, tot: kop && kop.tot, items: alle, at: Date.now() };
+    save(); bouwPool(); render(); drawAanb(); drawIdeeen();
+    if (!stil) toast(`${aanb.filter(x => x.eten).length} aanbiedingen om mee te koken ✓`, 3000);
+  } catch (e) {
+    if (!stil) {
+      toast('');
+      const r = await sheet('Ophalen lukte niet', `<div class="muted">${esc(e.message || String(e))}. Je kunt de folder openen en de aanbiedingen zelf invullen.</div>`,
+        [{ label: 'Folder openen', value: 'web', kind: 'q' }, { label: 'Zelf invullen', value: 'zelf' }]).done;
+      if (r.value === 'web') W2.openLink('https://www.vomar.nl/aanbiedingen');
+      if (r.value === 'zelf') zelfAanb();
+    }
+  } finally { haalBezig = false; D.set('weekmenu-aanb-poging', Date.now()); }
+}
+
+async function zelfAanb() {
+  const huidig = data.aanb && data.aanb.items ? data.aanb.items.map(i => i.n + (i.p ? ' ' + i.p.toFixed(2).replace('.', ',') : '')).join('\n') : '';
+  const r = await sheet('Aanbiedingen invullen', `
+    <div class="muted small">Eén product per regel, prijs mag erachter. Bv. "Rundergehakt 7,99" of "Spruitjes". Plakken uit de Vomar-app kan ook.</div>
+    <textarea class="in" name="t" rows="9" placeholder="Rundergehakt 7,99&#10;Hollandse spruiten 0,99&#10;Zalmfilet">${esc(huidig)}</textarea>
+    <label class="f">Geldig t/m<input class="in" type="date" name="tot" value="${esc((data.aanb && data.aanb.tot) || weekDays(0)[5])}"></label>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  const items = P.eigenLijst(r.form.t);
+  data.aanb = items.length ? { bron: 'zelf', week: null, van: today(), tot: r.form.tot || '', items, at: Date.now() } : null;
+  save(); bouwPool(); render(); drawAanb(); drawIdeeen();
+}
+
+// ---------------------------------------------------------------- boodschappen voor de week
+async function boodschappen() {
+  const days = weekDays(offset).filter(d => D.date.days(d) >= 0 || offset > 0);
+  let opts = days.map(d => ({ d, m: data.dagen[d], o: optVan(data.dagen[d]) })).filter(x => x.o && (x.o.rid || x.o.url));
+  if (!opts.length) return toast('Er staan deze week (vanaf vandaag) geen recepten op het menu.');
+  const S = window.Samen;
+  if (!S || !S.cfg) {
+    const r = await sheet('Boodschappenlijst', `<div class="muted">De boodschappenlijst staat in <b style="color:var(--text)">Samen</b>. Zet Samen eerst aan (ook als je hem alleen voor jezelf gebruikt).</div>`, [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Naar Samen', value: 'go' }]).done;
+    if (r.value === 'go') location.href = '../samen/index.html';
+    return;
+  }
+  const lists = B.lists();
+  if (!lists.length) return toast('Er is nog geen boodschappenlijst in Samen. Maak er daar een.');
+  // Recepten die nog niet in Recepten staan eerst ophalen (dan komen de hoeveelheden mee).
+  const nodig = opts.filter(x => !(x.o.rid && recOf(x.o.rid)));
+  const mislukt = [];
+  if (nodig.length && W2.page.available()) {
+    for (let i = 0; i < nodig.length; i++) {
+      toast(`Recept ${i + 1} van ${nodig.length} ophalen: ${nodig[i].o.titel}`, 45000);
+      const rid = await ophalen(nodig[i].o, true);
+      if (!rid) mislukt.push(nodig[i].o);
+    }
+    toast('');
+    opts = days.map(d => ({ d, m: data.dagen[d], o: optVan(data.dagen[d]) })).filter(x => x.o && (x.o.rid || x.o.url));
+  } else nodig.forEach(x => mislukt.push(x.o));
+  const ruw = [];
+  opts.forEach(({ m, o }) => {
+    const r = o.rid && recOf(o.rid);
+    if (r) { const f = r.personen && m.porties ? m.porties / r.personen : 1; (r.ingr || []).forEach(x => { const t = B.fromRecipe(B.scaleText(x, f)); if (t) ruw.push(t); }); }
+    else (o.ingr || []).forEach(x => ruw.push(x));   // alleen de hoofdingrediënten (zonder hoeveelheid)
+  });
+  const lines = B.combine(ruw).map((t, i) => ({ i, t, a: aanb.length ? P.inAanbieding({ termen: P.termen(t) }, aanb).hits[0] : null }));
+  const pick = new Set(lines.filter(x => !B.isStaple(x.t)).map(x => x.i));
+  const sh = sheet('Boodschappen voor het weekmenu', `
+    <div class="muted small">${opts.map(x => esc(x.o.titel)).join(' · ')}</div>
+    ${mislukt.length ? `<div class="notice">Van ${mislukt.map(o => esc(o.titel)).join(', ')} staan alleen de hoofdingrediënten erbij, zonder hoeveelheden${W2.page.available() ? ' (het recept ophalen lukte niet)' : ' (recepten ophalen kan in de app)'}.</div>` : ''}
+    ${lists.length > 1 ? `<label class="f">Lijst<select class="in" name="lijst">${lists.map(l => `<option value="${esc(l.id)}">${esc((l.emoji || '') + ' ' + l.naam)}</option>`).join('')}</select></label>` : ''}
+    <div class="card ing">${lines.map(x => `<div class="check pick${pick.has(x.i) ? ' on' : ''}" data-pi="${x.i}"><span class="box">${pick.has(x.i) ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span><span class="t">${esc(x.t)}${x.a ? ` <span class="tag">🏷️${x.a.p ? ' €' + x.a.p.toFixed(2).replace('.', ',') : ''}</span>` : ''}</span></div>`).join('')}</div>
+    <div class="muted small">Zelfde ingrediënten uit verschillende recepten zijn opgeteld. Zout, peper en olie staan uit. 🏷️ = in de aanbieding bij de Vomar.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Erop zetten', value: 'ok' }]);
+  sh.el.addEventListener('click', e => {
+    const c = e.target.closest('[data-pi]'); if (!c) return;
+    const i = +c.dataset.pi, on = !pick.has(i);
+    on ? pick.add(i) : pick.delete(i);
+    c.classList.toggle('on', on);
+    c.querySelector('.box').innerHTML = on ? icon('check', 'width="16" height="16" stroke-width="3"') : '';
+  });
+  const res = await sh.done;
+  if (res.value !== 'ok') return;
+  const L = lists.find(l => l.id === res.form.lijst) || lists[0];
+  try { await S.start(); } catch (e) {}
+  const out = B.addLines(L.id, lines.filter(x => pick.has(x.i)).map(x => x.t), 'Weekmenu');
+  toast(out.added ? `${out.added} dingen op ${(L.emoji || '') + ' ' + L.naam}${out.dup ? ` (${out.dup} stond${out.dup === 1 ? '' : 'en'} er al op)` : ''}` : 'Alles stond er al op.', 3500);
+}
+
+// ---------------------------------------------------------------- instellingen
+async function instellingen() {
+  const r = await sheet('Weekmenu', `
+    <label class="f">Standaard aantal personen<input class="in" name="porties" type="number" inputmode="numeric" min="1" value="${data.porties}"></label>
+    <label class="f">Doordeweeks hooguit<select class="in" name="snel">${[[0, 'geen grens'], [30, '30 minuten'], [45, '45 minuten'], [60, '1 uur']].map(([v, l]) => `<option value="${v}" ${+data.inst.snel === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <div class="muted small">${Object.values(data.smaak).filter(v => v === -1).length} recepten op "liever niet" en ${Object.values(data.smaak).filter(v => v === 1).length} op "lekker". Die gelden voor jullie allebei.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok' }]).done;
+  if (r.value !== 'ok') return;
+  data.porties = Math.max(1, +r.form.porties || 2);
+  data.inst.snel = +r.form.snel || 0;
+  save(); render();
+}
+
+// ---------------------------------------------------------------- doorgeven aan de widget en het overzicht
+function publish() {
+  W2.publish('weekmenu', weekDays(0).map(d => { const o = optVan(data.dagen[d]); return o ? { datum: d, titel: o.titel } : null; }).filter(Boolean));
+  try {
+    const rijen = [], t = today();
+    rijen.push({ k: 'kop', t: 'Komende dagen' });
+    weekDays(0).concat(weekDays(1)).filter(d => D.date.days(d) >= 0).slice(0, 7).forEach(d => {
+      const o = optVan(data.dagen[d]), i = (D.date.parse(d).getDay() + 6) % 7;
+      rijen.push({ k: 'dag', t: o ? o.titel : 'Nog niets gepland', s: (d === t ? 'Vanavond' : DAG[i] + ' ' + D.date.parse(d).getDate()) + (o && o.soort && !o.vrij ? ' · ' + soortEmoji(o) + ' ' + soortNaam(o) : ''), o: 'dag=' + d, nu: d === t });
+    });
+    const ctx = Object.assign(ctxVoor(t), { rng: P.rngVan(+t.replace(/-/g, '')) });
+    const vs = P.voorstellen(kiesbaar(), ctx, 40);
+    const metAanb = vs.filter(x => x.aanb && x.aanb.length).slice(0, 12);
+    if (metAanb.length) {
+      rijen.push({ k: 'kop', t: '🏷️ Met aanbiedingen' });
+      metAanb.forEach(x => rijen.push({ k: 'optie', t: x.o.titel, s: soortEmoji(x.o) + ' ' + x.aanb.slice(0, 2).map(h => h.n).join(', '), o: 'optie=' + x.o.id }));
+    }
+    rijen.push({ k: 'kop', t: '💡 Ideeën voor vanavond' });
+    vs.filter(x => !metAanb.includes(x)).slice(0, 30).forEach(x => rijen.push({ k: 'optie', t: x.o.titel, s: [soortEmoji(x.o) + ' ' + soortNaam(x.o), x.o.tijd ? x.o.tijd + ' min' : '', x.o.bronNaam].filter(Boolean).join(' · '), o: 'optie=' + x.o.id }));
+    const vm = optVan(data.dagen[t]);
+    W2.publish('weekmenu-opties', { datum: t, vanavond: vm ? vm.titel : '', rijen });
+  } catch (e) { console.error('widget', e); }
+}
+
+// ---------------------------------------------------------------- tabs en knoppen
+function naarTab(k) {
+  tab = k;
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === k));
+  $('#t-week').hidden = k !== 'week'; $('#t-ideeen').hidden = k !== 'ideeen'; $('#t-aanb').hidden = k !== 'aanb';
+  if (k === 'week') render();
+  if (k === 'ideeen') { toon = 60; drawFilters(); drawIdeeen(); }
+  if (k === 'aanb') drawAanb();
+  window.scrollTo(0, 0);
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) naarTab(b.dataset.tab); });
+$('#days').addEventListener('click', e => {
+  const sw = e.target.closest('[data-swap]'); if (sw) return wissel(sw.dataset.swap);
+  const b = e.target.closest('[data-d]'); if (b) dagSheet(b.dataset.d);
+});
+$('#s5').addEventListener('click', e => {
+  const p = e.target.closest('[data-regel]'); if (!p) return;
+  const r = P.balans(weekOpts(weekDays(offset))).regels.find(x => x.k === p.dataset.regel);
+  sheet(r.emoji + ' ' + r.tekst, `<div>${esc(r.uitleg)}</div><div class="muted small">Bron: Schijf van Vijf van het Voedingscentrum (2026), aanbevolen hoeveelheden per week voor volwassenen.</div>`, [{ label: 'OK', value: null }]);
+});
+$('#prev').onclick = () => { offset--; render(); };
+$('#next').onclick = () => { offset++; render(); };
+$('#shop').onclick = boodschappen;
+$('#maak').onclick = () => { if ($('#maak').dataset.volgende) { offset++; render(); } weekplan(); };
+$('#wat').onclick = () => watEtenWe();
+$('#inst').onclick = instellingen;
+$('#q').addEventListener('input', () => { toon = 60; drawIdeeen(); });
+$('#filters').addEventListener('click', e => {
+  if (e.target.closest('[data-prod]')) { product = null; drawFilters(); return drawIdeeen(); }
+  const c = e.target.closest('[data-f]'); if (!c) return;
+  filt.has(c.dataset.f) ? filt.delete(c.dataset.f) : filt.add(c.dataset.f);
+  toon = 60; drawFilters(); drawIdeeen();
+});
+$('#opties').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (b) optieSheet(b.dataset.o); });
+$('#meer').onclick = () => { toon += 60; drawIdeeen(); };
+$('#a-ververs').onclick = () => haalAanb(false);
+$('#a-zelf').onclick = zelfAanb;
+window.UIback = () => { if (tab !== 'week') { naarTab('week'); return true; } return false; };
+
+function route() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (!h) return;
+  history.replaceState(null, '', location.pathname);
+  if (h === 'volgende') { offset = 1; render(); }
+  else if (h === 'wat') watEtenWe();
+  else if (h === 'zoek') { naarTab('ideeen'); setTimeout(() => $('#q').focus(), 50); }
+  else if (h === 'ideeen' || h === 'aanb') naarTab(h);
+  else if (h.startsWith('optie=')) optieSheet(h.slice(6));
+  else if (h.startsWith('dag=')) { const d = h.slice(4); if (data.dagen[d]) dagSheet(d); else watEtenWe(d); }
+}
+window.addEventListener('hashchange', route);
+
+(async () => {
+  try { rec = (await recepten.all()) || []; } catch (e) { rec = []; }
+  // Oude menu's (alleen recept-id) krijgen een optie-id.
+  Object.values(data.dagen).forEach(m => { if (m && m.recept && !m.opt) m.opt = ''; });
+  bouwPool();
+  koppelDeel();
+  publish();
+  render();
+  route();
+  const poging = D.get('weekmenu-aanb-poging', 0) || 0;
+  if (W2.page.available() && !aanbGeldig() && Date.now() - poging > 6 * 3600e3) haalAanb(true);
+})();
+</script>
+</body>
+</html>

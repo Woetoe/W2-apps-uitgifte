@@ -1,0 +1,400 @@
+/* W2 Apps — Weekmenu: het rekenwerk (los te testen in node: tests/weekmenu.test.js; in de pagina window.WMPlan).
+
+   - termen(tekst): welke producten er in een receptnaam, ingrediënt of aanbieding zitten (gehakt, zalm, spruitjes…).
+   - folderz: de Vomar-folder van deze week lezen (folderz.nl zet per pagina de producten met prijs in de pagina).
+   - plan(): een week vullen met recepten uit de lijst, met de Schijf van Vijf als leidraad (Voedingscentrum, 2026):
+       per week 1× vis (100 g), minstens 2× peulvruchten/tofu/tempé (250 g), hooguit 3× vlees (300 g) waarvan
+       hooguit 1× rood vlees (100 g); verder vegetarisch met ei, kaas of noten. Daarbij: afwisselen (niet twee dagen
+       achter elkaar hetzelfde soort eten of dezelfde basis), niets herhalen van de afgelopen weken, en voorrang
+       voor wat in de aanbieding is, je favorieten en recepten die in de Schijf van Vijf passen.
+   - balans(): dezelfde regels als controle voor wat er nu op het menu staat. */
+(function (root) {
+  'use strict';
+
+  const N = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  // [sleutel, naam, patroon, gewicht, groep]. Gewicht: hoe zwaar een aanbieding meetelt (eiwit 3, groente 2, rest 1).
+  const T = [
+    ['kip', 'kip', /\bkip|kippen|kipfilet|kipdij|chicken|kalkoen/, 3, 'vlees'],
+    ['gehakt', 'gehakt', /(?<!kip)gehakt|hamburger|slavink/, 3, 'vlees'],
+    ['stoofvlees', 'stoofvlees', /stoofvlees|runderlap|riblap|sukade|draadjesvlees|rundvlees|runderreep|pulled beef|rendang/, 3, 'vlees'],
+    ['biefstuk', 'biefstuk', /biefstuk|entrecote|rib ?eye|picanha|tagliata|cote de boeuf/, 3, 'vlees'],
+    ['varken', 'varkensvlees', /varkens|karbonade|speklap|hamlap|procureur/, 3, 'vlees'],
+    ['spek', 'spek', /\bspek|spekjes|spekreep|pancetta|bacon|guanciale|ontbijtspek/, 2, 'vlees'],
+    ['worst', 'worst', /worst|chipolata|chorizo|\bknak|salami/, 2, 'vlees'],
+    ['ham', 'ham', /\bham\b|achterham|beenham/, 2, 'vlees'],
+    ['shoarma', 'shoarma', /shoarma|shawarma|gyros/, 3, 'vlees'],
+    ['lam', 'lamsvlees', /\blams/, 3, 'vlees'],
+    ['zalm', 'zalm', /zalm/, 3, 'vis'],
+    ['witvis', 'witvis', /kabeljauw|koolvis|witvis|pangasius|tilapia|roodbaars|\bschol\b|\bheek\b|visfilet|lekkerbek|kibbeling/, 3, 'vis'],
+    ['tonijn', 'tonijn', /tonijn/, 3, 'vis'],
+    ['garnalen', 'garnalen', /garnal|scampi|mossel|zeevrucht/, 3, 'vis'],
+    ['ei', 'eieren', /\beieren\b|\bei\b|scharreleieren|omelet|frittata|spiegelei/, 2, 'ei'],
+    ['tofu', 'tofu/tempé', /tofu|tahoe|tempe\b/, 3, 'peul'],
+    ['linzen', 'linzen', /linze/, 3, 'peul'],
+    ['kikkererwten', 'kikkererwten', /kikkererwt|hummus/, 3, 'peul'],
+    ['bonen', 'bonen', /kidney|bruine bonen|witte bonen|zwarte bonen|bonenpot|edamame|sojastuk/, 3, 'peul'],
+    ['spruitjes', 'spruitjes', /spruit/, 2, 'groente'],
+    ['boerenkool', 'boerenkool', /boerenkool/, 2, 'groente'],
+    ['spitskool', 'spitskool', /spitskool/, 2, 'groente'],
+    ['wittekool', 'witte kool', /witte ?kool/, 2, 'groente'],
+    ['savooiekool', 'savooiekool', /savooi/, 2, 'groente'],
+    ['chinesekool', 'Chinese kool', /chinese ?kool|paksoi/, 2, 'groente'],
+    ['zuurkool', 'zuurkool', /zuurkool/, 2, 'groente'],
+    ['rodekool', 'rodekool', /rode ?kool/, 2, 'groente'],
+    ['andijvie', 'andijvie', /andijvie/, 2, 'groente'],
+    ['spinazie', 'spinazie', /spinazie/, 2, 'groente'],
+    ['broccoli', 'broccoli', /broccoli/, 2, 'groente'],
+    ['bloemkool', 'bloemkool', /bloemkool/, 2, 'groente'],
+    ['prei', 'prei', /\bprei/, 2, 'groente'],
+    ['wortel', 'wortel', /wortel|\bpeen|bospeen|winterpeen|hutspot/, 2, 'groente'],
+    ['pastinaak', 'pastinaak', /pastinaak/, 2, 'groente'],
+    ['knolselderij', 'knolselderij', /knolselderij/, 2, 'groente'],
+    ['bleekselderij', 'bleekselderij', /bleekselderij|\bselderij/, 2, 'groente'],
+    ['venkel', 'venkel', /venkel/, 2, 'groente'],
+    ['courgette', 'courgette', /courgette|ratatouille/, 2, 'groente'],
+    ['aubergine', 'aubergine', /aubergine/, 2, 'groente'],
+    ['paprika', 'paprika', /paprika(?!poeder)/, 2, 'groente'],
+    ['tomaat', 'tomaten', /tomaat|tomaten(?!puree)|tomaatjes|pomodorini|passata|sugocasa/, 2, 'groente'],
+    ['champignons', 'champignons', /champignon|paddenstoel|shiitake|oesterzwam/, 2, 'groente'],
+    ['avocado', 'avocado', /avocado|guacamole/, 2, 'groente'],
+    ['komkommer', 'komkommer', /komkommer/, 2, 'groente'],
+    ['sla', 'sla', /\bsla\b|rucola|veldsla|ijsbergsla|salademix|kropsla|romaine/, 2, 'groente'],
+    ['sperziebonen', 'sperziebonen', /sperzieb|boontjes/, 2, 'groente'],
+    ['snijbonen', 'snijbonen', /snijbon/, 2, 'groente'],
+    ['tuinbonen', 'tuinbonen', /tuinbon/, 2, 'groente'],
+    ['doperwten', 'doperwten', /doperwt|tuinerwt|erwtjes/, 2, 'groente'],
+    ['mais', 'mais', /\bmais\b/, 2, 'groente'],
+    ['witlof', 'witlof', /witlof/, 2, 'groente'],
+    ['pompoen', 'pompoen', /pompoen/, 2, 'groente'],
+    ['zoeteaardappel', 'zoete aardappel', /zoete[ -]?aardappel/, 2, 'groente'],
+    ['bieten', 'bieten', /\bbiet/, 2, 'groente'],
+    ['tauge', 'taugé', /tauge/, 2, 'groente'],
+    ['zeekraal', 'zeekraal', /zeekraal/, 2, 'groente'],
+    ['roerbakgroente', 'roerbakgroente', /roerbak|wokgroente|kookgroente|verspakket/, 2, 'groente'],
+    ['appel', 'appel', /(?<!aard|sinaas)appel(?!sap)/, 1, 'fruit'],
+    ['sinaasappel', 'sinaasappel', /sinaasappel|mandarijn/, 1, 'fruit'],
+    ['aardappel', 'aardappelen', /(?<!zoete |zoete-|zoete)aardappel|krieltje|stamppot|puree|friet/, 1, 'basis'],
+    ['pasta', 'pasta', /pasta|spaghetti|penne|fusilli|tagliatelle|macaroni|orzo|ravioli|linguine|lasagne|tortellini|all uovo/, 1, 'basis'],
+    ['gnocchi', 'gnocchi', /gnocchi/, 1, 'basis'],
+    ['rijst', 'rijst', /rijst|risotto|\bnasi|paella/, 1, 'basis'],
+    ['noedels', 'noedels', /noedel|\bmie\b|mihoen|pad thai|chow mein/, 1, 'basis'],
+    ['wraps', 'wraps', /wrap|tortilla|fajita|burrito|\btaco/, 1, 'basis'],
+    ['couscous', 'couscous', /couscous|bulgur|quinoa/, 1, 'basis'],
+    ['brood', 'brood', /brood|\bpita|\bnaan|\broti\b|\bbollen|pistolet|bagel/, 1, 'basis'],
+    ['pizza', 'pizza', /pizza/, 1, 'basis'],
+    ['kaas', 'kaas', /kaas|\bfeta|mozzarella|cheddar|parmezaan|gorgonzola|burrata/, 1, 'extra'],
+    ['pesto', 'pesto', /pesto/, 1, 'extra'],
+    ['noten', 'noten', /noten|walnot|cashew|amandel|pecan|hazelnot|pinda|pijnboom/, 1, 'extra']
+  ];
+  const TERM = Object.fromEntries(T.map(([k, naam, re, w, g]) => [k, { k, naam, re, w, g }]));
+  const VEGA = /\bvega|vegetarisch|vegan|plantaardig|veggie/;
+  const BASIS = ['pasta', 'gnocchi', 'rijst', 'noedels', 'wraps', 'couscous', 'pizza', 'brood', 'aardappel'];
+
+  /** Producten in een stuk tekst (receptnaam, ingrediënt of aanbieding). Bij "vega…" telt vlees/vis niet. */
+  function termen(tekst) {
+    const s = N(tekst), out = [];
+    const vega = VEGA.test(s);
+    for (const [k, , re, , g] of T) {
+      if (vega && (g === 'vlees' || g === 'vis')) continue;
+      if (re.test(s)) out.push(k);
+    }
+    // zoete aardappel is geen gewone aardappel; witte bonen in "sperziebonen" zitten al apart
+    return out;
+  }
+
+  const SOORT = {
+    vis: { naam: 'Vis', emoji: '🐟' }, kip: { naam: 'Kip', emoji: '🍗' }, rood: { naam: 'Rood vlees', emoji: '🥩' },
+    peul: { naam: 'Peulvruchten', emoji: '🫘' }, ei: { naam: 'Ei', emoji: '🥚' }, vega: { naam: 'Vega', emoji: '🌱' }
+  };
+
+  /** Soort eten bij een eigen recept of vrije tekst, als de bron het niet zegt. */
+  function soortVan(ts) {
+    const has = k => ts.includes(k), out = [];
+    if (['zalm', 'witvis', 'tonijn', 'garnalen'].some(has)) out.push('vis');
+    if (has('kip')) out.push('kip');
+    if (['gehakt', 'stoofvlees', 'biefstuk', 'varken', 'spek', 'worst', 'ham', 'lam'].some(has) || (has('shoarma') && !has('kip'))) out.push('rood');
+    if (['tofu', 'linzen', 'kikkererwten', 'bonen'].some(has)) out.push('peul');
+    if (!out.length && has('ei')) out.push('ei');
+    if (!out.length) out.push('vega');
+    return out;
+  }
+
+  /** Een optie (uit de lijst of een eigen recept) klaarmaken voor het rekenwerk. */
+  function optie(o) {
+    const tekst = [o.titel].concat(o.ingr || []).join(', ');
+    const ts = termen(tekst);
+    const soort = o.soort && o.soort.length ? o.soort : soortVan(ts);
+    return Object.assign({}, o, { termen: ts, soort, basis: BASIS.find(b => ts.includes(b)) || '' });
+  }
+
+  // ---------------------------------------------------------------- aanbiedingen
+  const ENT = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ', euro: '€', eacute: 'é', euml: 'ë', egrave: 'è', ccedil: 'ç', iuml: 'ï', ouml: 'ö' };
+  const decode = s => String(s || '').replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+    if (e[0] === '#') { const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : +e.slice(1); try { return String.fromCodePoint(n); } catch (x) { return m; } }
+    const v = ENT[e.toLowerCase()]; return v == null ? m : v;
+  });
+  const prijs = s => { const n = parseFloat(String(s).replace(',', '.')); return isFinite(n) ? n : null; };
+  const pad = n => String(n).padStart(2, '0');
+
+  /** Regel als "Rundergehakt €7,99, Hollandse Spruiten €0,99" → [{n, p}] (ook "Alle Napoleon, Anta of Lemco Lollies €1,69"). */
+  function producten(regel) {
+    const out = [], re = /\s*(.+?)\s*€\s?(\d+(?:[.,]\d{1,2})?)(?![\d.,]*\d)\s*,?/g;
+    let m;
+    while ((m = re.exec(regel))) {
+      const n = m[1].replace(/^[,\s]+/, '').trim();
+      if (n) out.push({ n, p: prijs(m[2]) });
+    }
+    return out;
+  }
+
+  /** Links naar de Vomar-folders op de winkelpagina van folderz.nl (meest recente eerst, zoals op de pagina).
+      Ook als de links in JSON staan (met \/ in plaats van /). */
+  function folderLinks(html) {
+    const out = [], re = /\/bekijk\/aanbiedingen\/vomar[a-z0-9-]*-folder-(\d+)/gi;
+    const s = String(html || '').replace(/\\\//g, '/').replace(/\\u002f/gi, '/');
+    let m;
+    while ((m = re.exec(s))) {
+      const u = 'https://www.folderz.nl' + m[0].toLowerCase();
+      if (!out.includes(u)) out.push(u);
+    }
+    return out;
+  }
+
+  /** Een folderpagina van folderz.nl → { week, van, tot, items: [{n, p, pagina}] }. */
+  function folder(html, jaar) {
+    const s = decode(String(html || '').replace(/\\u20ac/gi, '€').replace(/\\u0027/g, "'").replace(/\\u0026/g, '&'));
+    const items = [], seen = new Set();
+    const re = /Pagina\s+(\d+)\s*:\s*([^"<>\n]+)/g;
+    let m;
+    while ((m = re.exec(s))) {
+      for (const it of producten(m[2])) {
+        const key = N(it.n);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({ n: it.n, p: it.p, pagina: +m[1] });
+      }
+    }
+    const wk = /folder\s+week\s+(\d{1,2})/i.exec(s);
+    const g = /(\d{1,2})-(\d{1,2})(?:-(\d{4}))?\s*t\/m\s*(\d{1,2})-(\d{1,2})(?:-(\d{4}))?/i.exec(s);
+    const y = jaar || new Date().getFullYear();
+    let van = '', tot = '';
+    if (g) {
+      const y1 = +(g[3] || y), y2 = +(g[6] || (+g[5] < +g[2] ? y1 + 1 : y1));
+      van = `${y1}-${pad(g[2])}-${pad(g[1])}`;
+      tot = `${y2}-${pad(g[5])}-${pad(g[4])}`;
+    } else {
+      const t = /geldig\s+t\/m\s+(\d{1,2})-(\d{1,2})/i.exec(s);
+      if (t) tot = `${y}-${pad(t[2])}-${pad(t[1])}`;
+    }
+    return { week: wk ? +wk[1] : null, van, tot, items };
+  }
+
+  const ACTIE = { one_plus_one: '1+1 gratis', limited: 'OP=OP', starting: 'vanaf' };
+  const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
+  /**
+   * Aanbiedingen van PrijsProfeet (GET /api/v1/products/promotional/all?retailer=vomar), één of meer pagina's.
+   * Alleen wat op `vandaag` geldt. Geeft { items: [{n, p, was, actie}], van, tot, totaal }.
+   */
+  function prijsProfeet(paginas, vandaag) {
+    const items = [], seen = new Set(), vans = {}, tots = {};
+    let totaal = 0;
+    (paginas || []).forEach(j => {
+      if (!j) return;
+      totaal = Math.max(totaal, +j.total || 0);
+      (j.products || []).forEach(x => {
+        if (!x || !x.name) return;
+        const van = String(x.valid_from || '').slice(0, 10), tot = String(x.valid_until || '').slice(0, 10);
+        if (vandaag && ((van && van > vandaag) || (tot && tot < vandaag))) return;
+        if (x.promotion_status && !/active|actief/i.test(x.promotion_status) && !(van && tot)) return;
+        let n = String(x.name).trim();
+        if (x.brand && !N(n).includes(N(x.brand))) n = x.brand + ' ' + n;
+        const k = N(n);
+        if (seen.has(k)) return;
+        seen.add(k);
+        let actie = '';
+        if (x.promotion_type === 'multi_buy' && x.multi_buy_quantity && x.multi_buy_price) actie = x.multi_buy_quantity + ' voor ' + euro(x.multi_buy_price);
+        else if (x.promotion_type === 'one_plus_one') actie = x.multi_buy_quantity === 3 ? '2+1 gratis' : '1+1 gratis';
+        else if (ACTIE[x.promotion_type]) actie = ACTIE[x.promotion_type];
+        else if (x.discount_percentage) actie = Math.round(x.discount_percentage) + '% korting';
+        items.push({ n, p: typeof x.price === 'number' ? x.price : prijs(x.price), was: typeof x.original_price === 'number' ? x.original_price : null, actie, q: x.quantity || '' });
+        if (van) vans[van] = (vans[van] || 0) + 1;
+        if (tot) tots[tot] = (tots[tot] || 0) + 1;
+      });
+    });
+    const meest = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
+    return { items, van: (meest(vans) || [''])[0], tot: (meest(tots) || [''])[0], totaal };
+  }
+
+  /** Korte uitleg wat een website teruggaf (voor een foutmelding): titel en grootte. */
+  function watKwamTerug(res) {
+    if (!res) return 'geen antwoord';
+    if (!res.status) return res.fout || 'geen verbinding';
+    const b = String(res.body || ''), t = /<title[^>]*>([^<]{0,80})/i.exec(b);
+    return `status ${res.status}, ${Math.round(b.length / 1024)} kB${t ? ', pagina "' + decode(t[1]).trim() + '"' : ''}`;
+  }
+
+  /** Zelf geplakte of getypte aanbiedingen: één product per regel, prijs mag erbij ("Rundergehakt 7,99"). */
+  function eigenLijst(tekst) {
+    const out = [], seen = new Set();
+    String(tekst || '').split(/\n|;/).forEach(r => {
+      r = r.replace(/^[\s•*\-–·]+/, '').trim();
+      if (!r) return;
+      const m = /^(.*?)[\s:]*(?:€\s?)?(\d+[.,]\d{2})\s*(?:euro)?$/i.exec(r);
+      const it = m && m[1].trim() ? { n: m[1].trim(), p: prijs(m[2]) } : { n: r, p: null };
+      const k = N(it.n);
+      if (!seen.has(k)) { seen.add(k); out.push(it); }
+    });
+    return out;
+  }
+
+  /** Aanbiedingen klaarmaken: termen erbij, alleen eten telt mee voor de recepten. */
+  function aanbiedingen(items) {
+    return (items || []).map(it => Object.assign({}, it, { termen: termen(it.n) })).map(it => Object.assign(it, { eten: it.termen.length > 0 }));
+  }
+
+  /** Welke aanbiedingen passen bij een optie. Geeft [{n, p, termen}] en een score (eiwit telt zwaarder dan groente). */
+  function inAanbieding(opt, aanb) {
+    if (!aanb || !aanb.length) return { hits: [], score: 0 };
+    const set = new Set(opt.termen), hits = [];
+    let score = 0;
+    for (const a of aanb) {
+      if (!a.eten) continue;
+      const geraakt = a.termen.filter(t => set.has(t));
+      if (!geraakt.length) continue;
+      hits.push({ n: a.n, p: a.p, termen: geraakt });
+      score += Math.max(...geraakt.map(t => TERM[t].w));
+    }
+    return { hits, score: Math.min(score, 8) };
+  }
+
+  // ---------------------------------------------------------------- Schijf van Vijf
+  const DOEL = { vis: { min: 1 }, peul: { min: 2 }, rood: { max: 1 }, vlees: { max: 3 }, ei: { max: 2 } };
+
+  function tel(lijst) {
+    const c = { vis: 0, kip: 0, rood: 0, peul: 0, ei: 0, vega: 0, vlees: 0, n: 0 };
+    lijst.forEach(o => {
+      if (!o || !o.soort) return;
+      c.n++;
+      o.soort.forEach(s => { c[s] = (c[s] || 0) + 1; });
+      if (o.soort.includes('kip') || o.soort.includes('rood')) c.vlees++;
+    });
+    return c;
+  }
+
+  /** Controle van een week (lijst met opties, null voor lege dagen). */
+  function balans(lijst) {
+    const c = tel(lijst);
+    const vol = lijst.filter(Boolean);
+    let opeen = 0, zelfde = 0;
+    for (let i = 1; i < lijst.length; i++) {
+      const a = lijst[i - 1], b = lijst[i];
+      if (!a || !b) continue;
+      if (a.soort[0] === b.soort[0]) opeen++;
+      if (a.basis && a.basis === b.basis) zelfde++;
+    }
+    const ids = vol.map(o => o.id).filter(Boolean);
+    const dubbel = ids.length - new Set(ids).size;
+    const sv5 = vol.filter(o => o.sv5).length;
+    const regels = [
+      { k: 'vis', emoji: '🐟', ok: c.vis >= 1, tekst: `Vis ${c.vis}×`, uitleg: 'Eén keer per week vis (100 gram), bij voorkeur vette vis zoals zalm, makreel of haring.' },
+      { k: 'peul', emoji: '🫘', ok: c.peul >= 2, tekst: `Peulvruchten ${c.peul}×`, uitleg: 'Minstens 2× per week peulvruchten, tofu of tempé (samen ± 250 gram).' },
+      { k: 'rood', emoji: '🥩', ok: c.rood <= 1, tekst: `Rood vlees ${c.rood}×`, uitleg: 'Hooguit 1× per week rood vlees (rund of varken, ± 100 gram).' },
+      { k: 'vlees', emoji: '🍗', ok: c.vlees <= 3, tekst: `Vlees ${c.vlees}×`, uitleg: 'Hooguit 3× per week vlees (± 300 gram), waarvan de rest wit vlees zoals kip.' },
+      { k: 'wissel', emoji: '🔁', ok: opeen === 0 && dubbel === 0, tekst: opeen || dubbel ? `${opeen + dubbel}× hetzelfde` : 'Afwisselend', uitleg: 'Niet twee dagen achter elkaar hetzelfde soort eten, en geen gerecht twee keer.' }
+    ];
+    return { tellingen: c, regels, ok: regels.every(r => r.ok), sv5, aantal: vol.length, opeen, zelfde, dubbel };
+  }
+
+  // ---------------------------------------------------------------- kiezen
+  /** Klein, vast willekeurig getal (zodat tests herhaalbaar zijn): rng() → 0..1. */
+  function rngVan(seed) {
+    let s = (seed >>> 0) || 1;
+    return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  }
+
+  /**
+   * Score van een optie op een plek in de week.
+   * ctx: { week: [opties|null] (7 dagen, met deze dag leeg), i (dagindex), gebruikt: Set(ids), aanb, smaak: {id: 1|-1},
+   *        doordeweeks: bool, snel: minuten, rng }
+   */
+  function score(opt, ctx) {
+    if (ctx.smaak && ctx.smaak[opt.id] === -1) return { s: -1e9, waarom: [] };
+    const waarom = [];
+    let s = 0;
+    const andere = ctx.week.filter((o, j) => o && j !== ctx.i);
+    const c = tel(andere);
+    const leeg = ctx.week.filter((o, j) => !o || j === ctx.i).length;   // nog te vullen (incl. deze)
+    const nodig = Math.max(0, 1 - c.vis) + Math.max(0, 2 - c.peul);
+    const heeft = k => opt.soort.includes(k);
+    // Schijf van Vijf
+    if (heeft('vis') && c.vis < 1) { s += 6; waarom.push('🐟 vis deze week'); }
+    if (heeft('peul') && c.peul < 2) { s += 6; waarom.push('🫘 peulvruchten deze week'); }
+    if (heeft('vis') && c.vis >= 1) s -= 12;
+    if (heeft('rood') && c.rood >= 1) s -= 40;
+    if ((heeft('rood') || heeft('kip')) && c.vlees >= 3) s -= 40;
+    if (heeft('kip') && c.kip >= 2) s -= 12;
+    if (heeft('ei') && c.ei >= 2) s -= 10;
+    // Nog maar zoveel plekken als er nodig zijn: dan moet het vis of peulvruchten worden.
+    if (nodig >= leeg && !((heeft('vis') && c.vis < 1) || (heeft('peul') && c.peul < 2))) s -= 30;
+    // Afwisseling met de buren
+    const buren = [ctx.week[ctx.i - 1], ctx.week[ctx.i + 1]].filter(Boolean);
+    buren.forEach(b => {
+      if (b.soort[0] === opt.soort[0]) s -= 8;
+      if (opt.basis && b.basis === opt.basis) s -= 5;
+      if (b.id === opt.id) s -= 50;
+    });
+    if (andere.some(o => o.id === opt.id)) s -= 60;
+    if (ctx.gebruikt && ctx.gebruikt.has(opt.id)) s -= 25;
+    // Aanbiedingen
+    const a = inAanbieding(opt, ctx.aanb);
+    if (a.score) { s += a.score * 1.5; waarom.push('🏷️ ' + a.hits.slice(0, 2).map(h => h.n).join(', ')); }
+    // Smaak, bron en tijd
+    if (ctx.smaak && ctx.smaak[opt.id] === 1) { s += 5; waarom.push('⭐ favoriet'); }
+    if (opt.fav) s += 3;
+    if (opt.sv5) s += 3;
+    if (opt.eigen) s += 1;
+    if (ctx.doordeweeks && ctx.snel && opt.tijd && opt.tijd > ctx.snel) s -= 6;
+    if (opt.tijd && opt.tijd <= 30) waarom.push('⏱️ ' + opt.tijd + ' min');
+    const zelfdeBron = andere.filter(o => o.bron === opt.bron).length;
+    if (zelfdeBron >= 3) s -= 2;
+    s += (ctx.rng ? ctx.rng() : Math.random()) * 4;
+    return { s, waarom, aanb: a.hits };
+  }
+
+  /** De beste n opties voor plek i, onderling verschillend (soort of basis). */
+  function voorstellen(pool, ctx, n) {
+    const scored = pool.map(o => Object.assign({ o }, score(o, ctx))).filter(x => x.s > -1e8).sort((a, b) => b.s - a.s);
+    const out = [];
+    for (const x of scored) {
+      if (out.length >= n) break;
+      if (out.some(y => y.o.soort[0] === x.o.soort[0] && y.o.basis === x.o.basis)) continue;
+      out.push(x);
+    }
+    for (const x of scored) { if (out.length >= n) break; if (!out.includes(x)) out.push(x); }
+    return out;
+  }
+
+  /**
+   * Lege plekken van een week vullen. week: 7 opties of null; vrij: dagindexen die leeg moeten blijven.
+   * Geeft een nieuwe lijst van 7 (de bestaande blijven staan).
+   */
+  function plan(pool, opts) {
+    const week = (opts.week || []).slice(0, 7);
+    while (week.length < 7) week.push(null);
+    const rng = opts.rng || rngVan(opts.seed || Date.now());
+    const vrij = new Set(opts.vrij || []);
+    // Eerst de dagen met de minste keus (vandaag eerst), gewoon van maandag tot zondag.
+    for (let i = 0; i < 7; i++) {
+      if (week[i] || vrij.has(i) || (opts.vanaf != null && i < opts.vanaf)) continue;
+      const ctx = { week, i, gebruikt: opts.gebruikt, aanb: opts.aanb, smaak: opts.smaak, doordeweeks: i < 5, snel: opts.snel || 45, rng };
+      const best = voorstellen(pool, ctx, 1)[0];
+      if (best) week[i] = best.o;
+    }
+    return week;
+  }
+
+  const api = { termen, TERM, SOORT, soortVan, optie, producten, folderLinks, folder, prijsProfeet, watKwamTerug, eigenLijst, aanbiedingen, inAanbieding, tel, balans, score, voorstellen, plan, rngVan, N, DOEL };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.WMPlan = api;
+})(typeof window !== 'undefined' ? window : this);

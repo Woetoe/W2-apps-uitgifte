@@ -1,0 +1,95 @@
+/* W2 Apps — Ontwikkeling: wat Wouter nog moet doen na een nieuwe versie, en een korte beschrijving van de app.
+
+   Voor Claude-sessies: voeg na een uitgave nieuwe taken toe aan `taken` (met een nieuw, uniek id; oude ids nooit
+   hergebruiken, want afgevinkt wordt per id onthouden) en werk `overzicht` bij als er onderdelen bij komen.
+   Wouters vinkjes, eigen taken en ideeën staan in localStorage (W2D 'ontwikkeling'). */
+window.W2Taken = {
+  taken: [
+    // ---- 26 november 2026 (Bierkeuze)
+    { id: 'bier-1126', groep: 'Uitproberen en invullen', titel: 'Bierkeuze uitproberen', uitleg: 'Samen › Bierkeuze › Voorraad: zet je bieren erin (zoeken op naam of stijl, aantal erbij). Dan Thuis: typ wat je eet, en je krijgt de bieren die passen met de score en onder Waarom? de opbouw. Tik op Deze drink ik, dan gaat er één uit de voorraad. In een restaurant: Restaurant › Foto van de bierkaart (of typen), gerecht erbij. Klopt een advies niet? Pas het aan via het tandwiel (gewichten, zeshoek, drempels, aroma\'s) of laat weten welk gerecht en bier.', link: '../bier/index.html' },
+    { id: 'bier-partner-1126', groep: 'Op je telefoon', titel: 'Telefoon van je vriendin bijwerken', uitleg: 'Instellingen › Updates. De voorraadkast, bewaarde bierkaarten en de instellingen van de scoring zijn gedeeld via Samen.' },
+    // ---- 22 november 2026 (database-regels voor de Poule-app)
+    { id: 'firebase-regels-poule-1122', groep: 'Op je telefoon', titel: 'Database-regels opnieuw plakken (voor de Poule-app)', actie: 'regels', uitleg: 'Tik op "Regels kopiëren" (of Instellingen › Samen › Database-regels kopiëren). Dan in de Firebase-console › Realtime Database › Regels: alles vervangen, plakken, Publiceren. Er komt alleen een stuk bij voor de Poule-app (onder p); voor W2 verandert er niets. Zonder deze regels kan de nieuwe Poule-app niets opslaan.' },
+    // ---- 22 november 2026 (native 13: weekmenu zoals Flyva, widget Wat eten we?)
+    { id: 'native13-1122', groep: 'Op je telefoon', titel: 'Update installeren (nieuwe app-versie)', uitleg: 'Instellingen › Updates › Installeren. Android vraagt één keer om bevestiging. Pas daarna kan het Weekmenu de Vomar-folder ophalen en is de widget Wat eten we? er.', link: '../instellingen/index.html' },
+    { id: 'weekmenu-widget-1122', groep: 'Op je telefoon', titel: 'Widget Wat eten we? op je startscherm zetten', uitleg: 'Houd het startscherm ingedrukt › Widgets › W2 Apps › W2 · Wat eten we?. Scroll door de komende dagen, recepten met aanbiedingen en ideeën voor vanavond. 🔍 opent het zoeken, 🎲 geeft drie voorstellen. Maak hem gerust groter (lang drukken › randen slepen).' },
+    { id: 'weekmenu-1122', groep: 'Uitproberen en invullen', titel: 'Weekmenu uitproberen', uitleg: 'Weekmenu › Aanbiedingen › Ophalen (de Vomar-folder van deze week). Dan Week › ✨ Weekplan maken. Met 🔄 krijg je per dag een ander voorstel, met Wat eten we? drie voorstellen voor vanavond. Bij Ideeën zoek en filter je in alle ±200 recepten (Voedingscentrum, Vomar, Allerhande en je eigen). Lukt ophalen van de folder of een recept niet, laat dan weten welke.', link: '../weekmenu/index.html' },
+    { id: 'weekmenu-partner-1122', groep: 'Op je telefoon', titel: 'Telefoon van je vriendin bijwerken', uitleg: 'Instellingen › Updates. Het weekmenu, de aanbiedingen en wat jullie 👍 lekker of 👎 liever niet vinden zijn gedeeld via Samen.' },
+    // ---- 20 november 2026 (Kunstkamer)
+    { id: 'kunstkamer-1120', groep: 'Uitproberen en invullen', titel: 'Kunstkamer uitproberen', uitleg: 'Spellen › Kunstkamer. Begin bij level 1; elk level is een andere kraak (schuifpuzzel, sluipen langs bewakers, kluis, gang met lampen) en level 15 is de meesterkraak van De Nachtwacht. Na 3 levels komt de dagelijkse kraak vrij. Laat weten welke levels te makkelijk of te moeilijk zijn, en welk thema je als tweede wereld wilt.', link: '../kunstkamer/index.html' },
+    // ---- 19 november 2026 (native 12: tickets als wallet, widget)
+    { id: 'native12-1119', groep: 'Op je telefoon', titel: 'Update installeren (nieuwe app-versie)', uitleg: 'Instellingen › Updates › Installeren. Android vraagt één keer om bevestiging. Pas daarna kan de app codes uit pdf\'s en screenshots halen en is de widget Tickets er.', link: '../instellingen/index.html' },
+    { id: 'tickets-1119', groep: 'Uitproberen en invullen', titel: 'Tickets bij je reis zetten', uitleg: 'Reizen › reis › Tickets › Toevoegen: kies je instapkaart (pdf, screenshot of .pkpass). Staan je tickets al bij Documenten? Tik dan op "Zoek codes in documenten". Tik op een ticket voor de code groot op het scherm, op volle helderheid. Met ⋯ pas je titel, datum en tijd aan.', link: '../reizen/index.html' },
+    { id: 'tickets-widget-1119', groep: 'Op je telefoon', titel: 'Widget Tickets op je startscherm zetten', uitleg: 'Houd het startscherm ingedrukt › Widgets › W2 Apps › W2 · Tickets. Je ziet je eerstvolgende ticket met de code; met ‹ › blader je, tik op de code voor het hele scherm. Werkt zonder de app te openen en ook als Reizen op slot zit.' },
+    { id: 'tickets-scan-1119', groep: 'Uitproberen en invullen', titel: 'Bij de eerste scan controleren', uitleg: 'De app tekent de code opnieuw, scherp. Wordt hij bij de gate of het poortje toch niet gelezen? Open het ticket en tik op "Origineel tonen" (de uitsnede uit je pdf) en laat even weten welk ticket het was.' },
+    // ---- 18 november 2026 (High Pressure)
+    // ---- 19 november 2026 (groepen in Samen: lijsten en kosten met iemand anders)
+    { id: 'groepen-1119', groep: 'Uitproberen en invullen', titel: 'Groep met je maat maken', uitleg: 'Samen › + Groep › naam (bv. je maat) › Beginnen › Uitnodigen › Bericht kopiëren en via WhatsApp sturen. Heeft hij een iPhone, dan opent hij de link voor de webversie in Safari › Samen › Koppelen en plakt het bericht. Daarna zien jullie allebei de To-do\'s en Kosten delen van die groep, en niets van je Samen met Marieke. Meldingen zijn er alleen voor je eerste Samen.', link: '../samen/index.html#groep' },
+    { id: 'pressure-1118', groep: 'Uitproberen en invullen', titel: 'High Pressure uitproberen', uitleg: 'Spellen › High Pressure. Alleen: kies een level (eerst level 1, de rest gaat open als je ze haalt). Samen: jij Samen: spel maken, je maat Samen: meedoen op zijn eigen telefoon; jullie spelen in hetzelfde level en delen 5 levens. Muziek aan/uit met het muzieknootje. Laat weten welke levels te makkelijk of te moeilijk zijn.', link: '../pressure/index.html' },
+    // ---- 17 november 2026 (native 11: delen naar W2, recept van een website, herhalende to-do's)
+    { id: 'native11-1117', groep: 'Op je telefoon', titel: 'Update installeren (nieuwe app-versie)', uitleg: 'Instellingen › Updates › Installeren. Android vraagt één keer om bevestiging. Pas daarna staat W2 Apps in het Delen-menu van andere apps en kun je recepten van een website halen.', link: '../instellingen/index.html' },
+    { id: 'native11-partner-1117', groep: 'Op je telefoon', titel: 'Telefoon van je vriendin bijwerken', uitleg: 'Instellingen › Updates. Herhalende to-do\'s werken bij haar ook zonder update, maar Delen naar W2 en recepten van websites pas na de update.' },
+    { id: 'delen-1117', groep: 'Uitproberen en invullen', titel: 'Delen naar W2 proberen', uitleg: 'Open in Chrome een recept, of in Gmail een ticket-pdf, tik op Delen › W2 Apps. Kies dan Recept, Op een lijst, Bij een reis of In de kluis. Een boodschappenlijstje uit WhatsApp kan ook: elke regel wordt een item. Staat W2 Apps niet in de rij? Tik op Meer en zet hem vast.' },
+    { id: 'recept-web-1117', groep: 'Uitproberen en invullen', titel: 'Recept van een website halen', uitleg: 'Recepten › ⋮ › Recept van een website, en plak een link (bv. Allerhande, Leukerecepten, 24Kitchen). Lukt een site niet, laat dan weten welke.', link: '../recepten/index.html#website' },
+    { id: 'herhaal-1117', groep: 'Uitproberen en invullen', titel: 'Herhalende to-do\'s zetten', uitleg: 'Samen › To-do\'s › 🔁 Herhalen (of bij een bestaande taak het potloodje › Herhalen). Bv. elke week vuilnis buiten. Afvinken zet hem door naar de volgende keer; per ongeluk afgevinkt? Tik op Ongedaan.', link: '../samen/index.html' },
+    // ---- 16 november 2026 (RAI Quest)
+    { id: 'rai-1116', groep: 'Uitproberen en invullen', titel: 'RAI Quest starten', uitleg: 'Persoonlijk › RAI Quest › Start today\'s challenge. Het pad loopt tot 3 april 2027; lesdagen en examendatum pas je aan via het tandwiel. Laat weten wat te makkelijk, te moeilijk of onduidelijk is.', link: '../rai/index.html' },
+    { id: 'rai-inschrijven-1116', groep: 'Uitproberen en invullen', titel: 'Inschrijven voor het RAI-examen (april 2027)', uitleg: 'Vroege inschrijving (goedkoopst) loopt van 1 december 2026 t/m 31 januari 2027 op garp.org/rai. Daarna krijg je GARP Learning; deel hoofdstukken met Claude om de lessen erop af te stemmen. Vink de mijlpaal ook af in RAI Quest › Path.' },
+    // ---- 12 november 2026 (Dampoe Wars)
+    { id: 'dampoe-1112', groep: 'Uitproberen en invullen', titel: 'Dampoe Wars uitproberen', uitleg: 'Spellen › Dampoe Wars. Kies je figuurtje, speel tegen de computer (makkelijk/normaal/sterk), met z\'n tweeën op één telefoon, of met een maat op zijn eigen telefoon (Meedoen). Laat weten wat er beter kan.', link: '../dampoe/index.html' },
+    // ---- 11 november 2026 (spelen via internet, spellen in de webversie voor de iPhone)
+    { id: 'firebase-regels-spel-1111', groep: 'Op je telefoon', titel: 'Database-regels in Firebase plakken (voor spelen via internet)', actie: 'regels', uitleg: 'Tik op "Regels kopiëren" (of Instellingen › Samen › Database-regels kopiëren). Dan in de Firebase-console › Realtime Database › Regels: alles vervangen, plakken, Publiceren. Zonder deze regels zegt een spel "Spelen via internet staat nog niet aan". Dichtbij (Bluetooth/wifi) werkt gewoon door.' },
+    { id: 'iphone-web-1111', groep: 'Uitproberen en invullen', titel: 'Op een iPhone zetten', uitleg: 'Open in Safari woetoe.github.io/W2-apps-uitgifte/web › Deel › "Zet op beginscherm". Open hem daarna één keer met internet (onderaan staat "werkt ook zonder internet" als alles binnen is). Lijsten koppel je in die app op het beginscherm, niet in Safari: Samen › Koppelen met je code.' },
+    { id: 'internet-spel-1111', groep: 'Uitproberen en invullen', titel: 'Een spel via internet proberen', uitleg: 'Na het plakken van de regels: in een spel "Twee telefoons" › tik op het knopje Dichtbij › Via internet › Spel maken. Je krijgt een spelcode; de ander kiest Meedoen en typt hem in (app, iPhone of laptop). Laat even weten hoe Kronkel via internet aanvoelt: dat is het enige spel waar vertraging uitmaakt.' },
+    // ---- 11 november 2026 (reizen verdwenen)
+    { id: 'reizen-terug-1111', groep: 'Op je telefoon', titel: 'Reizen terugzetten', uitleg: 'Eerst deze update installeren en de database-regels in Firebase plakken. Dan Instellingen › Back-up › Terugzetten (je laatste back-up van vóór 11 nov), of Reizen › Uit Excel laden met je invulbestand. Daarna Reizen één keer openen met internet aan, zodat ze in Firebase komen.' },
+    // ---- 10 november 2026 (1.0.26 / 1.0.27)
+    { id: 'update-partner-1027', groep: 'Op je telefoon', titel: 'Telefoon van je vriendin bijwerken', uitleg: 'Instellingen › Updates. Anders ziet zij Verzameling, Weekmenu en Kosten delen niet onder Samen.' },
+    { id: 'firebase-regels-1026', groep: 'Op je telefoon', titel: 'Nieuwe database-regels in Firebase plakken', actie: 'regels', uitleg: 'Tik op "Regels kopiëren" (of Instellingen › Samen › Database-regels kopiëren). Dan in de Firebase-console › Realtime Database › Regels: alles vervangen, plakken, Publiceren. Nodig om Weekmenu, Kosten delen en Verzameling te delen.', link: '../samen/index.html' },
+    { id: 'autobackup-1026', groep: 'Op je telefoon', titel: 'Automatische back-up aanzetten', uitleg: 'Instellingen › Back-up › Automatisch bewaren: bestand kiezen (bv. in Google Drive), wachtwoord van minstens 10 tekens, hoe vaak. Bewaar het wachtwoord goed.', link: '../instellingen/index.html#backup' },
+    { id: 'meldingen-1026', groep: 'Op je telefoon', titel: 'Meldingen toestaan', uitleg: 'Als de app erom vraagt "Toestaan" kiezen; anders geen melding als een klusje in Huis aan de beurt is.' },
+    { id: 'widgets-1026', groep: 'Op je telefoon', titel: 'Widgets op je startscherm zetten', uitleg: 'Lang drukken op het startscherm › Widgets › W2 Apps › "Aftellen" en/of "Boodschappen".' },
+    { id: 'verzameling-1027', groep: 'Uitproberen en invullen', titel: 'Verzameling uitproberen', uitleg: 'Eén keer openen (dan gaat wat je had mee naar Samen). Foto van een kaart en van een plaat proberen, en "Waardes bijwerken". Oude kaarten koppelen via het item › "Opzoeken bij Cardmarket".', link: '../verzameling/index.html' },
+    { id: 'huis-1026', groep: 'Uitproberen en invullen', titel: 'Huis invullen', uitleg: 'Je klusjes (met hoe vaak) en de meterstanden.', link: '../huis/index.html' },
+    { id: 'judo-1026', groep: 'Uitproberen en invullen', titel: 'Judo invullen', uitleg: 'Examendatum, trainingsrooster, en afvinken wat je al beheerst.', link: '../judo/index.html' },
+    { id: 'branches-1110', groep: 'Opruimen op GitHub', titel: 'Oude branches verwijderen in W2-apps', uitleg: 'GitHub › W2-apps › Branches › prullenbakje. Alles behalve main mag weg (als er niet net in een andere chat aan gewerkt wordt): dag-check, exp-ec-b, exp-rsa-a, exp-rsa-b, native7, native7-v2, native7-v3, native7-v4, organiseren, reizen-excel, reizen-excel-melding, reizen-tabbladen, robuust, samen, samen-2, samen-delen, test-diagnose, uitbreiding, updates-in-instellingen, verbeteringen, verbeteringen-2, verzameling-samen, ontwikkelpagina.' }
+  ],
+
+  // Korte beschrijving om te delen (WhatsApp-opmaak: *vet*)
+  overzicht: `*W2 Apps* – mijn eigen Android-app, alles in één 📱
+Geen account en geen reclame; alles staat op je eigen telefoon.
+
+*Overzicht*
+Aftellen naar reizen, toernooien en verjaardagen, klusjes die vandaag moeten, wat we vanavond eten en hardlopen deze week. Ook als widget op het startscherm.
+
+*Samen* (live gedeeld met je partner)
+🛒 Boodschappenlijsten en to-do's, ook herhalend (elke week vuilnis buiten)
+✈️ Reizen: paklijst, boekingscodes en tickets als wallet: QR-code van je instapkaart groot op het scherm, ook als widget
+🍳 Recepten met foto's, porties omrekenen en kookmodus met timers; ook in één tik van een website
+📅 Aftellen en verjaardagen, met cadeau-ideeën
+🍲 Weekmenu: weekplan uit ±200 echte recepten (Voedingscentrum, Vomar, Allerhande) met de Vomar-aanbiedingen en de Schijf van Vijf, "Wat eten we?" met drie voorstellen, widget, en alles in één tik op de boodschappenlijst
+💶 Kosten delen (vakantie of huishouden, ook in andere valuta)
+🍺 Bierkeuze: welk bier past bij je eten? Uit je eigen voorraad of van de bierkaart in een restaurant (foto), met een score op smaak, aroma, alcohol, body en koolzuur
+👥 Ook aparte groepen met vrienden: eigen lijstjes en kosten (zoals WieBetaaltWat), ook vanaf een iPhone
+🃏 Verzameling: foto van een Pokémon-kaart of plaat, de app herkent hem en zoekt op wat hij waard is
+
+*Persoonlijk*
+🔒 Kluis voor belangrijke documenten (versleuteld, met vingerafdruk)
+🏃 Hardlopen: schema's van 0 naar 5 en 5 naar 10 km, met gesproken aanwijzingen
+🥋 Judo: trainingslogboek en de eisen voor mijn 2e dan
+🎓 RAI Quest: dagelijkse challenges, eindbazen en proefexamens voor mijn GARP Risk and AI-examen
+🏠 Huis: terugkerende klusjes met een melding, en meterstanden
+
+*Spellen* (tegen de computer, samen op één telefoon, of met meerdere telefoons: dichtbij zonder internet of via internet met een spelcode)
+Backgammon, schaken, dammen, Chinees dammen, klaverjassen, Woordbord (soort Scrabble), Tegelrummy (soort Rummikub), Zeeslag, Kronkel (slangen-race tot 8 telefoons), Dampoe Wars (scheten leggen en wegrennen, tot 4 spelers), High Pressure (rookwolken kapotschieten met een wietplant, 100 levels, alleen of samen), Kunstkamer (steel beroemde schilderijen terug: sluipen, kluizen kraken en puzzelen), Leg 't Uit (soort 30 Seconds) en Vingerspel (wie mag beginnen?)
+
+Geen Android? De spellen en de gedeelde lijsten werken ook op een iPhone of laptop, als web-app op je beginscherm (ook zonder internet).
+
+Delen naar W2: in Chrome, WhatsApp of Gmail op Delen tikken, en een recept, ticket of boodschappenlijstje staat meteen op de goede plek.
+
+Verder: automatische versleutelde back-up naar Google Drive en updates gewoon in de app.
+
+*Downloaden* (Android): https://github.com/Woetoe/W2-apps-uitgifte/releases/latest/download/W2-Apps.apk
+
+*Wat mis jij nog?* Welke app, tool of welk spel zou jij erin willen? 💡`
+};

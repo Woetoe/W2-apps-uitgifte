@@ -1,0 +1,236 @@
+/* W2 Apps — Bierkeuze: bierstijlen, bekende bieren en gerechten (in de pagina window.BierData).
+
+   Profielen zijn schattingen op basis van de stijl en wat de brouwer erover zegt; in de app pas je ze per bier aan.
+   Kort schrijven: p = [alcohol %, body 1–5, zoet, zuur, zout, pikant, vet, bitter (0–5), koolzuur 1–5], a = aroma's {id: 1–3}.
+   Gerechten: p = [intensiteit 1–5, zoet, zuur, zout, pikant, vet, bitter], k = kenmerken, w = zoekwoorden. */
+(function (root) {
+  'use strict';
+  const prof = (p, a) => ({ abv: p[0], body: p[1], zoet: p[2], zuur: p[3], zout: p[4], pikant: p[5], vet: p[6], bitter: p[7], koolzuur: p[8], aroma: a || {} });
+
+  // ---------------------------------------------------------------- bierstijlen
+  const S = (id, naam, w, p, a, kort) => ({ id, naam, w, p: prof(p, a), kort });
+  const STIJLEN = [
+    S('pils', 'Pils / lager', ['pils', 'pilsener', 'pilsner', 'lager', 'premium lager'], [5.0, 2, 1, 0, 0, 0, 0, 2, 4], { graan: 2, gras: 1, hop: 1 }, 'Fris, licht bitter, veel prik'),
+    S('helles', 'Helles / Kölsch', ['helles', 'hell', 'kolsch', 'koelsch', 'export'], [4.9, 2, 1, 0, 0, 0, 0, 1, 4], { graan: 2, appelpeer: 1, bloemig: 1 }, 'Zacht, broodachtig'),
+    S('lichtlager', 'Licht lager', ['light lager', 'licht bier', 'lite'], [4.2, 1, 1, 0, 0, 0, 0, 1, 4], { graan: 1, citrus: 1 }, 'Heel licht en dorstlessend'),
+    S('witbier', 'Witbier', ['witbier', 'witte', 'blanche', 'white', 'wit'], [5.0, 2, 1, 1, 0, 0, 0, 1, 4], { citrus: 2, kruidig: 2, graan: 1 }, 'Citrus en koriander, licht zurig'),
+    S('weizen', 'Weizen', ['weizen', 'weissbier', 'weisbier', 'weizener', 'hefeweizen', 'hefeweissbier', 'weisse', 'weissbier', 'tarwebier'], [5.3, 3, 1, 0, 0, 0, 1, 1, 5], { banaan: 3, kruidig: 2, graan: 1 }, 'Banaan en kruidnagel, romig'),
+    S('dunkelweizen', 'Dunkelweizen', ['dunkelweizen', 'dunkel weizen', 'dunkles weissbier'], [5.3, 3, 2, 0, 0, 0, 1, 1, 5], { banaan: 2, karamel: 2, kruidig: 1 }, 'Banaan met karamel'),
+    S('blond', 'Belgisch blond', ['blond', 'blonde', 'abdijbier blond'], [6.5, 3, 2, 0, 0, 0, 0, 2, 4], { appelpeer: 2, graan: 2, kruidig: 1 }, 'Fruitig, moutig, licht zoet'),
+    S('tripel', 'Tripel', ['tripel', 'triple'], [8.5, 3, 2, 0, 0, 0, 0, 3, 4], { appelpeer: 2, kruidig: 2, citrus: 1, bloemig: 1 }, 'Krachtig, kruidig, droog'),
+    S('goudenstrong', 'Sterk goudblond', ['strong golden', 'sterk blond', 'golden ale'], [8.5, 3, 1, 0, 0, 0, 0, 3, 5], { appelpeer: 2, kruidig: 1, hop: 1 }, 'Zoals Duvel: droog, veel prik'),
+    S('dubbel', 'Dubbel', ['dubbel', 'double', 'dubbel bruin', 'bruin', 'brune', 'abdijbier bruin'], [7.0, 4, 3, 0, 0, 0, 0, 2, 3], { karamel: 3, donkerfruit: 2, banaan: 1 }, 'Karamel en donker fruit'),
+    S('quadrupel', 'Quadrupel', ['quadrupel', 'quad', 'abt', 'grand cru'], [10.0, 5, 4, 0, 0, 0, 0, 2, 3], { donkerfruit: 3, karamel: 3, chocolade: 1, kruidig: 1 }, 'Zwaar: rozijn, karamel, warm'),
+    S('bok', 'Bokbier', ['bok', 'bock', 'herfstbok', 'lentebok', 'doppelbock', 'meibock'], [6.5, 4, 3, 0, 0, 0, 0, 2, 3], { karamel: 3, noot: 1, donkerfruit: 1, graan: 1 }, 'Moutig, karamel, noot'),
+    S('saison', 'Saison', ['saison', 'farmhouse'], [6.5, 2, 1, 1, 0, 1, 0, 3, 5], { kruidig: 3, citrus: 1, funky: 1, appelpeer: 1 }, 'Peperig, droog, veel prik'),
+    S('ipa', 'IPA', ['ipa', 'india pale ale', 'west coast ipa'], [6.5, 3, 1, 0, 0, 0, 0, 4, 3], { hop: 3, citrus: 3, tropisch: 1 }, 'Hoppig en bitter'),
+    S('neipa', 'NEIPA (hazy)', ['neipa', 'new england', 'hazy', 'juicy'], [6.5, 4, 2, 0, 0, 0, 1, 2, 3], { tropisch: 3, citrus: 2 }, 'Sappig tropisch, weinig bitter'),
+    S('sessionipa', 'Session IPA', ['session ipa', 'session', 'ipa light'], [4.5, 2, 1, 0, 0, 0, 0, 3, 4], { citrus: 2, tropisch: 2, hop: 2 }, 'Hoppig maar licht'),
+    S('dipa', 'Double IPA', ['double ipa', 'dipa', 'imperial ipa', 'triple ipa'], [8.5, 4, 2, 0, 0, 0, 0, 5, 3], { hop: 3, tropisch: 2, citrus: 2, karamel: 1 }, 'Heel hoppig en zwaar'),
+    S('paleale', 'Pale ale', ['pale ale', 'apa', 'american pale', 'hoppenbier'], [5.2, 3, 1, 0, 0, 0, 0, 3, 4], { citrus: 2, hop: 2, karamel: 1, bloemig: 1 }, 'Hoppig, licht moutig'),
+    S('amber', 'Amber / rood', ['amber', 'red ale', 'irish red', 'ale'], [5.5, 3, 2, 0, 0, 0, 0, 2, 3], { karamel: 3, graan: 2, noot: 1 }, 'Karamel en mout'),
+    S('brownale', 'Brown ale', ['brown ale', 'bruine ale', 'nut brown'], [5.5, 3, 2, 0, 0, 0, 0, 2, 3], { noot: 2, karamel: 2, chocolade: 1 }, 'Noot en karamel'),
+    S('marzen', 'Märzen / Vienna', ['marzen', 'maerzen', 'oktoberfest', 'vienna', 'festbier'], [5.6, 3, 2, 0, 0, 0, 0, 2, 3], { graan: 2, karamel: 2 }, 'Moutig, broodkorst'),
+    S('dunkel', 'Dunkel', ['dunkel', 'donker', 'dark lager', 'donkere lager'], [5.0, 3, 2, 0, 0, 0, 0, 1, 3], { graan: 2, karamel: 2, chocolade: 1, noot: 1 }, 'Donkere mout, zacht'),
+    S('schwarzbier', 'Schwarzbier', ['schwarzbier', 'zwart bier', 'black lager'], [4.8, 2, 1, 0, 0, 0, 0, 2, 3], { koffie: 2, chocolade: 1 }, 'Geroosterd maar licht'),
+    S('altbier', 'Altbier', ['altbier', 'alt'], [5.0, 3, 1, 0, 0, 0, 0, 3, 3], { graan: 2, karamel: 1, noot: 1 }, 'Moutig en bitter'),
+    S('rauchbier', 'Rookbier', ['rauchbier', 'rookbier', 'smoked beer'], [5.2, 3, 1, 0, 0, 0, 0, 2, 3], { rook: 3, graan: 2 }, 'Rokerig als spek'),
+    S('porter', 'Porter', ['porter', 'baltic porter'], [6.0, 4, 2, 0, 0, 0, 0, 3, 3], { chocolade: 3, koffie: 2, karamel: 1 }, 'Chocolade en koffie'),
+    S('stout', 'Stout', ['stout', 'dry stout', 'irish stout'], [4.5, 3, 1, 0, 0, 0, 1, 3, 2], { koffie: 3, chocolade: 2 }, 'Geroosterd, droog'),
+    S('milkstout', 'Milk / sweet stout', ['milk stout', 'sweet stout', 'cream stout', 'pastry stout'], [5.5, 4, 3, 0, 0, 0, 2, 2, 2], { chocolade: 3, koffie: 2, hout: 1 }, 'Zoet, romig, chocolade'),
+    S('oatmealstout', 'Oatmeal stout', ['oatmeal stout', 'haverstout'], [5.5, 4, 2, 0, 0, 0, 2, 2, 2], { chocolade: 2, koffie: 2, graan: 1 }, 'Zacht en romig'),
+    S('imperialstout', 'Imperial stout', ['imperial stout', 'russian imperial', 'ris', 'barrel aged stout', 'bourbon stout'], [10.0, 5, 3, 0, 0, 0, 1, 4, 2], { chocolade: 3, koffie: 3, donkerfruit: 2, hout: 1 }, 'Heel zwaar: chocolade, koffie'),
+    S('barleywine', 'Gerstewijn', ['barley wine', 'barleywine', 'gerstewijn', 'old ale'], [10.5, 5, 4, 0, 0, 0, 0, 3, 2], { karamel: 3, donkerfruit: 3, hout: 1 }, 'Zwaar, zoet, toffee'),
+    S('scotchale', 'Scotch ale', ['scotch ale', 'wee heavy'], [8.0, 5, 4, 0, 0, 0, 0, 1, 2], { karamel: 3, rook: 1, donkerfruit: 1 }, 'Karamel, vol'),
+    S('winterbier', 'Winterbier', ['winterbier', 'winter', 'kerstbier', 'christmas', 'noel'], [8.0, 4, 3, 0, 0, 0, 0, 2, 3], { kruidig: 3, karamel: 2, donkerfruit: 2 }, 'Kruidig, warm, donker fruit'),
+    S('kriek', 'Kriek (zoet)', ['kriek', 'kersenbier', 'cherry', 'kers'], [3.5, 2, 4, 3, 0, 0, 0, 0, 4], { kers: 3 }, 'Zoete kers, licht zuur'),
+    S('oudekriek', 'Oude kriek', ['oude kriek', 'oude kriek lambiek', 'kriek lambic'], [6.0, 2, 1, 4, 0, 0, 0, 0, 4], { kers: 3, funky: 2, hout: 1 }, 'Zure kers, wild'),
+    S('framboise', 'Framboise', ['framboise', 'frambozen', 'framboos', 'rasberry', 'raspberry', 'frambozenbier'], [3.5, 2, 4, 3, 0, 0, 0, 0, 4], { roodfruit: 3 }, 'Zoete framboos'),
+    S('fruitbier', 'Fruitbier (zoet)', ['fruitbier', 'fruit beer', 'fruitesse', 'rosé bier', 'rose bier'], [4.2, 2, 4, 2, 0, 0, 0, 0, 4], { roodfruit: 3, kers: 2 }, 'Zoet rood fruit'),
+    S('geuze', 'Geuze / lambiek', ['geuze', 'gueuze', 'lambiek', 'lambic', 'oude geuze'], [6.0, 2, 0, 5, 0, 0, 0, 1, 5], { funky: 3, citrus: 2, hout: 1, appelpeer: 1 }, 'Zuur, droog, wild'),
+    S('vlaamsrood', 'Vlaams rood / oud bruin', ['vlaams rood', 'flemish red', 'oud bruin', 'oud bruin', 'rodenbach'], [5.5, 3, 2, 4, 0, 0, 0, 0, 3], { kers: 2, hout: 2, donkerfruit: 1, funky: 1 }, 'Zoetzuur, hout, kers'),
+    S('gose', 'Gose', ['gose'], [4.5, 2, 1, 4, 2, 0, 0, 0, 4], { citrus: 2, kruidig: 1 }, 'Zuur en zoutig'),
+    S('berliner', 'Berliner Weisse', ['berliner', 'berliner weisse'], [3.5, 1, 1, 4, 0, 0, 0, 0, 4], { citrus: 2, graan: 1 }, 'Licht en zuur'),
+    S('sour', 'Fruited sour', ['sour', 'zuur bier', 'fruited sour', 'smoothie sour'], [5.0, 2, 2, 4, 0, 0, 0, 0, 4], { tropisch: 2, roodfruit: 2 }, 'Zuur met fruit'),
+    S('radler', 'Radler', ['radler', 'shandy', 'citroenbier'], [2.0, 1, 3, 2, 0, 0, 0, 0, 4], { citrus: 3 }, 'Bier met limonade'),
+    S('alcoholvrij', 'Alcoholvrij pils', ['0.0', '0,0', 'alcoholvrij', 'alkoholfrei', 'alcohol free', 'non-alcoholic', 'na pils'], [0.0, 1, 2, 0, 0, 0, 0, 1, 4], { graan: 2 }, 'Zoals pils, zonder alcohol'),
+    S('alcoholvrijweizen', 'Alcoholvrij weizen', ['alkoholfrei weizen', 'alcoholvrij weizen', '0.0 weizen', 'weizen 0.0'], [0.4, 2, 2, 0, 0, 0, 0, 1, 4], { banaan: 2, graan: 1 }, 'Weizen zonder alcohol'),
+    S('honingbier', 'Honingbier', ['honingbier', 'honey', 'mede'], [7.0, 3, 3, 0, 0, 0, 0, 1, 3], { karamel: 2, bloemig: 2 }, 'Honing en bloemen'),
+    S('chili', 'Chilibier', ['chili beer', 'chilibier', 'jalapeno beer'], [5.0, 2, 1, 0, 0, 4, 0, 2, 4], { kruidig: 1, tropisch: 1 }, 'Echt pikant'),
+    S('mexlager', 'Mexicaanse lager', ['mexican lager', 'cerveza'], [4.5, 1, 1, 0, 0, 0, 0, 1, 4], { graan: 1, citrus: 1 }, 'Licht, met een schijfje limoen')
+  ];
+
+  // ---------------------------------------------------------------- bekende bieren (stijl + afwijkingen)
+  // p: alleen wat afwijkt van de stijl; a: aroma's die erbij komen.
+  const B = (id, naam, stijl, p, a, alias) => ({ id, naam, stijl, p: p || {}, a: a || null, alias: alias || [] });
+  const BIEREN = [
+    B('heineken', 'Heineken', 'pils', { abv: 5.0 }),
+    B('amstel', 'Amstel', 'pils', { abv: 5.0, bitter: 1 }, null, ['amstel pils', 'amstel lager']),
+    B('grolsch', 'Grolsch Premium Pilsner', 'pils', { abv: 5.0, bitter: 2 }, null, ['grolsch', 'grolsch pils']),
+    B('bavaria', 'Bavaria', 'pils', { abv: 5.0, bitter: 1 }, null, ['bavaria pils']),
+    B('hertogjan', 'Hertog Jan Pilsener', 'pils', { abv: 5.1 }, null, ['hertog jan', 'hertog jan pils']),
+    B('brand', 'Brand Pilsener', 'pils', { abv: 5.0, bitter: 3 }, null, ['brand pils', 'brand']),
+    B('gulpener', 'Gulpener Pilsner', 'pils', { abv: 5.0 }, null, ['gulpener']),
+    B('jupiler', 'Jupiler', 'pils', { abv: 5.2, bitter: 1 }),
+    B('stella', 'Stella Artois', 'pils', { abv: 5.2 }, null, ['stella']),
+    B('amstelbright', 'Amstel Bright', 'mexlager', { abv: 4.5 }, { citrus: 2 }),
+    B('polar', 'Polar', 'lichtlager', { abv: 4.5 }),
+    B('balashi', 'Balashi', 'pils', { abv: 5.0, bitter: 1 }),
+    B('corona', 'Corona', 'mexlager', { abv: 4.5 }, null, ['corona extra']),
+    B('desperados', 'Desperados', 'mexlager', { abv: 5.9, zoet: 3, body: 2 }, { citrus: 2 }),
+    B('heineken00', 'Heineken 0.0', 'alcoholvrij', { abv: 0 }, null, ['heineken 0,0', 'heineken alcoholvrij']),
+    B('amstel00', 'Amstel 0.0', 'alcoholvrij', { abv: 0 }, null, ['amstel 0,0']),
+    B('bavaria00', 'Bavaria 0.0', 'alcoholvrij', { abv: 0 }, null, ['bavaria 0,0']),
+    B('amstelradler', 'Amstel Radler', 'radler', { abv: 2.0 }),
+    B('hjweizener', 'Hertog Jan Weizener', 'weizen', { abv: 5.7 }, null, ['weizener']),
+    B('hjgrandprestige', 'Hertog Jan Grand Prestige', 'barleywine', { abv: 10.0 }, null, ['grand prestige']),
+    B('hjdubbel', 'Hertog Jan Dubbel', 'dubbel', { abv: 7.3 }),
+    B('hjtripel', 'Hertog Jan Tripel', 'tripel', { abv: 8.5 }),
+    B('latrappeblond', 'La Trappe Blond', 'blond', { abv: 6.5 }),
+    B('latrappedubbel', 'La Trappe Dubbel', 'dubbel', { abv: 7.0 }),
+    B('latrappetripel', 'La Trappe Tripel', 'tripel', { abv: 8.0 }),
+    B('latrappequad', 'La Trappe Quadrupel', 'quadrupel', { abv: 10.0 }),
+    B('isidor', "La Trappe Isid'or", 'amber', { abv: 7.5, body: 3 }, { karamel: 3, appelpeer: 1 }, ['isidor']),
+    B('latrappewit', 'La Trappe Witte Trappist', 'witbier', { abv: 5.5 }, null, ['witte trappist']),
+    B('westmalledubbel', 'Westmalle Dubbel', 'dubbel', { abv: 7.0 }),
+    B('westmalletripel', 'Westmalle Tripel', 'tripel', { abv: 9.5 }),
+    B('chimayrood', 'Chimay Rood', 'dubbel', { abv: 7.0 }, null, ['chimay red', 'chimay premiere']),
+    B('chimayblauw', 'Chimay Blauw', 'quadrupel', { abv: 9.0 }, null, ['chimay blue', 'chimay grande reserve']),
+    B('chimaywit', 'Chimay Tripel', 'tripel', { abv: 8.0 }, null, ['chimay wit', 'chimay white', 'chimay cinq cents']),
+    B('rochefort6', 'Rochefort 6', 'dubbel', { abv: 7.5 }),
+    B('rochefort8', 'Rochefort 8', 'quadrupel', { abv: 9.2, body: 4 }),
+    B('rochefort10', 'Rochefort 10', 'quadrupel', { abv: 11.3 }),
+    B('orval', 'Orval', 'blond', { abv: 6.2, zoet: 1, bitter: 3, koolzuur: 5, zuur: 1 }, { funky: 2, hop: 2 }),
+    B('duvel', 'Duvel', 'goudenstrong', { abv: 8.5 }),
+    B('delirium', 'Delirium Tremens', 'goudenstrong', { abv: 8.5, zoet: 2 }, { kruidig: 2 }),
+    B('leffeblond', 'Leffe Blond', 'blond', { abv: 6.6, zoet: 3 }),
+    B('leffebruin', 'Leffe Bruin', 'dubbel', { abv: 6.5 }, null, ['leffe brune', 'leffe dubbel']),
+    B('affligemblond', 'Affligem Blond', 'blond', { abv: 6.8 }),
+    B('affligemdubbel', 'Affligem Dubbel', 'dubbel', { abv: 6.8 }),
+    B('affligemtripel', 'Affligem Tripel', 'tripel', { abv: 9.0 }),
+    B('grimbergenblond', 'Grimbergen Blond', 'blond', { abv: 6.7, zoet: 3 }),
+    B('grimbergendubbel', 'Grimbergen Dubbel', 'dubbel', { abv: 6.5 }, null, ['grimbergen double']),
+    B('hoegaarden', 'Hoegaarden', 'witbier', { abv: 4.9 }, null, ['hoegaarden wit']),
+    B('brugsezot', 'Brugse Zot Blond', 'blond', { abv: 6.0 }, null, ['brugse zot']),
+    B('straffehendrik', 'Straffe Hendrik Tripel', 'tripel', { abv: 9.0 }, null, ['straffe hendrik']),
+    B('kwak', 'Kwak', 'amber', { abv: 8.4, body: 4, zoet: 3 }, null, ['pauwel kwak']),
+    B('lachouffe', 'La Chouffe', 'blond', { abv: 8.0 }, { kruidig: 2, citrus: 1 }, ['chouffe']),
+    B('karmeliet', 'Tripel Karmeliet', 'tripel', { abv: 8.4 }, { graan: 2, citrus: 2 }, ['karmeliet']),
+    B('westvleteren12', 'Westvleteren 12', 'quadrupel', { abv: 10.2 }, null, ['westvleteren']),
+    B('stbernardus12', 'St. Bernardus Abt 12', 'quadrupel', { abv: 10.0 }, null, ['st bernardus', 'sint bernardus']),
+    B('goudencarolus', 'Gouden Carolus Classic', 'dubbel', { abv: 8.5, body: 4 }, null, ['gouden carolus']),
+    B('kasteelrouge', 'Kasteel Rouge', 'fruitbier', { abv: 8.0, body: 4 }, { kers: 3 }),
+    B('fruitesse', 'Liefmans Fruitesse', 'fruitbier', { abv: 3.8 }, null, ['fruitesse', 'liefmans']),
+    B('lindemanskriek', 'Lindemans Kriek', 'kriek', { abv: 3.5 }),
+    B('lindemansframboise', 'Lindemans Framboise', 'framboise', { abv: 2.5 }),
+    B('mortsubite', 'Mort Subite Kriek', 'kriek', { abv: 4.0 }, null, ['mort subite']),
+    B('boongeuze', 'Oude Geuze Boon', 'geuze', { abv: 7.0 }, null, ['boon geuze']),
+    B('3fonteinen', '3 Fonteinen Oude Geuze', 'geuze', { abv: 6.0 }, null, ['drie fonteinen', '3 fonteinen']),
+    B('rodenbach', 'Rodenbach Classic', 'vlaamsrood', { abv: 5.2 }, null, ['rodenbach']),
+    B('rodenbachgc', 'Rodenbach Grand Cru', 'vlaamsrood', { abv: 6.0, zuur: 5 }),
+    B('paulaner', 'Paulaner Hefe-Weissbier', 'weizen', { abv: 5.5 }, null, ['paulaner']),
+    B('erdinger', 'Erdinger Weissbier', 'weizen', { abv: 5.3 }, null, ['erdinger']),
+    B('erdinger0', 'Erdinger Alkoholfrei', 'alcoholvrijweizen', { abv: 0.4 }),
+    B('weihenstephaner', 'Weihenstephaner Hefeweissbier', 'weizen', { abv: 5.4 }, null, ['weihenstephaner']),
+    B('guinness', 'Guinness Draught', 'stout', { abv: 4.2, vet: 2 }, null, ['guinness']),
+    B('punkipa', 'BrewDog Punk IPA', 'ipa', { abv: 5.4 }, { tropisch: 3 }, ['punk ipa']),
+    B('lagunitas', 'Lagunitas IPA', 'ipa', { abv: 6.2 }),
+    B('sierranevada', 'Sierra Nevada Pale Ale', 'paleale', { abv: 5.6 }, null, ['sierra nevada']),
+    B('founders', 'Founders Breakfast Stout', 'imperialstout', { abv: 8.3, body: 5 }, { koffie: 3 }, ['breakfast stout']),
+    B('hoppenbier', 'Jopen Hoppenbier', 'paleale', { abv: 6.8 }),
+    B('ijwit', "Brouwerij 't IJ IJwit", 'witbier', { abv: 6.5 }, null, ['ijwit']),
+    B('natte', "Brouwerij 't IJ Natte", 'dubbel', { abv: 6.5 }, null, ['natte']),
+    B('zatte', "Brouwerij 't IJ Zatte", 'tripel', { abv: 8.0 }, null, ['zatte']),
+    B('skuumkoppe', 'Texels Skuumkoppe', 'dunkelweizen', { abv: 6.0 }, null, ['skuumkoppe']),
+    B('amstelbok', 'Amstel Bock', 'bok', { abv: 7.0 }),
+    B('grolschbok', 'Grolsch Herfstbok', 'bok', { abv: 6.6 }, null, ['grolsch bok'])
+  ];
+
+  // ---------------------------------------------------------------- gerechten
+  const G = (id, naam, w, p, k) => ({ id, naam, w, p, k });
+  const GERECHTEN = [
+    // vlees
+    G('biefstuk', 'Biefstuk / steak', ['biefstuk', 'steak', 'entrecote', 'ribeye', 'rib-eye', 'tournedos', 'ossenhaas', 'picanha', 'kogelbiefstuk', 'tomahawk', 'rundvlees'], [4, 0, 0, 2, 0, 3, 1], ['rundvlees', 'gebraden']),
+    G('hamburger', 'Hamburger', ['burger', 'hamburger', 'cheeseburger', 'smashburger'], [4, 1, 1, 3, 0, 4, 1], ['rundvlees', 'gegrild']),
+    G('spareribs', 'Spareribs', ['spareribs', 'ribs', 'ribbetjes', 'krabbetjes'], [4, 2, 1, 3, 1, 4, 1], ['varken', 'gegrild', 'rook', 'karamel']),
+    G('pulledpork', 'Pulled pork', ['pulled pork', 'pulled'], [4, 2, 1, 3, 1, 4, 0], ['varken', 'gestoofd', 'rook', 'karamel']),
+    G('stoofvlees', 'Stoofvlees', ['stoofvlees', 'stoofpot', 'carbonade', 'hachee', 'goulash', 'draadjesvlees', 'stoverij', 'ossobuco', 'bourguignon', 'sudderlapjes', 'runderstoof'], [5, 2, 1, 3, 0, 4, 1], ['rundvlees', 'gestoofd']),
+    G('wild', 'Wild', ['hert', 'hertenbiefstuk', 'hertenstoof', 'wildstoof', 'wildzwijn', 'ree', 'reerug', 'haas', 'fazant', 'wild'], [5, 1, 1, 3, 0, 3, 1], ['wild', 'gestoofd', 'paddenstoel']),
+    G('eend', 'Eend', ['eend', 'eendenborst', 'confit de canard', 'pekingeend', 'duck'], [4, 2, 1, 2, 0, 4, 0], ['eend', 'gebraden']),
+    G('lam', 'Lam', ['lam', 'lamsrack', 'lamskotelet', 'lamsbout', 'lamskoteletjes', 'lamb'], [4, 0, 0, 2, 0, 4, 1], ['lam', 'gegrild', 'kruiden']),
+    G('kip', 'Kip', ['kip', 'kipfilet', 'kippendij', 'kippendijen', 'haantje', 'poulet', 'chicken', 'kalkoen', 'kippenpoot'], [3, 0, 0, 2, 0, 2, 0], ['gevogelte', 'gebraden']),
+    G('sate', 'Saté', ['sate', 'satay', 'sateh', 'kipsate', 'babi sate'], [3, 3, 0, 3, 1, 3, 0], ['gevogelte', 'gegrild', 'noot', 'aziatisch']),
+    G('wings', 'Chicken wings', ['wings', 'kippenvleugels', 'kippenvleugeltjes', 'buffalo wings'], [3, 1, 1, 3, 3, 4, 0], ['gevogelte', 'gefrituurd']),
+    G('schnitzel', 'Schnitzel', ['schnitzel', 'wienerschnitzel', 'cordon bleu', 'jaegerschnitzel', 'jagerschnitzel'], [3, 0, 1, 2, 0, 4, 0], ['varken', 'gefrituurd']),
+    G('varkenshaas', 'Varkensvlees', ['varkenshaas', 'karbonade', 'speklap', 'varkensvlees', 'procureur', 'varkensrollade', 'buikspek', 'porchetta'], [3, 1, 0, 2, 0, 3, 0], ['varken', 'gebraden']),
+    G('worst', 'Worst', ['worst', 'braadworst', 'bratwurst', 'rookworst', 'chorizo', 'merguez', 'saucijs', 'hotdog', 'hot dog'], [4, 0, 0, 4, 1, 4, 0], ['varken', 'gegrild']),
+    G('shoarma', 'Shoarma / kebab', ['shoarma', 'kebab', 'gyros', 'doner', 'durum', 'kapsalon'], [4, 0, 1, 3, 1, 4, 0], ['kruidig', 'gegrild']),
+    G('bbq', 'BBQ / mixed grill', ['bbq', 'barbecue', 'mixed grill', 'gegrild vlees', 'gourmet', 'churrasco'], [4, 1, 1, 3, 1, 4, 1], ['gegrild', 'rook', 'rundvlees', 'varken']),
+    G('carpaccio', 'Carpaccio / tartaar', ['carpaccio', 'tartaar', 'tartare', 'steak tartare', 'filet americain'], [2, 0, 1, 2, 0, 2, 0], ['rundvlees', 'rauw', 'kaasoud']),
+    G('charcuterie', 'Charcuterie / tapas', ['charcuterie', 'tapas', 'serrano', 'prosciutto', 'parmaham', 'fuet', 'borrelplank', 'salami', 'ham'], [3, 0, 1, 4, 1, 4, 0], ['varken', 'kaasoud']),
+    G('snacks', 'Snacks (frituur)', ['frikandel', 'kroket', 'bitterbal', 'bitterballen', 'kaassouffle', 'loempia', 'snacks', 'borrelhapjes', 'bamischijf', 'vlammetjes', 'pastechi', 'pastechis'], [3, 1, 0, 4, 1, 5, 0], ['gefrituurd']),
+    G('friet', 'Friet', ['friet', 'frites', 'patat', 'fries', 'patatje'], [2, 0, 0, 3, 0, 4, 0], ['gefrituurd']),
+    G('stamppot', 'Stamppot', ['stamppot', 'boerenkool', 'hutspot', 'zuurkool', 'andijviestamppot'], [3, 0, 1, 3, 0, 3, 0], ['varken', 'rook']),
+    G('erwtensoep', 'Erwtensoep', ['erwtensoep', 'snert'], [4, 0, 0, 3, 0, 3, 0], ['varken', 'gestoofd', 'rook']),
+    G('rendang', 'Rendang / rijsttafel', ['rendang', 'rijsttafel', 'daging', 'semur'], [5, 1, 0, 2, 2, 4, 0], ['rundvlees', 'gestoofd', 'curry', 'kruidig']),
+    G('stoba', 'Stoba (stoof)', ['stoba', 'kabritu', 'karni stoba', 'cabrito'], [5, 1, 1, 3, 1, 4, 0], ['gestoofd', 'lam', 'kruidig']),
+    G('keshiyena', 'Keshi yena', ['keshi yena', 'keshi', 'gevulde kaas'], [4, 1, 1, 4, 1, 4, 0], ['kaasoud', 'gevogelte']),
+    // vis
+    G('kibbeling', 'Kibbeling / fish & chips', ['kibbeling', 'lekkerbek', 'fish and chips', 'fish & chips', 'gebakken vis', 'vissticks', 'calamares', 'calamari', 'inktvisringen'], [3, 0, 1, 3, 0, 4, 0], ['vis', 'gefrituurd']),
+    G('wittevis', 'Witte vis', ['kabeljauw', 'schol', 'tong', 'zeebaars', 'dorade', 'heek', 'witte vis', 'koolvis', 'tarbot', 'zeeduivel', 'snapper', 'red snapper', 'mahi mahi', 'wahoo', 'dorado', 'piska', 'grouper', 'tilapia', 'vis'], [2, 0, 1, 2, 0, 1, 0], ['vis', 'citrus']),
+    G('zalm', 'Zalm', ['zalm', 'salmon', 'forel'], [3, 0, 1, 2, 0, 4, 0], ['vettevis']),
+    G('gerooktevis', 'Gerookte vis', ['gerookte zalm', 'makreel', 'paling', 'gerookte vis', 'haring', 'bokking'], [3, 0, 1, 4, 0, 3, 0], ['vettevis', 'rook']),
+    G('tonijn', 'Tonijn', ['tonijn', 'tuna', 'tonijnsteak'], [3, 0, 1, 2, 0, 2, 0], ['vis']),
+    G('sushi', 'Sushi', ['sushi', 'sashimi', 'poke', 'pokebowl', 'maki', 'nigiri', 'uramaki'], [2, 1, 2, 3, 0, 2, 0], ['vis', 'rauw', 'aziatisch']),
+    G('ceviche', 'Ceviche', ['ceviche', 'tiradito'], [2, 0, 4, 2, 2, 1, 0], ['vis', 'rauw', 'citrus', 'mexicaans']),
+    G('mosselen', 'Mosselen', ['mosselen', 'moules', 'mossel'], [3, 0, 1, 3, 0, 2, 0], ['zeevruchten', 'kruiden']),
+    G('garnalen', 'Garnalen / schaaldieren', ['garnalen', 'gamba', 'gambas', 'scampi', 'kreeft', 'krab', 'langoustine', 'zeevruchten', 'fruits de mer', 'shrimp'], [3, 0, 1, 3, 1, 3, 0], ['zeevruchten']),
+    G('oesters', 'Oesters', ['oester', 'oesters'], [2, 0, 1, 4, 0, 1, 0], ['zeevruchten', 'rauw']),
+    // pasta, pizza, wereld
+    G('pizza', 'Pizza', ['pizza', 'margherita', 'quattro formaggi', 'calzone'], [3, 1, 2, 3, 0, 3, 0], ['pizza', 'tomaat', 'kaasjong']),
+    G('pizzasalami', 'Pizza salami / pepperoni', ['pepperoni', 'pizza salami', 'salamipizza', 'diavola'], [4, 1, 2, 4, 2, 4, 0], ['pizza', 'tomaat', 'varken']),
+    G('pastatomaat', 'Pasta met tomatensaus', ['bolognese', 'spaghetti', 'lasagne', 'lasagna', 'pasta', 'penne', 'macaroni', 'arrabiata', 'arrabbiata', 'gnocchi', 'ravioli'], [3, 1, 2, 2, 0, 2, 0], ['tomaat', 'rundvlees']),
+    G('pastaroom', 'Romige pasta', ['carbonara', 'alfredo', 'pasta met room', 'tagliatelle met room', 'mac and cheese', 'mac & cheese'], [3, 0, 0, 3, 0, 4, 0], ['romig', 'varken', 'kaasoud']),
+    G('risotto', 'Risotto / paddenstoelen', ['risotto', 'truffel', 'paddenstoelen', 'champignons', 'funghi', 'paddenstoelenrisotto'], [3, 0, 1, 2, 0, 3, 0], ['paddenstoel', 'romig', 'kaasoud']),
+    G('curry', 'Curry (Indiaas)', ['curry', 'masala', 'tikka', 'vindaloo', 'korma', 'madras', 'dal', 'biryani', 'butter chicken', 'tandoori', 'jalfrezi'], [4, 1, 1, 2, 3, 3, 0], ['curry', 'kruidig']),
+    G('thai', 'Thais', ['thaise curry', 'rode curry', 'groene curry', 'green curry', 'red curry', 'pad thai', 'tom yum', 'thais', 'massaman', 'tom kha'], [3, 2, 1, 2, 3, 3, 0], ['curry', 'aziatisch', 'citrus', 'kruiden']),
+    G('chinees', 'Chinees / wok', ['wok', 'babi pangang', 'foe yong hai', 'nasi', 'bami', 'chinees', 'kung pao', 'teriyaki', 'ramen', 'noedels', 'dim sum', 'dumplings', 'gyoza', 'bao', 'loempia', 'koreaans', 'bibimbap', 'bulgogi', 'pho'], [3, 2, 1, 3, 1, 2, 0], ['aziatisch']),
+    G('roti', 'Roti', ['roti', 'moksi meti', 'surinaams', 'pom'], [4, 0, 0, 2, 2, 3, 0], ['curry', 'gevogelte', 'kruidig']),
+    G('mexicaans', 'Mexicaans', ['taco', 'tacos', 'burrito', 'fajita', 'fajitas', 'nachos', 'quesadilla', 'enchilada', 'chili con carne', 'mexicaans', 'guacamole'], [3, 0, 2, 3, 2, 3, 0], ['mexicaans', 'citrus']),
+    G('marokkaans', 'Marokkaans / Midden-Oosten', ['tajine', 'couscous', 'falafel', 'hummus', 'mezze', 'shakshuka', 'kofta'], [3, 1, 1, 2, 1, 2, 0], ['kruidig', 'lam']),
+    // kaas, ei, groente
+    G('kaasjong', 'Zachte / jonge kaas', ['jonge kaas', 'brie', 'camembert', 'mozzarella', 'burrata', 'jonge gouda'], [2, 0, 1, 3, 0, 4, 0], ['kaasjong']),
+    G('kaasoud', 'Kaasplank / oude kaas', ['oude kaas', 'kaasplank', 'comte', 'parmezaan', 'parmigiano', 'cheddar', 'gruyere', 'belegen kaas', 'oude gouda', 'manchego'], [4, 0, 0, 4, 0, 4, 0], ['kaasoud', 'noot']),
+    G('kaasblauw', 'Blauwe kaas', ['blauwe kaas', 'roquefort', 'stilton', 'gorgonzola', 'bleu'], [5, 0, 0, 5, 0, 5, 1], ['kaasblauw']),
+    G('geitenkaas', 'Geitenkaas', ['geitenkaas', 'chevre'], [3, 1, 2, 3, 0, 3, 0], ['geitenkaas']),
+    G('fondue', 'Kaasfondue / raclette', ['fondue', 'raclette', 'kaasfondue'], [4, 0, 1, 3, 0, 5, 0], ['kaasoud', 'romig']),
+    G('salade', 'Salade', ['salade', 'salad', 'caesar', 'nicoise', 'caprese', 'groene salade'], [1, 0, 2, 1, 0, 1, 1], ['salade', 'kruiden']),
+    G('groente', 'Vegetarisch / groente', ['groenten', 'groente', 'vegetarisch', 'vega', 'tofu', 'tempeh', 'ovengroenten', 'bloemkool', 'aubergine', 'courgette'], [2, 1, 1, 2, 0, 1, 1], ['salade']),
+    G('soep', 'Soep', ['soep', 'tomatensoep', 'groentesoep', 'bouillon', 'gazpacho'], [2, 1, 2, 2, 0, 1, 0], ['tomaat']),
+    G('uiensoep', 'Franse uiensoep', ['uiensoep', 'french onion'], [3, 1, 0, 3, 0, 2, 0], ['kaasoud', 'karamel']),
+    G('ei', 'Eieren / brunch', ['omelet', 'eggs benedict', 'brunch', 'eieren', 'ei', 'uitsmijter', 'roerei', 'quiche', 'frittata'], [2, 0, 0, 2, 0, 3, 0], ['ei']),
+    G('pannenkoek', 'Pannenkoek (hartig)', ['pannenkoek', 'pancake', 'pannenkoeken', 'galette', 'crepe'], [2, 1, 0, 2, 0, 2, 0], ['pizza']),
+    // desserts
+    G('chocolade', 'Chocoladedessert', ['chocolade', 'brownie', 'brownies', 'chocoladetaart', 'chocolate', 'fondant', 'moelleux', 'mousse au chocolat', 'chocolademousse', 'lava cake'], [4, 4, 0, 0, 0, 3, 2], ['chocoladedessert', 'chocolade']),
+    G('romigdessert', 'Romig dessert', ['cheesecake', 'creme brulee', 'panna cotta', 'vanille-ijs', 'vanilleijs', 'ijs', 'bavarois', 'pudding', 'flan', 'quesillo'], [3, 4, 1, 0, 0, 4, 0], ['romigdessert']),
+    G('tiramisu', 'Tiramisu', ['tiramisu', 'koffiedessert'], [3, 4, 0, 0, 0, 4, 2], ['romigdessert', 'koffie']),
+    G('karameldessert', 'Karamel / toffee', ['karamel', 'toffee', 'stroopwafel', 'sticky toffee', 'dulce de leche', 'tarte tatin', 'caramel'], [3, 5, 0, 1, 0, 3, 0], ['karamel', 'romigdessert']),
+    G('fruitdessert', 'Fruitdessert', ['sorbet', 'appeltaart', 'crumble', 'pavlova', 'fruitsalade', 'vruchtentaart', 'citroentaart', 'fruit', 'taart'], [2, 3, 2, 0, 0, 1, 0], ['fruitdessert']),
+    G('roodfruit', 'Rood fruit dessert', ['aardbei', 'aardbeien', 'framboos', 'frambozen', 'kersen', 'rood fruit', 'bosvruchten', 'kersenvlaai'], [2, 3, 2, 0, 0, 2, 0], ['fruitdessert', 'roodfruit', 'kers']),
+    G('kruidkoek', 'Speculaas / kruidkoek', ['speculaas', 'kerstkransje', 'gingerbread', 'kruidkoek', 'ontbijtkoek', 'kerststol', 'pepernoten'], [3, 4, 0, 0, 0, 3, 0], ['kruidig', 'karamel', 'romigdessert'])
+  ];
+
+  /** Volledig profiel van een bekend bier (stijl + afwijkingen). */
+  const STIJL = Object.fromEntries(STIJLEN.map(s => [s.id, s]));
+  function profielVan(b) {
+    const st = STIJL[b.stijl];
+    const p = JSON.parse(JSON.stringify(st ? st.p : prof([5, 3, 1, 0, 0, 0, 0, 2, 3])));
+    Object.assign(p, b.p || {});
+    if (b.a) p.aroma = Object.assign({}, p.aroma, b.a);
+    return p;
+  }
+
+  const api = { STIJLEN, STIJL, BIEREN, GERECHTEN, profielVan, prof };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.BierData = api;
+})(typeof window !== 'undefined' ? window : this);

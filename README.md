@@ -2,7 +2,7 @@
 
 Hier haalt de app W2 Apps zijn updates vandaan. De broncode staat in een privé repository.
 
-**Nieuwste versie: 1.0.52**
+**Nieuwste versie: 1.0.53**
 
 ## App installeren
 

@@ -42,6 +42,7 @@ h2{font:800 20px/1.2 var(--f-display);margin:0 0 -12px}
 .tr{background:#0f2a33;color:#f3efe6}
 .soon{border:1.5px dashed var(--line);border-radius:20px;padding:18px;color:var(--muted);font-size:15px}
 footer{color:var(--muted);font-size:13px;text-align:center}
+.fbk{display:block;text-align:center;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;padding:14px 8px 6px}
 .diag{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;padding:12px;border:1px dashed var(--line);border-radius:14px}
 .diag svg{width:18px;height:18px}
 @media (prefers-reduced-motion:reduce){.tile:active{transform:none}}
@@ -362,6 +363,7 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
   </section>
 
   <div class="state" id="state" role="status"><i></i><span id="statetx">Bezig met klaarzetten…</span></div>
+  <a class="fbk" href="feedback/index.html">💬 Idee of iets dat niet werkt? Laat het weten</a>
   <footer id="ver">W2 Apps · webversie</footer>
 </div>
 <nav class="tabs" aria-label="Afdelingen"><div class="in">
@@ -455,7 +457,7 @@ html{touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:no
   function draw() {
     const host = document.getElementById('samenwrap');
     if (!S.cfg) {
-      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👫 Koppelen</b><span>Plak de code die je kreeg (uit de Android-app: Samen › tandwiel › Iemand uitnodigen) en kies wie je bent. Daarna zie je hier dezelfde lijsten en kosten.</span><em>Koppelen</em></a>` + andere();
+      host.innerHTML = `<a class="samenhero" href="samen/index.html"><b>👥 Koppelen</b><span>Plak de code die je kreeg (uit de Android-app: Samen › tandwiel › Iemand uitnodigen) en kies wie je bent. Daarna zie je hier dezelfde lijsten en kosten.</span><em>Koppelen</em></a>` + andere();
       return;
     }
     const sm = D.get('dash-samen', null) || { lijsten: [], leden: [] };

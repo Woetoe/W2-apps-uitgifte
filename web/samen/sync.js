@@ -478,8 +478,8 @@
       if (!urlOk(url)) throw new Error('Dat database-adres klopt niet. Het eindigt op firebaseio.com of firebasedatabase.app.');
       const code = opts.code || newCode();
       // Meedoen als iemand die al lid is (bv. dezelfde persoon op een tweede apparaat): zelfde id, naam en kleur.
-      const me = opts.als ? { id: opts.als.id, naam: opts.als.naam, kleur: opts.als.kleur || '#ff7eb6' }
-        : { id: D.uid(), naam: (opts.naam || '').trim() || 'Ik', kleur: opts.kleur || '#ff7eb6' };
+      const me = opts.als ? { id: opts.als.id, naam: opts.als.naam, kleur: opts.als.kleur || '#ffc83d' }
+        : { id: D.uid(), naam: (opts.naam || '').trim() || 'Ik', kleur: opts.kleur || '#ffc83d' };
       const next = { url, code, me, sinds: Date.now() };
       const k = await derive(code);
       let found = null;
@@ -534,6 +534,17 @@
         'iPhone of laptop: open ' + WEB_LINK + ' in Safari of Chrome › Samen › Koppelen.';
     }
 
+    /** Eerste van twee berichten: de uitleg, zonder code. De code gaat los erachteraan (prettyCode), zodat de ander hem
+        in één keer kan kopiëren. Bewust geen hij/zij: wie er meedoet kan iedereen zijn. */
+    function inviteIntro() {
+      const groep = slot ? ruimteNaam(slot) : '';
+      return (groep ? 'Doe mee met de groep "' + groep + '" in W2 Apps: lijstjes en kosten delen.\n' : 'Doe mee met onze gedeelde lijstjes in W2 Apps.\n') +
+        'In het volgende bericht staat de code. Houd dat bericht ingedrukt en kies Kopiëren.\n' +
+        (cfg.url !== DEFAULT_URL ? 'Server: ' + cfg.url + '\n' : '') +
+        'Android: W2 Apps › Samen › 🔑 Code invoeren › Plakken. App nog niet? ' + APK_LINK + '\n' +
+        'iPhone of laptop: open ' + WEB_LINK + ' in Safari of Chrome › Samen › Koppelen.';
+    }
+
       const api = {
       DEFAULT_URL,
       /** Welke groep: '' = je eerste Samen, anders de id van een extra groep. */
@@ -549,7 +560,7 @@
       /** Wacht er voor dit item nog iets op versturen? */
       isPending: (kind, id) => queue.some(q => q.k === kind && q.id === id),
       on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-      start, stop, peek, preview, setup, uploadFile, downloadFile, deleteFile, KINDS, leave, setMe, invite, put, del, update, summary,
+      start, stop, peek, preview, setup, uploadFile, downloadFile, deleteFile, KINDS, leave, setMe, invite, inviteIntro, put, del, update, summary,
       newCode, prettyCode, parseInvite, urlOk, cleanUrl, flush,
       canWatch, setWatch, get watching() { return !!(cfg && cfg.meldingen); },
       watchStatus() { try { return JSON.parse(N.samenWatchStatus()); } catch (e) { return {}; } },
@@ -570,7 +581,7 @@
   const ruimte = slot => (made[slot || ''] = made[slot || ''] || maak(slot || ''));
   const extra = {
     /** Alle groepen: je eerste Samen en de extra groepen [{slot, naam, emoji}]. */
-    groepen: () => [{ slot: '', naam: 'Samen', emoji: '👫' }].concat(lijst()),
+    groepen: () => [{ slot: '', naam: 'Samen', emoji: '👥' }].concat(lijst()),
     ruimte,
     nieuweGroep(naam, emoji) {
       const a = new Uint8Array(6); crypto.getRandomValues(a);

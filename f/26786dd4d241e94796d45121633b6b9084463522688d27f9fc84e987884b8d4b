@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Feedback</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#7fd1ff;--acc-ink:#062233}
+.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);font-weight:600;margin-top:14px}
+textarea.in{min-height:140px;resize:vertical;font-family:inherit;line-height:1.45}
+select.in{appearance:auto}
+.tel{text-align:right;font-size:12px;color:var(--muted);font-weight:500}
+.fb{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:8px}
+.fb .grow{flex:1;min-width:0}
+.fb b{display:block;font-weight:700}
+.fb p{margin:4px 0 0;white-space:pre-wrap;line-height:1.4;font-size:15px}
+.fb small{display:block;color:var(--muted);font-size:13px;margin-top:4px}
+.fb .st{flex:none;font-size:12px;font-weight:800;border-radius:999px;padding:3px 9px;background:var(--panel2);color:var(--muted)}
+.fb .st.ok{background:var(--ok);color:#06210f}
+h2{margin:26px 2px 4px;font-size:15px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html" aria-label="Terug"></a><h1>Feedback</h1></div>
+<main class="page">
+  <div class="card acc"><b>Een idee, iets dat niet werkt, of iets dat beter kan?</b>
+    <div class="muted small" style="margin-top:4px">Schrijf het hier. Het gaat versleuteld naar Wouter en wordt elke week doorgenomen; fouten en goede ideeën komen in een volgende versie. Zonder internet bewaart de app het en stuurt het later.</div></div>
+  <div class="f">Wat is het?<div class="seg" id="soort"></div></div>
+  <label class="f">Waarover?<select class="in" id="onderdeel"></select></label>
+  <label class="f">Vertel<textarea class="in" id="tekst" maxlength="4000" placeholder="Bv. bij Woordbord wordt het woord QI niet goedgekeurd. Of: handig als ik in Boodschappen ook een foto kan toevoegen."></textarea><span class="tel" id="tel"></span></label>
+  <label class="f">Je naam (mag leeg)<input class="in" id="naam" maxlength="30" autocomplete="given-name"></label>
+  <div class="err" id="err" hidden></div>
+  <button class="btn wide" id="stuur" type="button" style="margin-top:16px">Versturen</button>
+  <div id="eerder"></div>
+</main>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="zegel.js"></script>
+<script src="post.js"></script>
+<script>
+const { esc, $, $$, icon, toast } = UI;
+const D = W2D, F = W2Feedback;
+$('#back').innerHTML = icon('back');
+
+// Onderdelen; vanuit een pagina geopend (?van=weekmenu of de vorige pagina) staat die al gekozen.
+const ONDERDELEN = [['algemeen', 'De app in het algemeen'], ['overzicht', 'Overzicht'],
+  ['samen', 'Samen: lijsten en to-do\'s'], ['reizen', 'Reizen en tickets'], ['recepten', 'Recepten'], ['weekmenu', 'Weekmenu'], ['kosten', 'Kosten delen'],
+  ['bier', 'Bierkeuze'], ['aftellen', 'Aftellen'], ['verzameling', 'Verzameling'],
+  ['kluis', 'Kluis'], ['hardlopen', 'Hardlopen'], ['judo', 'Judo'], ['rai', 'RAI Quest'], ['huis', 'Huis'],
+  ['backgammon', 'Backgammon'], ['schaken', 'Schaken'], ['halma', 'Chinees dammen'], ['dammen', 'Dammen'], ['woordbord', 'Woordbord'], ['kronkel', 'Kronkel'],
+  ['tegelrummy', 'Tegelrummy'], ['klaverjassen', 'Klaverjassen'], ['zeeslag', 'Zeeslag'], ['legtuit', "Leg 't Uit"], ['vingerspel', 'Vingerspel'],
+  ['dampoe', 'Dampoe Wars'], ['pressure', 'High Pressure'], ['kunstkamer', 'Kunstkamer'], ['verbinding', 'Spelen met twee telefoons of via internet'],
+  ['instellingen', 'Instellingen, updates en back-up'], ['nieuw', 'Iets nieuws voor de app']];
+const naamVan = id => (ONDERDELEN.find(o => o[0] === id) || [id, id])[1];
+function vanWaar() {
+  const q = new URLSearchParams(location.search).get('van');
+  if (q) return q;
+  try { const m = /\/([a-z]+)\/index\.html/.exec(new URL(document.referrer).pathname); if (m && m[1] !== 'feedback') return m[1]; } catch (e) {}
+  return 'algemeen';
+}
+const van = vanWaar();
+$('#onderdeel').innerHTML = ONDERDELEN.map(([id, n]) => `<option value="${id}" ${id === van ? 'selected' : ''}>${esc(n)}</option>`).join('');
+if (!ONDERDELEN.some(o => o[0] === van)) $('#onderdeel').value = 'algemeen';
+
+let soort = 'idee';
+$('#soort').innerHTML = Object.entries(F.SOORTEN).map(([k, t]) => `<button type="button" data-v="${k}" class="${k === soort ? 'on' : ''}">${t}</button>`).join('');
+$('#soort').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; soort = b.dataset.v; $$('#soort button').forEach(x => x.classList.toggle('on', x === b)); };
+$('#naam').value = D.get('feedback-naam', '') || D.get('samen-naam', '') || '';
+const tel = () => { const n = $('#tekst').value.length; $('#tel').textContent = n > 3000 ? `${n} / 4000` : ''; };
+$('#tekst').addEventListener('input', tel);
+
+function apparaat() {
+  const info = W2.inApp && W2.update && W2.update.available() ? W2.update.info() : {};
+  return { versie: info.build ? '1.0.' + info.build : '', apparaat: (W2.inApp ? 'Android-app' : 'webversie') + ' · ' + String(navigator.userAgent || '').replace(/\s+/g, ' ').slice(0, 140) };
+}
+
+function datum(iso) { try { return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+function renderEerder() {
+  const l = (D.get(F.KEY, null) || { lijst: [] }).lijst;
+  $('#eerder').innerHTML = l.length ? `<h2>Eerder gestuurd</h2>` + l.slice(0, 30).map(it => `<div class="fb"><div class="grow">
+      <b>${esc(F.SOORTEN[it.soort] || it.soort)} · ${esc(naamVan(it.onderdeel))}</b><p>${esc(it.tekst)}</p><small>${esc(datum(it.op))}</small></div>
+      <span class="st ${it.status === 'verstuurd' ? 'ok' : ''}">${it.status === 'verstuurd' ? 'Verstuurd' : 'Wacht'}</span></div>`).join('') : '';
+}
+
+$('#stuur').onclick = async () => {
+  const tekst = $('#tekst').value.trim(), err = $('#err');
+  err.hidden = true;
+  if (tekst.length < 3) { err.textContent = 'Schrijf eerst wat je kwijt wilt.'; err.hidden = false; $('#tekst').focus(); return; }
+  const naam = $('#naam').value.trim();
+  D.set('feedback-naam', naam);
+  const b = $('#stuur'); b.disabled = true; b.textContent = 'Versturen…';
+  try {
+    const r = await F.nieuw(D, Object.assign({ soort, onderdeel: $('#onderdeel').value, tekst, naam }, apparaat()));
+    $('#tekst').value = ''; tel();
+    toast(r.item.status === 'verstuurd' ? 'Verstuurd. Dank je!' : 'Bewaard. Het gaat vanzelf zodra het kan.', 3500);
+  } catch (e) {
+    toast('Bewaren lukte niet: ' + e.message, 5000);
+  }
+  b.disabled = false; b.textContent = 'Versturen';
+  renderEerder();
+};
+
+renderEerder();
+// Wat nog wacht alsnog versturen (bij openen en zodra er weer internet is).
+const inhalen = () => F.inhalen(D).then(r => { if (r.verstuurd) { renderEerder(); toast(r.verstuurd === 1 ? 'Je eerdere feedback is nu ook verstuurd.' : `${r.verstuurd} eerdere berichten zijn nu ook verstuurd.`); } }).catch(() => {});
+inhalen();
+addEventListener('online', inhalen);
+</script>
+</body>
+</html>

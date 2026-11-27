@@ -92,6 +92,9 @@
         for (const [id, r] of Object.entries(remote)) {
           const l = local[id];
           const hl = l ? hash(l) : '', hr = hash(r);
+          // Hier verwijderd terwijl het in Firebase nog precies zo staat als bij de laatste synchronisatie
+          // (het verwijderen was nog niet verstuurd): niet terugzetten, maar alsnog verwijderen.
+          if (!l && snap[id] === hr && !pendingHere(id)) { S.del(kind, id); delete snap[id]; delete wacht[id]; delete gezien[id]; continue; }
           if (l && hl === hr) { merged[id] = l; snap[id] = hr; continue; }
           // hier gewijzigd, of verstuurd maar nooit bevestigd (bv. app dicht zonder internet): de versie hier wint
           if (l && (snap[id] !== hl || wacht[id])) { merged[id] = l; out.push(id); continue; }

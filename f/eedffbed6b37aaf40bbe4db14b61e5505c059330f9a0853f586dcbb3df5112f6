@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voorraadkast</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#8fd694;--acc-ink:#0b2a10}
+.top .ib.r{margin-left:auto}
+section{display:flex;flex-direction:column;gap:12px}
+h2{font:800 18px var(--f-display);margin:8px 0 0}
+.foto{display:flex;flex-direction:column;gap:10px}
+.foto .kop{display:flex;align-items:center;gap:12px}
+.foto .kop .grow{flex:1;min-width:0}
+.foto .kop b{display:block;font:800 18px var(--f-display)}
+.foto .kop span{display:block;color:var(--muted);font-size:14px}
+.foto .big{font-size:34px;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 11px;font-size:14px;cursor:pointer;color:inherit}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.zoekbalk{display:flex;gap:8px}
+.zoekbalk .in{flex:1}
+.n{display:flex;align-items:center;gap:6px;flex:none}
+.n button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:19px;cursor:pointer}
+.n b{min-width:22px;text-align:center}
+.row .sub .over{color:var(--danger);font-weight:700}
+.row .sub .bijna{color:#ffc83d;font-weight:700}
+.row.vast .ico{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--acc) 60%,transparent)}
+.cat{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:6px 2px -4px}
+.op{display:flex;flex-direction:column;gap:4px}
+.op div{display:flex;align-items:center;gap:8px;font-size:15px}
+.op div span{flex:1;min-width:0}
+.op .d{flex:none;font-weight:700;font-size:13px}
+.op .d.over{color:var(--danger)}
+.op .d.bijna,.op .d.vandaag{color:#ffc83d}
+.lnk{border:0;background:none;color:var(--acc);font-weight:700;cursor:pointer;padding:6px 0;font:inherit;font-weight:700;text-align:left}
+.herk{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto;margin:0 -4px;padding:0 4px}
+.hr{display:grid;grid-template-columns:30px 1fr auto;gap:6px 10px;align-items:center;background:var(--panel2);border-radius:14px;padding:8px 10px}
+.hr.uit{opacity:.5}
+.hr .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;cursor:pointer;background:var(--bg)}
+.hr:not(.uit) .box{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.hr .nm{min-width:0}
+.hr .nm input{width:100%;border:0;background:transparent;color:var(--text);font:700 16px var(--f-body);padding:2px 0;border-bottom:1px dashed var(--line)}
+.hr .meta{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.hr .plek{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:999px;padding:3px 9px;font-size:13px;cursor:pointer}
+.hr .al{color:#ffc83d;font-weight:700}
+.hr .bon{font-family:ui-monospace,monospace;font-size:12px;opacity:.75}
+.wacht{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 0;text-align:center}
+.wacht img{max-width:100%;max-height:34vh;border-radius:14px;opacity:.85}
+.spin{width:34px;height:34px;border-radius:50%;border:4px solid var(--panel2);border-top-color:var(--acc);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.stap{display:flex;gap:10px;font-size:15px;padding:4px 0}
+.stap b{flex:none;width:24px;height:24px;border-radius:12px;background:var(--panel2);display:grid;place-items:center;font-size:13px}
+.key{font-family:ui-monospace,monospace}
+.gek{display:flex;align-items:center;gap:10px}
+#plek button{font-size:13px;white-space:nowrap;padding:0 4px}
+.gek .grow{flex:1;min-width:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1>Voorraadkast</h1><button class="ib r" id="inst" type="button" aria-label="Instellingen"></button></div>
+<main class="page">
+  <div class="card foto" id="foto"></div>
+  <div class="card" id="kook" hidden></div>
+  <div class="card" id="bijna" hidden></div>
+  <div class="seg" id="plek"></div>
+  <div class="zoekbalk"><input class="in" id="zoek" placeholder="Zoeken in de kast" autocomplete="off" type="search"></div>
+  <section id="lijst"></section>
+</main>
+<button class="fab" id="fab" type="button" aria-label="Zelf toevoegen"></button>
+<input type="file" id="file" accept="image/*" hidden>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="../samen/boodschappen.js"></script>
+<script src="../bier/score.js"></script>
+<script src="../bier/data.js"></script>
+<script src="kast.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, V = Voorraad, B = Boodschappen;
+$('#back').innerHTML = icon('back');
+$('#inst').innerHTML = icon('gear');
+$('#fab').innerHTML = icon('plus');
+D.recent('voorraad');
+
+let plek = D.get('voorraad-plek', 'alles'), q = '';
+const today = () => V.vandaag();
+const komma = v => String(v).replace('.', ',');
+
+// ---------------------------------------------------------------- hulpjes
+function thtTekst(it) {
+  if (!it.tht) return '';
+  const d = V.dagenTot(it.tht, today()), st = V.status(it, today());
+  const t = d < 0 ? (d === -1 ? 'gisteren over de datum' : `${-d} dagen over de datum`) : d === 0 ? 'vandaag over de datum' : d === 1 ? 'morgen over de datum' : d <= 14 ? `nog ${d} dagen` : 'tht ' + D.date.nice(it.tht, { day: 'numeric', month: 'short', year: d > 300 ? 'numeric' : undefined });
+  return st === 'over' || st === 'vandaag' ? `<span class="over">${esc(t)}</span>` : st === 'bijna' ? `<span class="bijna">${esc(t)}</span>` : esc(t);
+}
+const catEmoji = c => V.CAT_EMOJI[c] || '📦';
+/** Bier herkennen (naam → stijl en smaakprofiel uit Bierkeuze). */
+function bierInfo(naam) {
+  if (!window.BierScore || !window.BierData) return null;
+  const g = BierScore.bierUitRegel(naam, BierData.BIEREN, BierData.STIJLEN);
+  return g ? { stijl: g.stijl, bierId: g.bierId || '', profiel: g.profiel } : null;
+}
+function metBier(p) {
+  if (p.cat !== 'bier' || p.bier) return p;
+  const b = bierInfo(p.naam);
+  return Object.assign(p, { bier: b || { stijl: '', profiel: null } });
+}
+
+// ---------------------------------------------------------------- tekenen
+function render() {
+  renderFoto(); renderKook(); renderBijna(); renderPlek(); renderLijst();
+}
+function renderFoto() {
+  const ok = V.ai.klaar(), hint = D.get('voorraad-hint', '');
+  $('#foto').innerHTML = `<div class="kop"><span class="big">📸</span><div class="grow"><b>Foto maken</b><span>${ok ? 'Van de kassabon, de kast, de koelkast of de vriezer. Claude zet erin wat erop staat; jij vinkt alleen af.' : 'Laat Claude je kassabon of kast lezen, dan hoef je niets te typen. Daarvoor is eenmalig een API-sleutel nodig.'}</span></div></div>
+    ${ok ? `<div class="chips" id="hint">${[['', 'Zelf bepalen'], ['bon', '🧾 Kassabon'], ['koelkast', '🧊 Koelkast'], ['vriezer', '❄️ Vriezer'], ['kast', '🗄️ Kast']].map(([k, t]) => `<button type="button" class="chip${k === hint ? ' on' : ''}" data-hint="${k}">${t}</button>`).join('')}</div>
+      <div class="btns"><button class="btn" type="button" data-f="cam">${icon('camera')}Foto maken</button><button class="btn q" type="button" data-f="gal">${icon('image')}Uit galerij</button></div>`
+    : `<button class="btn wide" type="button" data-f="key">Sleutel instellen</button>`}`;
+}
+function teKoken() {
+  const wm = D.get('weekmenu', null);
+  if (!wm || !wm.dagen) return [];
+  return V.teAfboeken(wm.dagen, today(), new Date().getHours()).map(d => ({ d, m: wm.dagen[d] }));
+}
+function renderKook() {
+  const t = teKoken();
+  $('#kook').hidden = !t.length;
+  if (!t.length) return;
+  const x = t[t.length - 1], wanneer = V.dagenTot(x.d, today()) === 0 ? 'Vanavond' : V.dagenTot(x.d, today()) === -1 ? 'Gisteren' : D.date.nice(x.d, { weekday: 'long' });
+  $('#kook').innerHTML = `<div class="gek"><span style="font-size:26px">🍳</span><div class="grow"><b>${esc(wanneer)}: ${esc(x.m.titel || x.m.tekst || 'gekookt')}</b><div class="muted small">Gekookt? Boek in het Weekmenu af wat je gebruikte${t.length > 1 ? ` (en nog ${t.length - 1} ${t.length === 2 ? 'dag' : 'dagen'})` : ''}.</div></div>
+    <a class="btn q" href="../weekmenu/index.html#afboeken" style="flex:none">Afboeken</a></div>`;
+}
+function renderBijna() {
+  const b = V.bijnaOp(V.items, today());
+  $('#bijna').hidden = !b.length;
+  if (!b.length) return;
+  $('#bijna').innerHTML = `<b>⏰ Eerst opmaken</b><div class="op" style="margin-top:8px">${b.slice(0, 8).map(it => {
+    const st = V.status(it, today()), d = V.dagenTot(it.tht, today());
+    return `<div><span>${catEmoji(it.cat)} ${esc(it.naam)}${it.aantal > 1 ? ' (' + it.aantal + ')' : ''}</span><span class="d ${st}">${d < 0 ? 'over' : d === 0 ? 'vandaag' : d === 1 ? 'morgen' : 'nog ' + d + ' d'}</span></div>`;
+  }).join('')}</div>
+    <a class="lnk" href="../weekmenu/index.html#wat">Wat eten we? (kiest recepten die dit opmaken)</a>`;
+}
+function renderPlek() {
+  const n = p => V.items.filter(it => p === 'alles' || it.plek === p).length;
+  $('#plek').innerHTML = [['alles', 'Alles'], ...V.PLEKKEN.map(p => [p.id, p.emoji + ' ' + p.naam])].map(([id, t]) => `<button type="button" data-p="${id}" class="${id === plek ? 'on' : ''}">${t}${n(id) ? ` <span class="muted">${n(id)}</span>` : ''}</button>`).join('');
+}
+function renderLijst() {
+  const qq = V.N(q);
+  const items = V.items.filter(it => (plek === 'alles' || it.plek === plek) && (!qq || V.N(it.naam + ' ' + (it.merk || '')).includes(qq)));
+  if (!V.items.length) {
+    $('#lijst').innerHTML = `<div class="empty"><b>De kast is nog leeg</b>Maak een foto van je kassabon na het boodschappen doen, of van de koelkast. Claude zet alles erin met de houdbaarheid erbij. Zelf typen kan met de +.</div>`;
+    return;
+  }
+  if (!items.length) { $('#lijst').innerHTML = `<div class="muted" style="text-align:center;padding:20px">Niets gevonden${q ? ` voor "${esc(q)}"` : ''}.</div>`; return; }
+  const groepen = [];
+  const plekken = plek === 'alles' ? V.PLEKKEN.map(p => p.id) : [plek];
+  plekken.forEach(pl => V.CATS.forEach(c => {
+    const g = items.filter(it => it.plek === pl && it.cat === c).sort((a, b) => (a.tht || '9') < (b.tht || '9') ? -1 : (a.tht || '9') > (b.tht || '9') ? 1 : a.naam.localeCompare(b.naam, 'nl'));
+    if (g.length) groepen.push({ pl, c, g });
+  }));
+  let h = '', vorigePlek = '';
+  groepen.forEach(({ pl, c, g }) => {
+    if (plek === 'alles' && pl !== vorigePlek) { h += `<h2>${V.PLEK[pl].emoji} ${V.PLEK[pl].naam}</h2>`; vorigePlek = pl; }
+    h += `<div class="cat">${catEmoji(c)} ${esc(V.CAT_NAAM[c])}</div><div class="list">` + g.map(it => {
+      const sub = [it.hoeveelheid ? esc(it.hoeveelheid) : '', thtTekst(it), it.cat === 'bier' && it.bier && !it.bier.profiel ? '<span class="bijna">stijl kiezen in Bierkeuze</span>' : ''].filter(Boolean).join(' · ');
+      return `<div class="row${it.vast ? ' vast' : ''}" data-id="${esc(it.id)}"><div class="ico">${catEmoji(it.cat)}</div><div class="grow"><b>${esc(it.naam)}</b>${sub ? `<span class="sub">${sub}</span>` : ''}</div>
+        <div class="n"><button type="button" data-min="${esc(it.id)}" aria-label="Eén minder">−</button><b>${it.aantal}</b><button type="button" data-plus="${esc(it.id)}" aria-label="Eén meer">+</button></div></div>`;
+    }).join('') + '</div>';
+  });
+  $('#lijst').innerHTML = h;
+}
+
+// ---------------------------------------------------------------- tikken: −1 / +1 / bewerken
+$('#lijst').addEventListener('click', async e => {
+  const mi = e.target.closest('[data-min]'), pl = e.target.closest('[data-plus]');
+  if (mi || pl) {
+    const r = V.tel((mi || pl).dataset[mi ? 'min' : 'plus'], pl ? 1 : -1);
+    if (r.op) await isOp(r.item);
+    return;
+  }
+  const row = e.target.closest('[data-id]');
+  if (row) bewerk(V.items.find(x => x.id === row.dataset.id));
+});
+
+/** Iets is op: op de boodschappenlijst (vast in huis of instelling "altijd"), vragen, of niets. */
+async function isOp(it) {
+  const stand = V.inst.opLijst || 'vragen';
+  const lists = B.lists();
+  if (stand === 'nooit' && !it.vast) return toast(`${it.naam} is op en uit de kast.`);
+  if (!lists.length) return toast(`${it.naam} is op.${window.Samen && Samen.cfg ? ' Maak in Samen een boodschappenlijst, dan kan hij er voortaan meteen op.' : ''}`, 3500);
+  let ja = it.vast || stand === 'altijd';
+  if (!ja) {
+    const r = await sheet(null, `<div style="font-size:17px"><b>${esc(it.naam)}</b> is op. Op de boodschappenlijst zetten?</div>
+      <label class="toggle"><input type="checkbox" name="vast"> Vast in huis houden: voortaan meteen op de lijst als hij op is</label>`,
+    [{ label: 'Nee, weg', value: 'nee', kind: 'q' }, { label: 'Op de lijst', value: 'ja' }]).done;
+    if (r.value === null) { V.zet(it.id, Object.assign({}, it, { aantal: 1 })); return toast('Teruggezet.'); }   // weggetikt: toch niet op
+    ja = r.value === 'ja';
+    if (r.form.vast) it.vast = true;
+  }
+  if (ja) {
+    try { await Samen.start(); } catch (e) {}
+    const out = B.addLines(lists[0].id, [it.naam], 'Voorraadkast');
+    toast(out.added ? `${it.naam} staat op ${lists[0].naam}.` : `${it.naam} stond al op de lijst.`);
+  } else toast(`${it.naam} is uit de kast.`);
+  if (it.vast) rememberVast(it);
+}
+// "Vast in huis" moet blijven als hij op is (het item zelf is weg): onthouden per naam, voor als hij terugkomt.
+function rememberVast(it) {
+  const inst = Object.assign({}, V.inst), v = new Set(inst.vast || []);
+  v.add(V.N(it.naam)); inst.vast = [...v].slice(-200);
+  V.bewaar(null, inst);
+}
+const isVast = naam => (V.inst.vast || []).includes(V.N(naam));
+
+async function bewerk(it) {
+  if (!it) return;
+  const s = sheet(it.naam, `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(it.naam)}"></label>
+    <div class="grid2"><label class="f">Aantal<input class="in" name="aantal" type="number" inputmode="numeric" min="0" max="999" value="${it.aantal}"></label>
+      <label class="f">Inhoud<input class="in" name="hoeveelheid" value="${esc(it.hoeveelheid || '')}" placeholder="bv. 1 l"></label></div>
+    <div class="grid2"><label class="f">Plek<select class="in" name="plek">${V.PLEKKEN.map(p => `<option value="${p.id}"${p.id === it.plek ? ' selected' : ''}>${p.emoji} ${p.naam}</option>`).join('')}</select></label>
+      <label class="f">Soort<select class="in" name="cat">${V.CATS.map(c => `<option value="${c}"${c === it.cat ? ' selected' : ''}>${catEmoji(c)} ${esc(V.CAT_NAAM[c])}</option>`).join('')}</select></label></div>
+    <label class="f">Houdbaar tot (tht)<input class="in" name="tht" type="date" value="${esc(it.tht || '')}"></label>
+    <label class="toggle"><input type="checkbox" name="vast"${it.vast || isVast(it.naam) ? ' checked' : ''}> Vast in huis: als hij op is meteen op de boodschappenlijst</label>
+    ${it.cat === 'bier' ? `<div class="muted small">Smaakprofiel en stijl pas je aan in <a href="../bier/index.html#kast" style="color:var(--acc)">Bierkeuze</a>.</div>` : ''}
+    ${it.door && window.Samen && Samen.data && Samen.data.leden && Samen.data.leden[it.door] ? `<div class="muted small">Laatst bijgewerkt door ${esc(Samen.data.leden[it.door].naam)}.</div>` : ''}
+    <div class="btns"><button class="btn danger" type="button" data-x="weg">${icon('trash')}Uit de kast</button><button class="btn q" type="button" data-x="lijst">${icon('plus')}Op de lijst</button></div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.naam.trim() ? '' : 'Geef het product een naam.' }]);
+  s.el.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (x) s.close(x.dataset.x); });
+  const r = await s.done;
+  if (r.value === 'weg') { V.zet(it.id, null); return toast(it.naam + ' is uit de kast.'); }
+  if (r.value === 'lijst') {
+    const lists = B.lists();
+    if (!lists.length) return toast('Er is nog geen boodschappenlijst in Samen.');
+    const out = B.addLines(lists[0].id, [it.naam], 'Voorraadkast');
+    return toast(out.added ? `${it.naam} staat op ${lists[0].naam}.` : 'Stond al op de lijst.');
+  }
+  if (r.value !== 'ok') return;
+  const f = r.form, aantal = Math.max(0, Math.min(999, parseInt(f.aantal, 10) || 0));
+  const nieuw = Object.assign({}, it, { naam: f.naam.trim(), aantal, hoeveelheid: f.hoeveelheid.trim(), plek: f.plek, cat: f.cat, tht: f.tht || '', vast: !!f.vast });
+  if (!nieuw.hoeveelheid) delete nieuw.hoeveelheid;
+  if (!nieuw.tht) delete nieuw.tht;
+  if (!nieuw.vast) delete nieuw.vast;
+  if (nieuw.cat === 'bier') metBier(nieuw); else delete nieuw.bier;
+  if (!aantal) { V.zet(it.id, null); return isOp(nieuw); }
+  V.zet(it.id, nieuw);
+  if (nieuw.vast) rememberVast(nieuw);
+}
+
+// ---------------------------------------------------------------- zelf toevoegen (typen of van de boodschappenlijst)
+function gekocht() {
+  if (!window.Samen || !Samen.cfg) return [];
+  const al = new Set(D.get('voorraad-gekocht', [])), lijsten = new Set(B.lists().map(l => l.id));
+  return Object.entries(Samen.data.items || {}).map(([id, i]) => Object.assign({ id }, i))
+    .filter(i => lijsten.has(i.lijst) && i.ok && i.okOp && Date.now() - i.okOp < 4 * 864e5 && !al.has(i.id))
+    .sort((a, b) => b.okOp - a.okOp);
+}
+$('#fab').onclick = async () => {
+  const g = gekocht();
+  const s = sheet('In de kast zetten', `
+    <label class="f">Wat heb je? Eén per regel<textarea class="in" name="tekst" rows="4" placeholder="2 melk&#10;pasta&#10;500 g gehakt"></textarea></label>
+    <label class="f">Plek<select class="in" name="plek"><option value="">Zelf raden</option>${V.PLEKKEN.map(p => `<option value="${p.id}"${p.id === plek ? ' selected' : ''}>${p.emoji} ${p.naam}</option>`).join('')}</select></label>
+    ${g.length ? `<button class="btn q wide" type="button" data-x="lijst">${icon('check')}Afgevinkt op de boodschappenlijst (${g.length})</button>` : ''}`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Erin', value: 'ok', check: f => f.tekst.trim() ? '' : 'Typ minstens één product.' }], { focus: true });
+  s.el.addEventListener('click', e => { if (e.target.closest('[data-x]')) s.close('lijst'); });
+  const r = await s.done;
+  if (r.value === 'lijst') return uitLijst(g);
+  if (r.value !== 'ok') return;
+  const nieuwe = r.form.tekst.split(/\n+/).map(x => x.trim()).filter(Boolean).map(x => {
+    const p = B.parseQty(x), cat = catVan(p.tekst);
+    const n = parseInt(p.aantal, 10), stuk = !p.aantal || /^\d+$/.test(p.aantal.trim());
+    return metBier({ naam: p.tekst, cat, plek: r.form.plek || V.plekVoor(cat), aantal: stuk && n > 0 ? n : 1, hoeveelheid: stuk ? '' : p.aantal, vast: isVast(p.tekst) });
+  });
+  toegevoegd(V.voegToe(nieuwe));
+};
+function catVan(t) {
+  if (/\b(bier|pils|ipa|tripel|dubbel|duvel|heineken|amstel|grolsch|hertog jan|brand|jupiler|leffe|affligem|la chouffe|westmalle|polar|balashi)\b/i.test(t)) return 'bier';
+  const c = B.guessCat(t);
+  return V.CATS.includes(c) ? c : 'overig';
+}
+async function uitLijst(g) {
+  const kies = new Set(g.map(i => i.id));
+  const s = sheet('Gekocht van de lijst', `<div class="muted small">Wat je de afgelopen dagen afvinkte op de boodschappenlijst. Wat aan staat gaat de kast in.</div>
+    <div class="card">${g.map(i => `<div class="check pick on" data-i="${esc(i.id)}"><span class="box">${icon('check', 'width="16" height="16" stroke-width="3"')}</span><span class="t">${esc((i.aantal ? i.aantal + ' ' : '') + i.tekst)}</span></div>`).join('')}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'In de kast', value: 'ok' }]);
+  s.el.addEventListener('click', e => {
+    const c = e.target.closest('[data-i]'); if (!c) return;
+    const on = !kies.has(c.dataset.i); on ? kies.add(c.dataset.i) : kies.delete(c.dataset.i);
+    c.classList.toggle('on', on); c.querySelector('.box').innerHTML = on ? icon('check', 'width="16" height="16" stroke-width="3"') : '';
+  });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  D.set('voorraad-gekocht', D.get('voorraad-gekocht', []).concat(g.map(i => i.id)).slice(-400));   // ook wat uit stond: niet opnieuw vragen
+  const nieuwe = g.filter(i => kies.has(i.id)).map(i => {
+    const cat = i.cat === 'drinken' && catVan(i.tekst) === 'bier' ? 'bier' : V.CATS.includes(i.cat) ? i.cat : catVan(i.tekst);
+    const n = parseInt(i.aantal, 10), stuk = !i.aantal || /^\d+\s*x?$/.test(String(i.aantal).trim());
+    return metBier({ naam: i.tekst, cat, plek: V.plekVoor(cat), aantal: stuk && n > 0 ? n : 1, hoeveelheid: stuk ? '' : i.aantal, vast: isVast(i.tekst) });
+  });
+  toegevoegd(V.voegToe(nieuwe));
+}
+function toegevoegd(r) {
+  const t = [r.nieuw ? `${r.nieuw} nieuw` : '', r.bij ? `${r.bij} bijgeteld` : ''].filter(Boolean).join(', ');
+  toast(t ? 'In de kast: ' + t + '.' : 'Niets toegevoegd.');
+}
+
+// ---------------------------------------------------------------- foto → Claude
+function pickFoto(camera) {
+  return new Promise(res => {
+    const inp = $('#file');
+    inp.value = '';
+    if (camera) inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
+    inp.onchange = async () => {
+      const f = inp.files[0];
+      if (!f) return res(null);
+      try {
+        const bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(f));
+        // Claude kijkt naar hooguit ± 1568 pixels aan de lange kant; groter kost alleen meer.
+        const sc = Math.min(1, 1568 / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', .85));
+      } catch (e) { toast('Deze foto kon niet gelezen worden.'); res(null); }
+    };
+    inp.click();
+  });
+}
+$('#foto').addEventListener('click', async e => {
+  const h = e.target.closest('[data-hint]');
+  if (h) { D.set('voorraad-hint', h.dataset.hint); return renderFoto(); }
+  const f = e.target.closest('[data-f]');
+  if (!f) return;
+  if (f.dataset.f === 'key') return instellingen();
+  const foto = await pickFoto(f.dataset.f === 'cam');
+  if (foto) herken(foto);
+});
+
+async function herken(foto) {
+  const hint = D.get('voorraad-hint', '');
+  let afgebroken = false;
+  const w = sheet(null, `<div class="wacht"><img src="${foto}" alt=""><div class="spin"></div><div><b>Claude kijkt naar je foto…</b><div class="muted small">Dit duurt meestal 5 tot 20 seconden.</div></div></div>`,
+    [{ label: 'Stoppen', value: null, kind: 'q' }]);
+  w.done.then(() => { afgebroken = true; });
+  let res;
+  try { res = await V.ai.herken(foto, hint); }
+  catch (err) {
+    if (afgebroken) return;
+    w.close('fout');
+    const r = await sheet('Dat lukte niet', `<div>${esc(err.message || String(err))}</div>`, [{ label: 'Sluiten', value: null, kind: 'q' }, { label: 'Opnieuw', value: 'opnieuw' }]).done;
+    if (r.value === 'opnieuw') herken(foto);
+    return;
+  }
+  if (afgebroken) return;
+  w.close('ok');
+  if (!res.producten.length) return sheet('Niets gevonden', `<div>Claude zag op deze foto niets voor in de voorraadkast. Probeer een foto met meer licht, of dichterbij.</div>`, [{ label: 'OK', value: null }]);
+  controleer(res);
+}
+
+/** Wat Claude zag naast de kast leggen: aan/uit, naam, aantal en plek aanpassen, dan erin. */
+async function controleer(res) {
+  const bon = res.soort === 'bon';
+  const rijen = res.producten.map((p, i) => {
+    metBier(p);
+    if (isVast(p.naam)) p.vast = true;
+    const al = V.items.find(x => V.N(x.naam) === V.N(p.naam) && x.plek === p.plek) || V.items.find(x => V.N(x.naam) === V.N(p.naam));
+    // Van een kassabon is alles nieuw gekocht; op een foto van de kast staat wat er al was meestal ook gewoon nog.
+    return { i, p, al, aan: bon || !al ? (p.zeker == null || p.zeker >= 0.35) : false };
+  });
+  const soortNaam = { bon: '🧾 Kassabon' + (res.winkel ? ' ' + res.winkel : ''), kast: '🗄️ Kast', koelkast: '🧊 Koelkast', vriezer: '❄️ Vriezer', product: '📦 Producten' }[res.soort] || '📷 Foto';
+  const thtKort = p => p.tht ? (() => { const d = V.dagenTot(p.tht, today()); return d <= 14 ? `tht ${d <= 0 ? 'vandaag' : d === 1 ? 'morgen' : '+' + d + ' d'}` : 'tht ' + D.date.nice(p.tht, { day: 'numeric', month: 'short' }); })() : '';
+  const rij = r => `<div class="hr${r.aan ? '' : ' uit'}" data-r="${r.i}"><span class="box" data-aan>${r.aan ? icon('check', 'width="16" height="16" stroke-width="3"') : ''}</span>
+      <div class="nm"><input value="${esc(r.p.naam)}" data-naam aria-label="Naam"></div>
+      <div class="n"><button type="button" data-d="-1" aria-label="Eén minder">−</button><b>${r.p.aantal}</b><button type="button" data-d="1" aria-label="Eén meer">+</button></div>
+      <div class="meta"><button type="button" class="plek" data-plek>${V.PLEK[r.p.plek].emoji} ${V.PLEK[r.p.plek].naam}</button><span>${catEmoji(r.p.cat)}</span>
+        ${r.p.hoeveelheid ? `<span>${esc(r.p.hoeveelheid)}</span>` : ''}${r.p.tht ? `<span>${esc(thtKort(r.p))}</span>` : ''}
+        ${r.al ? `<span class="al">al in de kast: ${r.al.aantal}</span>` : ''}${r.p.zeker != null && r.p.zeker < 0.6 ? '<span class="al">twijfel</span>' : ''}
+        ${r.p.bonregel ? `<span class="bon">${esc(r.p.bonregel)}</span>` : ''}</div></div>`;
+  const aantalAan = () => rijen.filter(r => r.aan).length;
+  const s = sheet(soortNaam, `
+    <div class="muted small">${rijen.length} ${rijen.length === 1 ? 'product' : 'producten'} gevonden${res.onvolledig ? ' (de lijst was te lang, misschien mist er iets onderaan: maak dan nog een foto van het onderste stuk)' : ''}. Tik op een naam om hem te verbeteren, op de plek om hem te wisselen.${!bon && rijen.some(r => r.al) ? ' Wat al in de kast staat, staat uit.' : ''}</div>
+    <div class="herk" id="herk">${rijen.map(rij).join('')}</div>
+    <div class="chips"><button type="button" class="chip" data-alles="1">Alles aan</button><button type="button" class="chip" data-alles="0">Alles uit</button></div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: `In de kast (${aantalAan()})`, value: 'ok' }]);
+  const knop = () => { const b = s.el.querySelector('.btns > [data-i="1"]'); if (b) b.textContent = `In de kast (${aantalAan()})`; };
+  const teken = r => { const el = s.el.querySelector(`[data-r="${r.i}"]`); el.outerHTML = rij(r); knop(); };
+  s.el.addEventListener('input', e => {
+    const inp = e.target.closest('[data-naam]'); if (!inp) return;
+    const r = rijen[+inp.closest('[data-r]').dataset.r]; r.p.naam = inp.value;
+  });
+  s.el.addEventListener('click', e => {
+    const all = e.target.closest('[data-alles]');
+    if (all) { rijen.forEach(r => { r.aan = all.dataset.alles === '1'; teken(r); }); return; }
+    const el = e.target.closest('[data-r]'); if (!el) return;
+    const r = rijen[+el.dataset.r];
+    if (e.target.closest('[data-aan]')) { r.aan = !r.aan; teken(r); }
+    else if (e.target.closest('[data-d]')) { r.p.aantal = Math.max(1, Math.min(99, r.p.aantal + +e.target.closest('[data-d]').dataset.d)); r.aan = true; teken(r); }
+    else if (e.target.closest('[data-plek]')) { const ids = V.PLEKKEN.map(p => p.id); r.p.plek = ids[(ids.indexOf(r.p.plek) + 1) % ids.length]; teken(r); }
+  });
+  const uit = await s.done;
+  if (uit.value !== 'ok') return;
+  const kies = rijen.filter(r => r.aan && r.p.naam.trim()).map(r => Object.assign(r.p, { naam: r.p.naam.trim() }));
+  if (!kies.length) return toast('Niets aangevinkt.');
+  kies.forEach(p => { delete p.zeker; delete p.bonregel; delete p.merk; });
+  toegevoegd(V.voegToe(kies));
+}
+
+// ---------------------------------------------------------------- instellingen
+async function instellingen() {
+  const a = V.ai.get(), stand = V.inst.opLijst || 'vragen';
+  const kort = a.key ? a.key.slice(0, 10) + '…' + a.key.slice(-4) : '';
+  const s = sheet('Voorraadkast', `
+    <b>Foto's laten lezen door Claude</b>
+    ${a.key ? `<div class="muted small">Sleutel ingesteld: <span class="key">${esc(kort)}</span>. Plak een nieuwe om hem te vervangen.</div>` : `<div class="muted small">Daarvoor heb je een eigen account bij de Claude API nodig (los van een Claude-abonnement). Je betaalt per foto: ± 1 à 2 cent.</div>
+    <div class="stap"><b>1</b><span>Ga naar <b>console.anthropic.com</b> en maak een account.</span></div>
+    <div class="stap"><b>2</b><span>Bij <b>Billing</b>: zet er tegoed op (bv. $5) en stel een maandlimiet in.</span></div>
+    <div class="stap"><b>3</b><span>Bij <b>API keys</b>: Create key, kopieer hem en plak hem hieronder.</span></div>`}
+    <label class="f">API-sleutel<input class="in key" name="key" type="password" autocomplete="off" placeholder="${a.key ? 'Laat leeg om te houden' : 'sk-ant-…'}"></label>
+    <label class="f">Model<select class="in" name="model">${V.MODELLEN.map(m => `<option value="${m.id}"${m.id === a.model ? ' selected' : ''}>${esc(m.naam)}</option>`).join('')}</select></label>
+    <div class="muted small" id="mu">${esc((V.MODELLEN.find(m => m.id === a.model) || V.MODELLEN[0]).uitleg)}</div>
+    <div class="muted small">De sleutel blijft alleen op deze telefoon en gaat niet mee met Samen. De foto gaat naar Claude om gelezen te worden en wordt nergens bewaard. Je vriendin of maat vult op haar eigen telefoon dezelfde of een eigen sleutel in.</div>
+    ${a.key ? `<button class="btn danger" type="button" data-x="wis">${icon('trash')}Sleutel weghalen</button>` : ''}
+    <b style="margin-top:8px">Als iets op is</b>
+    <select class="in" name="opLijst"><option value="vragen"${stand === 'vragen' ? ' selected' : ''}>Vragen of het op de boodschappenlijst moet</option><option value="altijd"${stand === 'altijd' ? ' selected' : ''}>Altijd meteen op de boodschappenlijst</option><option value="nooit"${stand === 'nooit' ? ' selected' : ''}>Niets doen (behalve bij "vast in huis")</option></select>
+    <div class="muted small">Geldt voor iedereen met wie je de kast deelt.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.key.trim() && !/^sk-ant-[\w-]{20,}$/.test(f.key.trim()) ? 'Dit lijkt geen API-sleutel (die begint met sk-ant-).' : '' }]);
+  $('select[name=model]', s.el).addEventListener('change', e => { $('#mu', s.el).textContent = (V.MODELLEN.find(m => m.id === e.target.value) || {}).uitleg || ''; });
+  s.el.addEventListener('click', e => { if (e.target.closest('[data-x]')) s.close('wis'); });
+  const r = await s.done;
+  if (r.value === 'wis') {
+    if (await confirm('API-sleutel van deze telefoon weghalen?', 'Weghalen', true)) { V.ai.set({ key: '' }); toast('Sleutel weggehaald.'); render(); }
+    return;
+  }
+  if (r.value !== 'ok') return;
+  const key = r.form.key.trim();
+  V.ai.set(Object.assign({ model: r.form.model }, key ? { key } : {}));
+  if (r.form.opLijst !== stand) V.bewaar(null, Object.assign({}, V.inst, { opLijst: r.form.opLijst }));
+  render();
+  if (key) testSleutel(key);
+}
+/** Sleutel controleren met de lijst modellen (kost niets). */
+async function testSleutel(key) {
+  toast('Sleutel controleren…', 10000);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/models?limit=1', { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } });
+    if (r.ok) return toast('De sleutel werkt. Maak maar een foto! 📸', 3500);
+    let j = null; try { j = await r.json(); } catch (e) {}
+    toast(V.foutTekst(r.status, j), 6000);
+  } catch (e) { toast('Kon de sleutel niet controleren (geen internet?). Hij is wel bewaard.', 5000); }
+}
+$('#inst').onclick = instellingen;
+
+// ---------------------------------------------------------------- zoeken en plek
+$('#plek').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; plek = b.dataset.p; D.set('voorraad-plek', plek); renderPlek(); renderLijst(); });
+$('#zoek').addEventListener('input', e => { q = e.target.value.trim(); renderLijst(); });
+
+// ---------------------------------------------------------------- start
+V.koppel(() => render());
+if (window.W2Deel) W2Deel.badge();
+V.publiceer();
+render();
+if (location.hash === '#instellingen') instellingen();
+addEventListener('pageshow', () => { V.herlaad(); render(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+/* W2 Apps — Voorraadkast: wat er in huis is (kast, koelkast, vriezer), gedeeld via Samen.
+
+   Dit bestand is de gedeelde kern. Het wordt gebruikt door:
+   - voorraad/index.html: de kast zelf (foto → Claude herkent de producten, tikken −1/+1, houdbaarheid);
+   - weekmenu/index.html: afboeken wat je kookte, "al in huis" bij de boodschappen, opmaken wat bijna over de datum is;
+   - bier/index.html: de bieren in de kast (Bierkeuze kiest daaruit).
+
+   Item: { id, naam, cat (afdeling van de boodschappenlijst of 'bier'), plek: kast|koelkast|vriezer, aantal,
+           hoeveelheid ('1 l'), tht ('JJJJ-MM-DD' of ''), vast (altijd in huis: op = meteen op de lijst),
+           bier: {stijl, bierId, profiel} (alleen bij bier), t (laatst gewijzigd), door }
+
+   Opslag op dit apparaat: W2D 'voorraad' = {items, inst}. Gedeeld via Samen als soort 'voorraad':
+   'i:<id>' per item en 'inst' (instellingen die voor iedereen gelden).
+   Alleen op dit apparaat: 'voorraad-ai' = {key, model} (je eigen Claude API-sleutel; gaat nooit naar Samen).
+
+   Het rekenwerk (zoeken, samenvoegen, afboeken, antwoord van Claude lezen) staat los, zodat het in Node te testen is. */
+(function (root) {
+  // ---------------------------------------------------------------- vaste lijsten
+  const PLEKKEN = [
+    { id: 'koelkast', naam: 'Koelkast', emoji: '🧊' },
+    { id: 'vriezer', naam: 'Vriezer', emoji: '❄️' },
+    { id: 'kast', naam: 'Kast', emoji: '🗄️' }
+  ];
+  const PLEK = Object.fromEntries(PLEKKEN.map(p => [p.id, p]));
+  // Afdelingen zoals op de boodschappenlijst (samen/boodschappen.js), plus bier.
+  const CATS = ['groente', 'brood', 'zuivel', 'vlees', 'voorraad', 'snacks', 'diepvries', 'drinken', 'bier', 'huishouden', 'verzorging', 'overig'];
+  const CAT_EMOJI = { groente: '🥦', brood: '🍞', zuivel: '🧀', vlees: '🥩', voorraad: '🥫', snacks: '🍪', diepvries: '🧊', drinken: '🥤', bier: '🍺', huishouden: '🧻', verzorging: '🧴', overig: '📦' };
+  const CAT_NAAM = { groente: 'Groente & fruit', brood: 'Brood', zuivel: 'Zuivel & eieren', vlees: 'Vlees, vis & vega', voorraad: 'Houdbaar', snacks: 'Snacks & snoep', diepvries: 'Diepvries', drinken: 'Drinken', bier: 'Bier', huishouden: 'Huishouden', verzorging: 'Verzorging', overig: 'Overig' };
+  /** Waar iets meestal staat als niemand het zegt. */
+  const plekVoor = cat => cat === 'zuivel' || cat === 'vlees' ? 'koelkast' : cat === 'diepvries' ? 'vriezer' : 'kast';
+  const MODELLEN = [
+    { id: 'claude-sonnet-5-5', naam: 'Nauwkeurig (Sonnet)', uitleg: 'Leest ook de afkortingen op een kassabon goed. ± 1–2 cent per foto.' },
+    { id: 'claude-haiku-5-5', naam: 'Snel en goedkoop (Haiku)', uitleg: 'Minder dan een tiende cent per foto, maar mist vaker iets op een bon.' }
+  ];
+
+  // ---------------------------------------------------------------- tekst
+  const N = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const cap = s => { s = String(s || '').trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
+  // Woorden die niets zeggen over wát het is.
+  const LEEG = new Set(['de', 'het', 'een', 'van', 'met', 'en', 'of', 'in', 'voor', 'vers', 'verse', 'gram', 'stuk', 'stuks', 'pak', 'zak', 'blik', 'pot', 'fles',
+    'flessen', 'liter', 'ml', 'kg', 'g', 'gr', 'cl', 'l', 'x', 'bio', 'biologisch', 'biologische', 'naturel', 'grote', 'groot', 'klein', 'kleine', 'middel', 'mini',
+    'extra', 'vomar', 'ah', 'jumbo', 'lidl', 'aldi', 'huismerk', 'per', 'los', 'naar', 'smaak', 'gesneden', 'gehakte', 'gesnipperd', 'fijngesneden', 'geraspt', 'geraspte']);
+  /** Stam van een woord: meervoud en verkleinwoord eraf (tomaten → tomaat is te moeilijk, tomaten → tomat is goed genoeg om te vergelijken). */
+  function stam(w) {
+    if (w.length > 5 && /tjes$/.test(w)) return w.slice(0, -4);
+    if (w.length > 4 && /jes$/.test(w)) return w.slice(0, -3);
+    if (w.length > 4 && /en$/.test(w)) w = w.slice(0, -2);
+    else if (w.length > 3 && /[^s]s$/.test(w)) w = w.slice(0, -1);
+    // tomaat/tomat, uien/ui: dubbele klinker gelijk trekken
+    return w.replace(/([aeou])\1/g, '$1');
+  }
+  const woorden = s => N(s).split(' ').filter(w => w.length >= 2 && !LEEG.has(w) && !/^\d/.test(w)).map(stam).filter(w => w.length >= 2);
+
+  // Korte woorden die in recepten vaak alleen staan ("kip", "ui"): alleen deze vormen tellen.
+  const KORT = { kip: /^kip(filet|dij|pendij|gehakt|haas|schnitzel|stuk|reep|pen|poot|drumstick|vleugel)/, ui: /^(ui|uien|rode ?ui|uitje)$/, ei: /^(ei|eier|eiers)$/, vis: /^vis(filet|stick)/ };
+  /** Hoe goed een product bij een stuk tekst past (0 = niet). "Rundergehakt" past bij "gehakt", "Halfvolle melk" bij "melk". */
+  function past(naam, tekst) {
+    const a = woorden(naam), b = woorden(tekst);
+    if (!a.length || !b.length) return 0;
+    let best = 0;
+    for (const x of a) for (const y of b) {
+      let s = 0;
+      if (x === y) s = x.length + 2;
+      else if (x.length >= 4 && y.length >= 4 && (x.endsWith(y) || y.endsWith(x))) s = Math.min(x.length, y.length);   // rundergehakt ~ gehakt
+      else if (x.length >= 5 && y.length >= 5 && (x.startsWith(y) || y.startsWith(x))) s = Math.min(x.length, y.length) - 1;   // kipfilet ~ kipfiletreepjes
+      else if (KORT[x] && KORT[x].test(y) || KORT[y] && KORT[y].test(x)) s = 4;   // kip ~ kipfilet, ui ~ uien
+      if (s > best) best = s;
+    }
+    return best >= 4 ? best : 0;
+  }
+  /** Het product in de kast dat het best bij de tekst past (ingrediënt, boodschap), of null. */
+  function zoek(items, tekst, opts) {
+    opts = opts || {};
+    let best = null, bs = 0;
+    for (const it of items || []) {
+      if (!opts.ookOp && !(it.aantal > 0)) continue;
+      if (opts.zonderBier && it.cat === 'bier') continue;
+      const s = past(it.naam, tekst);
+      // Bij gelijke stand: eerst wat het eerst over de datum gaat.
+      if (s > bs || (s && s === bs && tht(it) < tht(best))) { best = it; bs = s; }
+    }
+    return best;
+  }
+  const tht = it => (it && it.tht) || '9999-12-31';
+
+  // ---------------------------------------------------------------- datums
+  const pad = n => String(n).padStart(2, '0');
+  const isoVan = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(s || ''); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; };
+  const plusDagen = (iso, n) => { const d = parse(iso); d.setDate(d.getDate() + n); return isoVan(d); };
+  const dagenTot = (iso, vandaag) => { const a = parse(iso), b = parse(vandaag); return a && b ? Math.round((a - b) / 864e5) : null; };
+  /** 'over' (voorbij), 'vandaag', 'bijna' (binnen 3 dagen), 'ok' of '' (geen datum). */
+  function status(it, vandaag) {
+    if (!it.tht) return '';
+    const d = dagenTot(it.tht, vandaag);
+    return d == null ? '' : d < 0 ? 'over' : d === 0 ? 'vandaag' : d <= 3 ? 'bijna' : 'ok';
+  }
+  /** Een datum zoals mensen hem typen of zoals hij op een verpakking staat → 'JJJJ-MM-DD' (of ''). */
+  function leesDatum(s, vandaag) {
+    s = String(s || '').trim();
+    if (!s) return '';
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+    let y, mo, d;
+    if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = /^(\d{1,2})[-/. ](\d{1,2})(?:[-/. ](\d{2,4}))?$/.exec(s))) {
+      d = +m[1]; mo = +m[2]; y = m[3] ? +m[3] : null;
+      if (y != null && y < 100) y += 2000;
+      if (y == null) {   // zonder jaar: het eerstvolgende
+        const t = parse(vandaag); y = t.getFullYear();
+        const kand = new Date(y, mo - 1, d);
+        if ((kand - t) / 864e5 < -60) y++;
+      }
+    } else return '';
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getMonth() !== mo - 1) return '';
+    return isoVan(dt);
+  }
+
+  // ---------------------------------------------------------------- de kast veranderen (alles op een kopie)
+  const kopie = o => JSON.parse(JSON.stringify(o));
+  const zelfde = (a, b) => N(a.naam) === N(b.naam) && (a.plek || 'kast') === (b.plek || 'kast');
+
+  /** Nieuwe producten erbij. Hetzelfde product op dezelfde plek telt op (vroegste houdbaarheid blijft). Geeft {items, nieuw, bij}. */
+  function erbij(items, nieuwe, opts) {
+    opts = opts || {};
+    const out = kopie(items || []);
+    let nieuw = 0, bij = 0;
+    for (const raw of nieuwe || []) {
+      const n = schoon(raw, opts.vandaag);
+      if (!n) continue;
+      const al = out.find(x => zelfde(x, n));
+      if (al) {
+        al.aantal = Math.min(999, (al.aantal || 0) + n.aantal);
+        if (n.tht && (!al.tht || n.tht < al.tht)) al.tht = n.tht;
+        if (!al.hoeveelheid && n.hoeveelheid) al.hoeveelheid = n.hoeveelheid;
+        if (n.bier && !al.bier) al.bier = n.bier;
+        al.t = opts.t || Date.now(); if (opts.door) al.door = opts.door;
+        bij++;
+      } else {
+        out.push(Object.assign(n, { id: n.id || (opts.uid ? opts.uid() : 'v' + Math.random().toString(36).slice(2, 10)), t: opts.t || Date.now() }, opts.door ? { door: opts.door } : {}));
+        nieuw++;
+      }
+    }
+    return { items: out, nieuw, bij };
+  }
+  /** Eén product netjes maken (van Claude, van de bon, getypt). Geeft null als er geen naam is. */
+  function schoon(p, vandaag) {
+    if (!p) return null;
+    const naam = cap(String(p.naam || '').replace(/\s+/g, ' ').slice(0, 60));
+    if (!naam) return null;
+    const cat = CATS.includes(p.cat) ? p.cat : 'overig';
+    const out = { naam, cat, plek: PLEK[p.plek] ? p.plek : plekVoor(cat), aantal: Math.max(1, Math.min(99, Math.round(+p.aantal || 1))) };
+    if (p.id) out.id = String(p.id);
+    if (p.hoeveelheid) out.hoeveelheid = String(p.hoeveelheid).slice(0, 20);
+    let t = p.tht ? leesDatum(p.tht, vandaag || isoVan(new Date())) : '';
+    // Een datum die al lang voorbij is of absurd ver weg: liever geen datum.
+    if (t && vandaag) { const d = dagenTot(t, vandaag); if (d < -30 || d > 3 * 366) t = ''; }
+    if (!t && vandaag && +p.houdbaar_dagen > 0 && +p.houdbaar_dagen <= 400) t = plusDagen(vandaag, Math.round(+p.houdbaar_dagen));
+    if (t) out.tht = t;
+    if (p.vast) out.vast = true;
+    if (p.bier && typeof p.bier === 'object') out.bier = kopie(p.bier);
+    return out;
+  }
+  /** Aantal veranderen (−1, +1). Op = weg uit de kast. Geeft {items, item, op}. */
+  function tel(items, id, d) {
+    const out = kopie(items || []);
+    const it = out.find(x => x.id === id);
+    if (!it) return { items: out, item: null, op: false };
+    it.aantal = Math.max(0, (it.aantal || 0) + d);
+    it.t = Date.now();
+    if (it.aantal > 0) return { items: out, item: it, op: false };
+    return { items: out.filter(x => x !== it), item: it, op: true };
+  }
+
+  // ---------------------------------------------------------------- afboeken na het koken
+  // Wat je meestal niet in één keer opmaakt: staat erbij, maar niet aangevinkt.
+  const RESTJE = /^(zout|peper|olie|olijfolie|zonnebloemolie|azijn|suiker|bloem|boter|roomboter|margarine|sojasaus|ketjap|mosterd|ketchup|mayonaise|sambal|kerrie|paprikapoeder|kruiden|bouillon|bouillonblokje|bouillonblokjes|honing|knoflook|tomatenpuree)$/;
+  /** Ingrediënten van een recept naast de kast leggen. Geeft [{item, regel, aan}] (elk product één keer). */
+  function afboekVoorstel(items, regels) {
+    const out = [], gezien = new Set();
+    for (const r of regels || []) {
+      const it = zoek(items, r, { zonderBier: true });
+      if (!it || gezien.has(it.id)) continue;
+      gezien.add(it.id);
+      out.push({ item: it, regel: r, aan: !RESTJE.test(N(it.naam)) });
+    }
+    return out;
+  }
+  /** Dagen uit het weekmenu (laatste 3 dagen, vandaag pas vanaf 19 uur) waarvan nog niet is afgeboekt. dagen = {datum: m}. */
+  function teAfboeken(dagen, vandaag, uur) {
+    return Object.entries(dagen || {}).filter(([d, m]) => {
+      const n = dagenTot(d, vandaag);
+      if (n == null || n < -3 || n > 0 || (n === 0 && uur < 19)) return false;
+      return m && (m.opt || m.recept) && !m.afgeboekt;
+    }).map(([d]) => d).sort();
+  }
+
+  // ---------------------------------------------------------------- wat je ermee doet
+  /** Wat binnenkort over de datum gaat (status over/vandaag/bijna), vroegste eerst. */
+  const bijnaOp = (items, vandaag) => (items || []).filter(it => it.aantal > 0 && ['over', 'vandaag', 'bijna'].includes(status(it, vandaag))).sort((a, b) => tht(a) < tht(b) ? -1 : 1);
+  /** Herinneringen voor de app (W2.publish('herinneringen-voorraad')): de dag voordat iets over de datum gaat. */
+  function herinneringen(items, vandaag) {
+    return (items || []).filter(it => it.aantal > 0 && it.tht && it.cat !== 'bier').map(it => {
+      const d = dagenTot(it.tht, vandaag);
+      if (d == null || d < 0 || d > 30) return null;
+      const datum = d >= 1 ? plusDagen(it.tht, -1) : vandaag;
+      return { id: 'vk-' + it.id + '-' + it.tht, titel: `${CAT_EMOJI[it.cat] || '📦'} ${it.naam}`, tekst: d >= 1 ? 'Morgen over de datum: maak hem vandaag op' : 'Vandaag over de datum', datum, open: 'voorraad/index.html' };
+    }).filter(Boolean);
+  }
+  /** Voor het weekmenu: wat er in huis is, met de termen die het weekmenu herkent en het aantal dagen tot de datum. */
+  const voorWeekmenu = (items, vandaag, termen) => (items || []).filter(it => it.aantal > 0 && it.cat !== 'bier' && it.cat !== 'huishouden' && it.cat !== 'verzorging')
+    .map(it => ({ n: it.naam, termen: termen(it.naam), dagen: it.tht ? dagenTot(it.tht, vandaag) : null })).filter(x => x.termen.length);
+
+  // ---------------------------------------------------------------- Claude: foto → producten
+  const TOOL = {
+    name: 'voorraad',
+    description: 'De producten op de foto, om in de voorraadkast te zetten.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        soort: { type: 'string', enum: ['kast', 'koelkast', 'vriezer', 'bon', 'product', 'anders'], description: 'Wat staat er op de foto: een kast, koelkast of vriezer, een kassabon, een paar losse producten, of iets anders.' },
+        winkel: { type: 'string', description: 'Bij een kassabon: de winkel.' },
+        producten: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              naam: { type: 'string', description: 'Gewone Nederlandse productnaam zoals op een boodschappenlijst: soort zonder merk ("Halfvolle melk", "Penne", "Kipfilet", "Gepelde tomaten"). Bij bier juist de biernaam ("Duvel", "Hertog Jan Pilsener").' },
+              merk: { type: 'string' },
+              aantal: { type: 'integer', description: 'Aantal verpakkingen of losse stuks (minstens 1).' },
+              hoeveelheid: { type: 'string', description: 'Inhoud per stuk als die te zien is: "1 l", "500 g", "6 x 33 cl".' },
+              cat: { type: 'string', enum: CATS, description: 'Afdeling: groente (ook fruit en verse kruiden), brood, zuivel (ook eieren), vlees (ook vis, vleeswaren, tofu), voorraad (houdbaar: pasta, rijst, blik, potten, sauzen, kruiden), snacks, diepvries, drinken (geen bier), bier, huishouden, verzorging, overig.' },
+              plek: { type: 'string', enum: ['kast', 'koelkast', 'vriezer'], description: 'Waar het hoort te staan.' },
+              tht: { type: 'string', description: 'Houdbaarheidsdatum als die echt leesbaar is, als JJJJ-MM-DD. Niet raden.' },
+              houdbaar_dagen: { type: 'integer', description: 'Alleen als er geen datum te lezen is én het bederfelijk is (vers, gekoeld): hoeveel dagen vanaf vandaag het ongeveer goed blijft op die plek. Weglaten voor houdbare producten.' },
+              bonregel: { type: 'string', description: 'Bij een kassabon: de regel precies zoals hij op de bon staat.' },
+              zeker: { type: 'number', description: 'Hoe zeker je bent dat dit klopt, 0 tot 1.' }
+            },
+            required: ['naam', 'aantal', 'cat', 'plek']
+          }
+        }
+      },
+      required: ['soort', 'producten']
+    }
+  };
+  const HINT = {
+    kast: 'een foto van een kast of plank met voorraad', koelkast: 'een foto van (een deel van) de koelkast', vriezer: 'een foto van de vriezer of een vriezerla',
+    bon: 'een foto van een kassabon (meestal van de Vomar)', product: 'een foto van een of een paar losse producten'
+  };
+  /** De vraag aan Claude (body voor POST /v1/messages). b64 = jpeg zonder "data:"-kop. */
+  function verzoek(b64, opts) {
+    opts = opts || {};
+    const soort = HINT[opts.soort] ? `Het is ${HINT[opts.soort]}.` : 'Bepaal zelf wat voor foto het is.';
+    const tekst = [
+      `Vandaag is het ${opts.vandaag}. ${soort}`,
+      'Zet alle producten die je herkent in de voorraadkast met de tool "voorraad". Regels:',
+      '- Kassabon: elke gekochte regel is een product; vertaal afkortingen naar een gewone naam (bv. "VOM HALFV MELK 1L" → Halfvolle melk, 1 l). "2 x" of een aantal vooraan = aantal. Sla over: statiegeld, tasjes, kortingen, bonus/spaaracties, totalen, betaalregels. Bij gewogen producten is het aantal 1 met het gewicht als hoeveelheid.',
+      '- Kast, koelkast of vriezer: alleen wat je echt ziet; tel zichtbare verpakkingen van hetzelfde product bij elkaar op. Raad niet naar wat er achter staat. Half opgemaakt telt als 1.',
+      '- Houdbaarheid: een datum alleen als je hem echt kunt lezen. Anders bij verse/gekoelde producten een schatting in houdbaar_dagen (ongeopend), bij houdbare producten niets.',
+      '- Bier: cat "bier", naam = de biernaam van het etiket.',
+      '- Namen in het Nederlands, kort, met hoofdletter, zonder merk (behalve bier).',
+      'Staat er niets op dat in een voorraadkast hoort, geef dan een lege lijst.'
+    ].join('\n');
+    return {
+      model: opts.model || MODELLEN[0].id,
+      max_tokens: 4096,
+      tools: [TOOL],
+      tool_choice: { type: 'tool', name: 'voorraad' },
+      messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } }, { type: 'text', text: tekst }] }]
+    };
+  }
+  /** Antwoord van Claude → {soort, winkel, producten (schoon), ruw}. Gooit een Error met een Nederlandse uitleg als het misging. */
+  function antwoord(status, body, vandaag) {
+    let j = body;
+    if (typeof body === 'string') { try { j = JSON.parse(body); } catch (e) { j = null; } }
+    if (status !== 200 || !j || j.type === 'error') throw new Error(foutTekst(status, j));
+    const blok = (j.content || []).find(b => b.type === 'tool_use' && b.name === 'voorraad');
+    if (!blok || !blok.input) throw new Error('Claude gaf geen lijst terug. Probeer het nog eens.');
+    const inp = blok.input;
+    const producten = (Array.isArray(inp.producten) ? inp.producten : []).map(p => {
+      const s = schoon(p, vandaag);
+      if (!s) return null;
+      if (p.merk) s.merk = String(p.merk).slice(0, 40);
+      if (p.bonregel) s.bonregel = String(p.bonregel).slice(0, 80);
+      s.zeker = Math.max(0, Math.min(1, p.zeker == null ? 0.8 : +p.zeker || 0));
+      return s;
+    }).filter(Boolean);
+    return { soort: String(inp.soort || ''), winkel: String(inp.winkel || ''), producten, onvolledig: j.stop_reason === 'max_tokens', tokens: j.usage || null };
+  }
+  function foutTekst(status, j) {
+    const e = (j && j.error) || {}, msg = String(e.message || '');
+    if (status === 0) return 'Geen verbinding met Claude. Heb je internet?';
+    if (status === 401 || e.type === 'authentication_error') return 'De API-sleutel klopt niet. Kijk hem na in de instellingen (tandwiel).';
+    if (/credit balance|billing|purchase credits/i.test(msg)) return 'Er staat geen tegoed meer op je Claude-account. Vul het aan op console.anthropic.com › Billing.';
+    if (status === 403 || e.type === 'permission_error') return 'Deze sleutel mag dit model niet gebruiken. Kies een ander model of maak een nieuwe sleutel.';
+    if (status === 413 || e.type === 'request_too_large') return 'De foto is te groot. Probeer het met een kleinere foto.';
+    if (status === 429 || e.type === 'rate_limit_error') return 'Even te veel tegelijk (of je maandlimiet is bereikt). Probeer het zo opnieuw.';
+    if (status === 529 || e.type === 'overloaded_error') return 'Claude is even erg druk. Probeer het over een minuutje opnieuw.';
+    if (status === 404 || e.type === 'not_found_error') return 'Dat model bestaat niet (meer). Kies een ander model in de instellingen.';
+    return 'Claude gaf een fout' + (status ? ' (' + status + ')' : '') + (msg ? ': ' + msg : '') + '.';
+  }
+
+  const api = { PLEKKEN, PLEK, CATS, CAT_EMOJI, CAT_NAAM, MODELLEN, plekVoor, N, woorden, past, zoek, status, leesDatum, dagenTot, plusDagen, erbij, schoon, tel, afboekVoorstel, teAfboeken, bijnaOp, herinneringen, voorWeekmenu, TOOL, verzoek, antwoord, foutTekst, RESTJE };
+
+  if (typeof module === 'object' && module.exports) { module.exports = api; return; }
+
+  // ================================================================ in de app / browser
+  const D = root.W2D;
+  const KEY = 'voorraad', AI = 'voorraad-ai';
+  const lees = () => Object.assign({ items: [], inst: {} }, D.get(KEY, null) || {});
+  let data = lees(), deel = null;
+  const luisteraars = new Set();
+  const meldt = () => luisteraars.forEach(f => { try { f(data); } catch (e) { console.error(e); } });
+  const vandaag = () => D.date.today();
+  const door = () => (root.Samen && Samen.cfg && Samen.cfg.me ? Samen.cfg.me.id : '');
+
+  function bewaar(items, inst) {
+    if (items) data.items = items;
+    if (inst) data.inst = inst;
+    D.set(KEY, data);
+    if (deel) deel.push();
+    publiceer();
+    meldt();
+  }
+  function publiceer() {
+    if (!root.W2 || !W2.publish) return;
+    const h = herinneringen(data.items, vandaag()), sig = JSON.stringify(h);
+    if (sig !== publiceer.laatst) { publiceer.laatst = sig; W2.publish('herinneringen-voorraad', h); }
+  }
+
+  /** Delen via Samen aanzetten (één keer per pagina). onChange(data) bij elke verandering, ook van de ander. */
+  function koppel(onChange) {
+    if (onChange) luisteraars.add(onChange);
+    if (deel || !root.W2Deel) return;
+    deel = W2Deel.koppel({
+      kind: 'voorraad',
+      lees: async () => Object.fromEntries([...data.items.map(it => ['i:' + it.id, it]), ['inst', Object.assign({ id: 'inst' }, data.inst)]]),
+      schrijf: async map => {
+        const items = Object.entries(map).filter(([k]) => k.startsWith('i:')).map(([, v]) => kopie(v));
+        const inst = map.inst ? kopie(map.inst) : {}; delete inst.id;
+        data.items = items; data.inst = inst;
+        D.set(KEY, data);
+        publiceer();
+        meldt();
+      }
+    });
+  }
+
+  /** Bieren uit de oude voorraad van Bierkeuze (van voor november 2026) erin zetten, met hetzelfde id:
+      zo komt niets dubbel als beide telefoons dit doen. Geeft true als er oude voorraad was. */
+  function verhuisBier(oud) {
+    if (!oud || !oud.length) return false;
+    const al = new Set(data.items.map(it => it.id));
+    const nieuw = oud.filter(k => k && k.id && !al.has(k.id) && (k.aantal || 0) > 0).map(k => ({
+      id: k.id, naam: k.naam, cat: 'bier', plek: 'kast', aantal: k.aantal,
+      bier: Object.assign({ stijl: k.stijl || '', profiel: k.profiel || null }, k.bierId ? { bierId: k.bierId } : {}), t: Date.now()
+    }));
+    if (nieuw.length) bewaar(data.items.concat(nieuw));
+    return true;
+  }
+  (function () {   // meteen bij het laden, op welke pagina ook
+    const b = D.get('bier', null);
+    if (b && b.kast && b.kast.length && verhuisBier(b.kast)) { b.kast = []; D.set('bier', b); }
+  })();
+
+  const ai = {
+    get() { return Object.assign({ key: '', model: MODELLEN[0].id }, D.get(AI, null) || {}); },
+    set(v) { D.set(AI, Object.assign(ai.get(), v)); },
+    klaar: () => !!ai.get().key,
+    /** Foto (data-URL, jpeg) laten lezen. Geeft {soort, winkel, producten, …}; gooit een Error met uitleg. */
+    async herken(dataUrl, soort) {
+      const cfg = ai.get();
+      if (!cfg.key) throw new Error('Nog geen API-sleutel. Vul hem in bij het tandwiel.');
+      const b64 = String(dataUrl).replace(/^data:[^,]*,/, '');
+      const body = verzoek(b64, { soort, vandaag: vandaag(), model: cfg.model });
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 120000);
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST', signal: ctl.signal,
+          headers: { 'content-type': 'application/json', 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify(body)
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        throw new Error(e && e.name === 'AbortError' ? 'Claude deed er te lang over. Probeer het opnieuw.' : navigator.onLine === false ? 'Geen internet. Probeer het straks opnieuw.' : 'Kon Claude niet bereiken. Heb je internet?');
+      }
+      const txt = await r.text().catch(() => '');
+      clearTimeout(timer);
+      return antwoord(r.status, txt, vandaag());
+    }
+  };
+
+  // Let op: getters met defineProperties, niet in Object.assign (dat zou ze één keer uitlezen en vastzetten).
+  const VO = Object.defineProperties({}, {
+    data: { get: () => data, enumerable: true },
+    items: { get: () => data.items, enumerable: true },
+    inst: { get: () => data.inst, enumerable: true }
+  });
+  root.Voorraad = Object.assign(VO, api, {
+    vandaag, door, bewaar, koppel, publiceer, ai, verhuisBier,
+    /** Nieuwe producten erbij en bewaren. */
+    voegToe(nieuwe) { const r = erbij(data.items, nieuwe, { vandaag: vandaag(), uid: D.uid, door: door() }); bewaar(r.items); return r; },
+    /** −1/+1 en bewaren. Geeft {item, op}. */
+    tel(id, d) { const r = tel(data.items, id, d); if (r.item) bewaar(r.items); return r; },
+    /** Eén item vervangen (bewerken) of weghalen (null). */
+    zet(id, item) {
+      const items = data.items.filter(x => x.id !== id);
+      if (item) items.push(Object.assign(kopie(item), { id, t: Date.now(), door: door() }));
+      bewaar(items);
+    },
+    zoek: (tekst, opts) => zoek(data.items, tekst, opts),
+    /** Opnieuw van de opslag lezen (een andere pagina kan de kast veranderd hebben). */
+    herlaad() { data = lees(); return data; }
+  });
+})(typeof window !== 'undefined' ? window : this);

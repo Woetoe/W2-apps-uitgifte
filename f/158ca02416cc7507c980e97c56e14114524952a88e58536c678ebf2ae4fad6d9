@@ -1,0 +1,584 @@
+/* W2 Apps — Bierkeuze: het rekenwerk (los te testen in node: tests/bier.test.js; in de pagina window.BierScore).
+
+   Basis (zie het projectdoc Bierkeuze):
+   - De smaakzeshoek (food pairing): zoet, zuur, zout, pikant, vet, bitter. Groene lijn = combinatie werkt,
+     rode lijn = botst (bitter–zuur, bitter–pikant, zuur–pikant).
+   - Het biersmaakwiel (Meilgaard): de geur-kant geeft de aroma's (fruitig, hoppig, graan, caramel, gebrand,
+     fenolisch, verouderd…), de mondgevoel-kant geeft body/volheid, koolzuur en verwarmend (alcohol).
+
+   Score 0–100 uit 5 eigenschappen (alles instelbaar via cfg, standaard in STANDAARD):
+     1. Smaakbalans (zeshoek)        30  bier-smaak × gerecht-smaak met de waarde uit de zeshoekmatrix
+     2. Aroma (smaakwiel)            25  zelfde aroma's, bruggen (past bij) en botsingen
+     3. Alcohol                      15  zwaar bier vraagt een stevig gerecht; alcohol + pikant botst
+     4. Body / volheid               15  even zwaar als het gerecht; te zwaar overheerst (strenger)
+     5. Mondgevoel: koolzuur         15  koolzuur snijdt door vet, maar versterkt pikant
+   Plus knock-outs (nooit aanbieden: o.a. een rode lijn waar beide kanten sterk zijn, bv. bitter 4 bij pikant 3) en drempels (≥ 65 aanbieden, ≥ 80 topmatch).
+
+   Profielen:
+     bier    {abv, body 1–5, zoet, zuur, zout, pikant, vet, bitter 0–5, koolzuur 1–5, aroma: {id: 1–3}}
+     gerecht {i (intensiteit 1–5), zoet, zuur, zout, pikant, vet, bitter 0–5, ken: [kenmerk- of aroma-ids]} */
+(function (root) {
+  'use strict';
+
+  const SMAKEN = ['zoet', 'zuur', 'zout', 'pikant', 'vet', 'bitter'];
+  const SMAAK = {
+    zoet: { naam: 'Zoet', kleur: '#f0a020' }, zuur: { naam: 'Zuur', kleur: '#b84a1a' }, zout: { naam: 'Zout', kleur: '#1f6fa8' },
+    pikant: { naam: 'Pikant', kleur: '#33b0cc' }, vet: { naam: 'Vet', kleur: '#8bc34a' }, bitter: { naam: 'Bitter', kleur: '#3d5068' }
+  };
+  const paar = (a, b) => (SMAKEN.indexOf(a) <= SMAKEN.indexOf(b) ? a + '|' + b : b + '|' + a);
+
+  // Aroma's (geur-kant van het biersmaakwiel), met de groep op het wiel
+  const AROMAS = [
+    { id: 'tropisch', naam: 'Tropisch fruit', wiel: 'fruitig', vb: 'mango, passievrucht, ananas' },
+    { id: 'citrus', naam: 'Citrus', wiel: 'fruitig', vb: 'citroen, grapefruit, sinaasappelschil' },
+    { id: 'roodfruit', naam: 'Aardbei, framboos', wiel: 'fruitig', vb: 'aardbei, framboos, bes' },
+    { id: 'kers', naam: 'Kers, amarena', wiel: 'fruitig', vb: 'kers, amarena, kriek' },
+    { id: 'donkerfruit', naam: 'Donker fruit', wiel: 'fruitig', vb: 'pruim, rozijn, vijg' },
+    { id: 'appelpeer', naam: 'Appel, peer', wiel: 'esterig', vb: 'appel, peer, steenvrucht' },
+    { id: 'banaan', naam: 'Banaan', wiel: 'esterig', vb: 'banaan, kauwgom (weizen)' },
+    { id: 'bloemig', naam: 'Bloemig', wiel: 'bloemig', vb: 'bloesem, honing, parfum' },
+    { id: 'hop', naam: 'Hop, hars', wiel: 'hoppig, hars', vb: 'den, hars, kruidige hop' },
+    { id: 'gras', naam: 'Groen, kruiden', wiel: 'groen, gras', vb: 'gras, kruiden, thee' },
+    { id: 'noot', naam: 'Noot', wiel: 'noot', vb: 'hazelnoot, walnoot, amandel' },
+    { id: 'graan', naam: 'Graan, brood', wiel: 'graan, mout', vb: 'brood, biscuit, mout' },
+    { id: 'karamel', naam: 'Karamel', wiel: 'caramel', vb: 'karamel, toffee, honing' },
+    { id: 'chocolade', naam: 'Chocolade', wiel: 'gebrand', vb: 'pure chocolade, cacao' },
+    { id: 'koffie', naam: 'Koffie, geroosterd', wiel: 'gebrand', vb: 'koffie, espresso, geroosterd' },
+    { id: 'rook', naam: 'Rook', wiel: 'fenolisch', vb: 'rook, kampvuur, spek' },
+    { id: 'kruidig', naam: 'Kruidig', wiel: 'fenolisch', vb: 'kruidnagel, peper, koriander' },
+    { id: 'hout', naam: 'Hout, vanille', wiel: 'verouderd', vb: 'eik, vanille, bourbon, sherry' },
+    { id: 'funky', naam: 'Funky, aards', wiel: 'zuur, wild', vb: 'schuur, leer, wilde gist' }
+  ];
+  const AROMA = Object.fromEntries(AROMAS.map(a => [a.id, a]));
+
+  // Kenmerken van een gerecht (hoofdingrediënt, bereiding, keuken). Een gerecht kan ook aroma-ids hebben (citrus, rook…).
+  const KENMERKEN = [
+    ['rundvlees', 'Rundvlees'], ['varken', 'Varken'], ['lam', 'Lam, geit'], ['wild', 'Wild'], ['gevogelte', 'Kip, gevogelte'], ['eend', 'Eend'],
+    ['vis', 'Magere vis'], ['vettevis', 'Vette vis'], ['zeevruchten', 'Zeevruchten'], ['ei', 'Ei'],
+    ['kaasjong', 'Jonge kaas'], ['kaasoud', 'Oude kaas'], ['kaasblauw', 'Blauwe kaas'], ['geitenkaas', 'Geitenkaas'],
+    ['gegrild', 'Gegrild, BBQ'], ['gebraden', 'Gebraden'], ['gestoofd', 'Gestoofd'], ['gefrituurd', 'Gefrituurd'], ['rauw', 'Rauw'], ['romig', 'Romige saus'],
+    ['tomaat', 'Tomaat'], ['paddenstoel', 'Paddenstoelen'], ['salade', 'Salade, groente'], ['pizza', 'Pizza, brood'],
+    ['curry', 'Curry'], ['aziatisch', 'Aziatisch'], ['mexicaans', 'Mexicaans'], ['kruiden', 'Verse kruiden'],
+    ['chocoladedessert', 'Chocoladedessert'], ['romigdessert', 'Romig dessert'], ['fruitdessert', 'Fruitdessert']
+  ];
+  const KENMERK = Object.fromEntries(KENMERKEN);
+  const kenNaam = id => KENMERK[id] || (AROMA[id] ? AROMA[id].naam : id);
+
+  // Bruggen: bier-aroma past bij deze kenmerken van het gerecht
+  const BRUGGEN = {
+    tropisch: ['aziatisch', 'mexicaans', 'curry', 'rauw', 'fruitdessert', 'zeevruchten'],
+    citrus: ['vis', 'zeevruchten', 'salade', 'kruiden', 'gevogelte', 'geitenkaas', 'mexicaans', 'aziatisch'],
+    roodfruit: ['eend', 'chocoladedessert', 'romigdessert', 'geitenkaas', 'fruitdessert', 'salade'],
+    kers: ['eend', 'wild', 'chocoladedessert', 'romigdessert', 'varken', 'geitenkaas', 'kaasoud'],
+    donkerfruit: ['gestoofd', 'wild', 'rundvlees', 'kaasoud', 'kaasblauw', 'lam'],
+    appelpeer: ['varken', 'gevogelte', 'kaasjong', 'romig', 'fruitdessert'],
+    banaan: ['ei', 'zeevruchten', 'gevogelte', 'aziatisch', 'salade'],
+    bloemig: ['salade', 'kruiden', 'gevogelte', 'vis', 'fruitdessert'],
+    hop: ['gefrituurd', 'rundvlees', 'gegrild', 'kaasoud', 'mexicaans', 'curry'],
+    gras: ['salade', 'kruiden', 'vis', 'geitenkaas', 'gevogelte'],
+    noot: ['kaasoud', 'paddenstoel', 'gebraden', 'varken', 'romigdessert'],
+    graan: ['pizza', 'gefrituurd', 'gevogelte', 'kaasjong', 'ei', 'salade'],
+    karamel: ['gebraden', 'gegrild', 'varken', 'kaasoud', 'romigdessert', 'gestoofd'],
+    chocolade: ['gegrild', 'rundvlees', 'gestoofd', 'chocoladedessert', 'wild', 'romigdessert'],
+    koffie: ['gegrild', 'rundvlees', 'gestoofd', 'chocoladedessert', 'romigdessert', 'kaasblauw'],
+    rook: ['gegrild', 'vettevis', 'varken', 'rundvlees'],
+    kruidig: ['curry', 'varken', 'gevogelte', 'lam', 'aziatisch', 'zeevruchten'],
+    hout: ['romigdessert', 'chocoladedessert', 'gestoofd', 'kaasoud', 'kaasblauw'],
+    funky: ['kaasoud', 'kaasblauw', 'paddenstoel', 'zeevruchten', 'varken']
+  };
+  // Botsingen: bier-aroma vecht met deze kenmerken
+  const BOTSINGEN = {
+    hop: ['chocoladedessert', 'romigdessert', 'vis', 'rauw'],
+    citrus: ['chocoladedessert'],
+    tropisch: ['chocoladedessert', 'gestoofd'],
+    rook: ['vis', 'rauw', 'salade', 'fruitdessert'],
+    koffie: ['vis', 'rauw', 'salade', 'zeevruchten'],
+    chocolade: ['vis', 'rauw', 'salade'],
+    hout: ['vis', 'salade', 'rauw'],
+    funky: ['chocoladedessert', 'vis'],
+    donkerfruit: ['rauw', 'salade', 'vis'],
+    karamel: ['rauw', 'salade']
+  };
+
+  // Zeshoekmatrix: waarde per smaakpaar (bier-smaak × gerecht-smaak, beide kanten gelijk).
+  // Groene lijn +1, rode lijn −2,5; zelfde smaak op beide kanten apart (dessertregel voor zoet).
+  function standaardZeshoek() {
+    const z = {};
+    SMAKEN.forEach(a => SMAKEN.forEach(b => { z[paar(a, b)] = 1; }));
+    z[paar('bitter', 'zuur')] = -2.5; z[paar('bitter', 'pikant')] = -2.5; z[paar('zuur', 'pikant')] = -2.5;
+    Object.assign(z, { 'zoet|zoet': 1, 'zuur|zuur': 0.5, 'zout|zout': -1, 'pikant|pikant': -1.5, 'vet|vet': -1, 'bitter|bitter': -1 });
+    return z;
+  }
+
+  const STANDAARD = {
+    max: { smaak: 30, aroma: 25, alcohol: 15, body: 15, mond: 15 },
+    zeshoek: standaardZeshoek(),
+    drempel: { top: 80, goed: 65, matig: 50 },
+    ko: { zwaar: true, botsing: true, dessert: true },
+    bruggen: BRUGGEN,
+    botsingen: BOTSINGEN
+  };
+  const DELEN = [
+    { id: 'smaak', naam: 'Smaakbalans', uitleg: 'De smaakzeshoek: zoet, zuur, zout, pikant, vet en bitter van bier en gerecht.' },
+    { id: 'aroma', naam: 'Aroma', uitleg: 'Het biersmaakwiel: dezelfde aroma\'s, aroma\'s die bij het gerecht passen, en botsingen.' },
+    { id: 'alcohol', naam: 'Alcohol', uitleg: 'Een zwaar bier vraagt een stevig gerecht, anders overheerst het. Alcohol versterkt pikant.' },
+    { id: 'body', naam: 'Body', uitleg: 'Even zwaar als het gerecht. Te zwaar is erger dan te licht.' },
+    { id: 'mond', naam: 'Koolzuur', uitleg: 'Koolzuur spoelt vet weg, maar maakt pikant heter.' }
+  ];
+
+  const copy = o => JSON.parse(JSON.stringify(o));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const r1 = v => Math.round(v * 10) / 10;
+  const komma = v => String(r1(v)).replace('.', ',');
+  const plus = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + komma(Math.abs(v));
+
+  /** Instellingen samenvoegen met de standaard (ontbrekende delen = standaard). */
+  function config(c) {
+    c = c || {};
+    const out = copy(STANDAARD);
+    if (c.max) Object.keys(out.max).forEach(k => { if (Number.isFinite(+c.max[k])) out.max[k] = clamp(+c.max[k], 0, 100); });
+    if (c.zeshoek) Object.keys(out.zeshoek).forEach(k => { if (Number.isFinite(+c.zeshoek[k])) out.zeshoek[k] = clamp(+c.zeshoek[k], -3, 3); });
+    if (c.drempel) Object.keys(out.drempel).forEach(k => { if (Number.isFinite(+c.drempel[k])) out.drempel[k] = clamp(+c.drempel[k], 0, 100); });
+    if (c.ko) Object.keys(out.ko).forEach(k => { if (typeof c.ko[k] === 'boolean') out.ko[k] = c.ko[k]; });
+    if (c.bruggen) Object.keys(out.bruggen).forEach(k => { if (Array.isArray(c.bruggen[k])) out.bruggen[k] = c.bruggen[k].slice(); });
+    if (c.botsingen) Object.keys(AROMA).forEach(k => { if (Array.isArray(c.botsingen[k])) out.botsingen[k] = c.botsingen[k].slice(); });
+    return out;
+  }
+
+  function bierP(b) {
+    b = b || {};
+    const n = (v, d, lo, hi) => clamp(Number.isFinite(+v) ? +v : d, lo, hi);
+    const p = { abv: n(b.abv, 5, 0, 20), body: n(b.body, 3, 1, 5), koolzuur: n(b.koolzuur, 3, 1, 5), aroma: {} };
+    SMAKEN.forEach(s => { p[s] = n(b[s], 0, 0, 5); });
+    Object.entries(b.aroma || {}).forEach(([k, v]) => { if (AROMA[k] && +v > 0) p.aroma[k] = clamp(Math.round(+v), 1, 3); });
+    return p;
+  }
+  function gerechtP(g) {
+    g = g || {};
+    const n = (v, d, lo, hi) => clamp(Number.isFinite(+v) ? +v : d, lo, hi);
+    const p = { i: n(g.i, 3, 1, 5), ken: (g.ken || []).filter(k => KENMERK[k] || AROMA[k]) };
+    SMAKEN.forEach(s => { p[s] = n(g[s], 0, 0, 5); });
+    return p;
+  }
+  const isDessert = g => g.zoet >= 3 && g.ken.some(k => /dessert$/.test(k));
+
+  // ---------------------------------------------------------------- de 5 eigenschappen (punten op de standaardschaal)
+
+  /** 1. Smaakbalans: som van waarde(paar) × bier-smaak × gerecht-smaak / 5; punten = 15 + 0,8 × som (0–30; 0 = neutraal → 15). */
+  function smaakbalans(b, g, cfg) {
+    let raw = 0;
+    const bij = [];
+    SMAKEN.forEach(bs => SMAKEN.forEach(gs => {
+      const x = b[bs], y = g[gs];
+      if (!x || !y) return;
+      let v;
+      if (bs === 'zoet' && gs === 'zoet' && isDessert(g) && x < y - 0.5) v = -1.5 * (y - x);   // dessert zoeter dan het bier: bier wordt dun en zuur
+      else v = (cfg.zeshoek[paar(bs, gs)] || 0) * x * y / 5;
+      if (!v) return;
+      raw += v;
+      bij.push({ bier: bs, gerecht: gs, v });
+    }));
+    const punten = clamp(15 + raw * 0.8, 0, 30);
+    bij.sort((p, q) => Math.abs(q.v) - Math.abs(p.v));
+    const uitleg = bij.slice(0, 4).map(x => `${SMAAK[x.bier].naam.toLowerCase()} bier × ${SMAAK[x.gerecht].naam.toLowerCase()} gerecht ${plus(x.v)}`);
+    return { punten, raw, bij, uitleg };
+  }
+
+  /** 2. Aroma: basis 6; zelfde aroma +3 × sterkte, brug +3 (+1 bij sterkte 3), botsing −2 × sterkte. 0–25. */
+  function aroma(b, g, cfg) {
+    const ids = Object.keys(b.aroma);
+    const uitleg = [];
+    if (!ids.length) return { punten: 6, uitleg: ['geen aroma\'s ingevuld: neutraal'] };
+    let p = 6;
+    ids.forEach(a => {
+      const s = b.aroma[a];
+      if (g.ken.includes(a)) { p += 3 * s; uitleg.push(`zelfde aroma ${AROMA[a].naam.toLowerCase()} +${3 * s}`); }
+      (cfg.bruggen[a] || []).forEach(k => {
+        if (g.ken.includes(k)) { const v = 3 + (s >= 3 ? 1 : 0); p += v; uitleg.push(`${AROMA[a].naam.toLowerCase()} past bij ${kenNaam(k).toLowerCase()} +${v}`); }
+      });
+      (cfg.botsingen[a] || []).forEach(k => {
+        if (g.ken.includes(k)) { const v = 2 * s; p -= v; uitleg.push(`${AROMA[a].naam.toLowerCase()} botst met ${kenNaam(k).toLowerCase()} −${v}`); }
+      });
+    });
+    if (!uitleg.length) uitleg.push('geen aroma dat aansluit of botst');
+    return { punten: clamp(p, 0, 25), uitleg };
+  }
+
+  /** Welke intensiteit een bier met dit alcoholpercentage minstens vraagt. */
+  const nodig = abv => abv < 5 ? 1 : abv < 6.5 ? 2 : abv < 8 ? 3 : abv < 10 ? 4 : 5;
+
+  /** 3. Alcohol: 15 als het gerecht stevig genoeg is, −6 per stap te licht; −5 bij ≥ 7% en pikant ≥ 3. */
+  function alcohol(b, g) {
+    const uitleg = [];
+    const eff = g.i + (isDessert(g) || g.ken.includes('kaasoud') || g.ken.includes('kaasblauw') ? 1 : 0);
+    const n = nodig(b.abv), tekort = Math.max(0, n - eff);
+    let p = 15 - 6 * tekort;
+    uitleg.push(tekort ? `${komma(b.abv)}% vraagt intensiteit ${n}, gerecht is ${eff} −${6 * tekort}` : `${komma(b.abv)}% past bij intensiteit ${eff}`);
+    if (b.abv >= 7 && g.pikant >= 3) { p -= 5; uitleg.push('alcohol maakt pikant heter −5'); }
+    return { punten: clamp(p, 0, 15), uitleg };
+  }
+
+  /** 4. Body: verschil met de intensiteit. Te zwaar −5 per stap, te licht −4 per stap. */
+  function body(b, g) {
+    const d = b.body - g.i;
+    const p = d > 0 ? 15 - 5 * d : 15 + 4 * d;
+    const uitleg = [d === 0 ? `body ${b.body} = intensiteit ${g.i}` : d > 0 ? `bier zwaarder dan gerecht (${b.body} vs ${g.i}) −${komma(5 * d)}` : `bier lichter dan gerecht (${b.body} vs ${g.i}) −${komma(-4 * d)}`];
+    return { punten: clamp(p, 0, 15), uitleg };
+  }
+
+  /** 5. Mondgevoel (koolzuur): basis 8; vet ≥ 3: +2 per stap boven 2; gefrituurd +2; pikant ≥ 3 en koolzuur ≥ 4: −4; zacht dessert +3. */
+  function mond(b, g) {
+    let p = 8;
+    const uitleg = [];
+    if (g.vet >= 3) { const v = (b.koolzuur - 2) * 2; p += v; uitleg.push(`koolzuur ${b.koolzuur} bij vet ${g.vet} ${plus(v)}`); }
+    if (g.ken.includes('gefrituurd') && b.koolzuur >= 4) { p += 2; uitleg.push('veel prik bij gefrituurd +2'); }
+    if (g.pikant >= 3 && b.koolzuur >= 4) { p -= 4; uitleg.push('veel prik maakt pikant heter −4'); }
+    if (isDessert(g) && g.vet >= 3 && b.koolzuur <= 2) { p += 3; uitleg.push('zacht bier bij romig dessert +3'); }
+    if (!uitleg.length) uitleg.push('neutraal');
+    return { punten: clamp(p, 0, 15), uitleg };
+  }
+
+  const STD_MAX = { smaak: 30, aroma: 25, alcohol: 15, body: 15, mond: 15 };
+
+  /** Knock-outs: redenen om een bier nooit aan te bieden. */
+  function knockouts(b, g, cfg) {
+    const ko = [];
+    if (cfg.ko.zwaar && b.abv >= 9 && g.i <= 2 && !isDessert(g)) ko.push(`${komma(b.abv)}% is te zwaar voor een licht gerecht`);
+    if (cfg.ko.botsing) {
+      SMAKEN.forEach(bs => SMAKEN.forEach(gs => {
+        if ((cfg.zeshoek[paar(bs, gs)] || 0) <= -2 && b[bs] >= 3 && g[gs] >= 3 && b[bs] * g[gs] >= 12) ko.push(`${SMAAK[bs].naam.toLowerCase()} bier botst met ${SMAAK[gs].naam.toLowerCase()} gerecht (rode lijn)`);
+      }));
+    }
+    if (cfg.ko.dessert && isDessert(g) && b.zoet <= g.zoet - 2) ko.push('het dessert is veel zoeter dan het bier');
+    return ko;
+  }
+
+  function label(totaal, ko, cfg) {
+    if (ko.length) return { id: 'ko', naam: 'Past niet', kort: '✗' };
+    if (totaal >= cfg.drempel.top) return { id: 'top', naam: 'Topmatch', kort: '🍺🍺🍺' };
+    if (totaal >= cfg.drempel.goed) return { id: 'goed', naam: 'Goede keuze', kort: '🍺🍺' };
+    if (totaal >= cfg.drempel.matig) return { id: 'matig', naam: 'Matig', kort: '🍺' };
+    return { id: 'nee', naam: 'Past niet', kort: '✗' };
+  }
+
+  /** Eén bier bij één gerecht. Geeft {totaal 0–100, ok, label, ko[], delen[{id,naam,punten,max,uitleg[]}]}. */
+  function score(bier, gerecht, c) {
+    const cfg = c && c.zeshoek && c.max && c.bruggen ? c : config(c);
+    const b = bierP(bier), g = gerechtP(gerecht);
+    const ruw = { smaak: smaakbalans(b, g, cfg), aroma: aroma(b, g, cfg), alcohol: alcohol(b, g), body: body(b, g), mond: mond(b, g) };
+    const somMax = DELEN.reduce((s, d) => s + cfg.max[d.id], 0) || 1;
+    const delen = DELEN.map(d => {
+      const r = ruw[d.id], max = cfg.max[d.id];
+      return { id: d.id, naam: d.naam, punten: r1(r.punten / STD_MAX[d.id] * max), max, uitleg: r.uitleg };
+    });
+    const totaal = Math.round(delen.reduce((s, d) => s + d.punten, 0) / somMax * 100);
+    const ko = knockouts(b, g, cfg);
+    const lab = label(totaal, ko, cfg);
+    return { totaal, ok: !ko.length && totaal >= cfg.drempel.goed, label: lab, ko, delen, smaak: ruw.smaak.bij };
+  }
+
+  // ---------------------------------------------------------------- jouw ervaring: 👍 / 👎 bij een bier en een gerecht
+  // ervaring = { id: {bier, stijl, gerecht (sleutel), basis, oordeel: 1 | -1, t} }, gedeeld via Samen.
+  // Zelfde bier bij hetzelfde gerecht: ±10. Zelfde bier of zelfde stijl bij hetzelfde gerecht of dezelfde soort gerecht: ±6.
+  // Samen hooguit ±15. Zo valt een bier dat je 'te flauw' vond weg, en komt een stijl die je beter vond hoger.
+  const ERV = { zelfde: 10, verwant: 6, max: 15, totaal: 20 };
+  function ervaringPunten(ervaring, bier, ctx, iedereen) {
+    ctx = ctx || {};
+    let punten = 0;
+    const regels = [];
+    const anderen = andermansPunten((iedereen && iedereen.e) || [], bier, ctx);
+    Object.values(ervaring || {}).forEach(e => {
+      if (!e || !(e.oordeel === 1 || e.oordeel === -1)) return;
+      const dit = !!ctx.sleutel && e.gerecht === ctx.sleutel, soort = !!ctx.basis && e.basis === ctx.basis;
+      const zelfdeBier = !!bier.naam && norm(e.bier) === norm(bier.naam), zelfdeStijl = !!bier.stijl && e.stijl === bier.stijl;
+      let w = 0;
+      if (dit && zelfdeBier) w = ERV.zelfde;
+      else if ((dit || soort) && (zelfdeBier || zelfdeStijl)) w = ERV.verwant;
+      if (!w) return;
+      punten += w * e.oordeel;
+      regels.push(`${e.oordeel > 0 ? '👍' : '👎'} ${e.bier} bij ${e.gerechtNaam || e.basis || 'dit gerecht'}: ${e.oordeel > 0 ? '+' : '−'}${w}`);
+    });
+    punten = clamp(punten, -ERV.max, ERV.max) + anderen.punten;
+    return { punten: clamp(punten, -ERV.totaal, ERV.totaal), regels: regels.concat(anderen.regels), anderen: anderen.punten };
+  }
+  /** Duimen van andere gebruikers: per stem ±4 bij hetzelfde bier en gerecht (max ±12), ±2 bij dezelfde stijl of soort gerecht
+      (max ±6); samen hooguit ±12. Eén mening telt zo minder dan je eigen, maar tien mensen samen tellen flink mee. */
+  function andermansPunten(lijst, bier, ctx) {
+    let zelfde = 0, verwant = 0;
+    lijst.forEach(e => {
+      const dit = !!ctx.sleutel && e.gerecht === ctx.sleutel, soort = !!ctx.basis && e.basis === ctx.basis;
+      const zelfdeBier = !!bier.naam && norm(e.bier) === norm(bier.naam), zelfdeStijl = !!bier.stijl && e.stijl === bier.stijl;
+      if (dit && zelfdeBier) zelfde += e.oordeel;
+      else if ((dit || soort) && (zelfdeBier || zelfdeStijl)) verwant += e.oordeel;
+    });
+    const punten = clamp(clamp(zelfde * 4, -12, 12) + clamp(verwant * 2, -6, 6), -12, 12);
+    const regels = [];
+    const tel = (pos, neg) => `${pos ? pos + '× 👍' : ''}${pos && neg ? ', ' : ''}${neg ? neg + '× 👎' : ''}`;
+    const z = lijst.filter(e => ctx.sleutel && e.gerecht === ctx.sleutel && norm(e.bier) === norm(bier.naam));
+    if (z.length) regels.push(`Andere gebruikers bij dit bier en gerecht: ${tel(z.filter(e => e.oordeel > 0).length, z.filter(e => e.oordeel < 0).length)}`);
+    if (verwant) regels.push(`Andere gebruikers bij dezelfde stijl of soort gerecht: per saldo ${verwant > 0 ? '+' : ''}${verwant}`);
+    if (punten) regels.push(`Samen ${punten > 0 ? '+' : '−'}${Math.abs(punten)} van andere gebruikers`);
+    return { punten, regels };
+  }
+  /** Score van een kandidaat bijstellen met jouw ervaring (totaal, label en of hij aangeboden wordt). */
+  function metErvaring(k, ervaring, ctx, c, iedereen) {
+    const cfg = c && c.drempel ? c : config(c);
+    const x = ervaringPunten(ervaring, k, ctx, iedereen);
+    if (!x.punten && !x.regels.length) return k;
+    const s = Object.assign({}, k.s, { ervaring: x });
+    s.totaal = clamp(k.s.totaal + x.punten, 0, 100);
+    s.label = label(s.totaal, s.ko, cfg);
+    s.ok = !s.ko.length && s.totaal >= cfg.drempel.goed;
+    return Object.assign({}, k, { s });
+  }
+
+  /** Kandidaten ({naam, profiel, …}) scoren en sorteren.
+      modus 'thuis': geen goede → kopen (uit stijlen). modus 'restaurant': geen goede → beste met waarschuwing.
+      Geeft {alle, aangeboden, kopen, noodoptie}. */
+  function kies(kandidaten, gerecht, c, modus, stijlen, opts) {
+    const cfg = config(c);
+    opts = opts || {};
+    const sc = k => metErvaring(Object.assign({}, k, { s: score(k.profiel, gerecht, cfg) }), opts.ervaring, opts.gerecht, cfg, opts.iedereen);
+    const alle = (kandidaten || []).map(sc)
+      .sort((a, b) => (b.s.ko.length ? -1 : 0) - (a.s.ko.length ? -1 : 0) || b.s.totaal - a.s.totaal);
+    const aangeboden = alle.filter(k => k.s.ok);
+    const out = { alle, aangeboden, kopen: [], noodoptie: null };
+    if (!aangeboden.length) {
+      if (modus === 'restaurant') out.noodoptie = alle.find(k => !k.s.ko.length) || alle[0] || null;
+      if (stijlen && stijlen.length) {
+        out.kopen = stijlen.map(st => sc({ naam: st.naam, stijl: st.id, profiel: st.p }))
+          .filter(k => k.s.ok).sort((a, b) => b.s.totaal - a.s.totaal).slice(0, 3);
+      }
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- tekst lezen (gerecht, bierkaart)
+
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’'`´]/g, '').replace(/\s+/g, ' ').trim();
+  const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /** Komt woord w voor in (genormaliseerde) tekst t? Standaard vanaf een woordbegin; heel = ook tot een woordeinde;
+      overal = ook midden in een samenstelling (champignonroomsaus, runderstoofpot). */
+  const heeft = (t, w, heel, overal) => {
+    const x = norm(w);
+    if (!x) return false;
+    if (overal) return t.includes(x);
+    return new RegExp('(^|[^a-z0-9])' + reEsc(x) + (heel ? '($|[^a-z0-9])' : '')).test(t);
+  };
+
+  // Woorden die een gerecht bijsturen (pittig, romig, gegrild…)
+  const MODS = [
+    { w: ['extra pittig', 'heel pittig', 'vindaloo', 'habanero', 'madame jeanette', 'scotch bonnet', 'ghost pepper'], f: p => { p.pikant = Math.max(p.pikant, 4); } },
+    { w: ['pittig', 'spicy', 'sambal', 'chili', 'peper', 'jalapeno', 'piri piri', 'harissa', 'sriracha', 'diavola', 'pikant', 'hot', 'cajun', 'buffalo'], f: p => { p.pikant = Math.max(p.pikant, 3); } },
+    { w: ['romig', 'room', 'roomsaus', 'kaassaus', 'bechamel', 'hollandaise', 'bearnaise', 'aioli', 'mayonaise', 'boter', 'beurre blanc'], f: p => { p.vet += 1; p.ken.push('romig'); } },
+    { w: ['gegrild', 'grill', 'bbq', 'barbecue', 'houtskool', 'geblakerd', 'charcoal'], f: p => { p.bitter += 1; p.ken.push('gegrild'); } },
+    { w: ['gerookt', 'smoked', 'rook', 'bacon', 'spek'], f: p => { p.zout += 1; p.ken.push('rook'); } },
+    { w: ['gefrituurd', 'tempura', 'krokant', 'crispy', 'gepaneerd', 'friet', 'frites', 'patat', 'fries'], f: p => { p.vet += 1; p.ken.push('gefrituurd'); } },
+    { w: ['zoetzuur', 'sweet sour', 'sweet and sour', 'babi pangang'], f: p => { p.zoet += 1; p.zuur += 1; } },
+    { w: ['citroen', 'limoen', 'lime', 'lemon', 'citrus', 'yuzu'], f: p => { p.zuur += 1; p.ken.push('citrus'); } },
+    { w: ['tomaat', 'tomaten', 'tomatensaus', 'pomodoro', 'marinara'], f: p => { p.zuur = Math.max(p.zuur, 2); p.ken.push('tomaat'); } },
+    { w: ['honing', 'stroop', 'glazuur', 'geglaceerd', 'teriyaki', 'hoisin', 'ketjap', 'bbq saus', 'bbq-saus', 'karamel'], f: p => { p.zoet += 1; p.ken.push('karamel'); } },
+    { w: ['truffel', 'paddenstoel', 'champignon', 'eekhoorntjesbrood', 'cantharel', 'shiitake', 'funghi'], f: p => { p.ken.push('paddenstoel'); } },
+    { w: ['koriander', 'basilicum', 'munt', 'dragon', 'peterselie', 'tijm', 'rozemarijn', 'pesto', 'chimichurri', 'verse kruiden'], f: p => { p.ken.push('kruiden'); } },
+    { w: ['pinda', 'satesaus', 'walnoot', 'hazelnoot', 'amandel', 'cashew', 'noten'], f: p => { p.vet += 1; p.ken.push('noot'); } },
+    { w: ['zuurkool', 'augurk', 'ingelegd', 'pickles', 'azijn', 'kappertjes', 'kimchi'], f: p => { p.zuur += 2; } },
+    { w: ['parmezaan', 'gegratineerd', 'gratin', 'kaas'], f: p => { p.vet += 1; p.zout += 1; p.ken.push('kaasoud'); } },
+    { w: ['gember', 'kerrie', 'kurkuma', 'komijn', 'ras el hanout', 'garam masala', 'kaneel', 'speculaas'], f: p => { p.ken.push('kruidig'); } },
+    { w: ['salade', 'licht', 'lichte'], f: p => { p.ken.push('salade'); } }
+  ];
+
+  /** Gerecht uit vrije tekst: het meest specifieke gerecht uit de lijst + bijsturing. Geeft {naam, p, gevonden[], zeker}. */
+  function gerechtUitTekst(tekst, lijst) {
+    const t = norm(tekst);
+    const kort = t;
+    const hits = [];
+    (lijst || []).forEach(gr => {
+      let best = 0;
+      gr.w.forEach(w => { const n = norm(w).length; if (heeft(t, w, n < 4, n >= 6)) best = Math.max(best, n); });
+      if (best) hits.push({ gr, len: best });
+    });
+    hits.sort((a, b) => b.len - a.len);
+    let p;
+    if (hits.length) {
+      const h = hits[0].gr;
+      p = { i: h.p[0], zoet: h.p[1], zuur: h.p[2], zout: h.p[3], pikant: h.p[4], vet: h.p[5], bitter: h.p[6], ken: h.k.slice() };
+      // bijgerechten/tweede gerecht: kenmerken erbij, smaken alleen als ze duidelijk sterker zijn
+      hits.slice(1, 3).forEach(({ gr }) => {
+        gr.k.forEach(k => p.ken.push(k));
+        SMAKEN.forEach((s, i) => { p[s] = Math.max(p[s], gr.p[i + 1] - 1); });
+        p.i = Math.max(p.i, gr.p[0] - 1);
+      });
+    } else p = { i: 3, zoet: 1, zuur: 1, zout: 2, pikant: 0, vet: 2, bitter: 0, ken: [] };
+    MODS.forEach(m => { if (m.w.some(w => { const n = norm(w).length; return heeft(t, w, n < 5, n >= 6); })) m.f(p); });
+    SMAKEN.forEach(s => { p[s] = clamp(Math.round(p[s]), 0, 5); });
+    if (p.pikant >= 3 && p.i < 3) p.i = 3;
+    p.i = clamp(Math.round(p.i), 1, 5);
+    p.ken = [...new Set(p.ken)];
+    const naam = kort ? kort.charAt(0).toUpperCase() + String(tekst).trim().slice(1) : '';
+    return { naam, p, gevonden: hits.map(h => h.gr.naam), zeker: !!hits.length };
+  }
+
+  // ---------------------------------------------------------------- leren van jouw aanpassingen
+  // Pas je het smaakprofiel van een gerecht aan, dan onthoudt de app dat (gedeeld via Samen):
+  //  1. precies hetzelfde gerecht krijgt de volgende keer meteen jouw profiel;
+  //  2. een gerecht van dezelfde soort (zelfde basis, bv. "Witte vis") schuift mee met de gemiddelde bijstelling
+  //     van wat je bij die soort eerder aanpaste (bv. altijd vetter en zuurder dan de app dacht).
+  const GVELD = ['i'].concat(SMAKEN);
+  /** Sleutel voor een gerecht (veilig als id in Firebase): "red-snapper-met-witte-wijn-dillesaus". */
+  const gerechtSleutel = t => norm(t).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+
+  /** Aanpassing onthouden. auto = uitkomst van gerechtUitTekst (zonder leren), p = het profiel zoals jij het zette. */
+  function leer(geleerd, tekst, auto, p, nu) {
+    const id = gerechtSleutel(tekst);
+    if (!id || !auto || !auto.p || !p) return geleerd || {};
+    const q = gerechtP(p), a = auto.p, oud = (geleerd || {})[id] || {};
+    const d = {};
+    GVELD.forEach(f => { d[f] = q[f] - a[f]; });
+    const e = {
+      id, tekst: String(tekst).trim(), basis: (auto.gevonden || [])[0] || '', p: q, d,
+      kenPlus: q.ken.filter(k => !a.ken.includes(k)), kenMin: a.ken.filter(k => !q.ken.includes(k)),
+      n: (oud.n || 0) + 1, t: nu || Date.now()
+    };
+    return Object.assign({}, geleerd || {}, { [id]: e });
+  }
+
+  /** Gemiddelde bijstelling van een rij aanpassingen toepassen op het automatische profiel. Geeft {p, wat[]}. */
+  function bijstellen(autoP, rel) {
+    const p = gerechtP(Object.assign({}, autoP, { ken: autoP.ken.slice() }));
+    const wat = [];
+    GVELD.forEach(f => {
+      const gem = rel.reduce((s, e) => s + (+e.d[f] || 0), 0) / rel.length;
+      const stap = gem >= 0 ? Math.floor(gem + 0.5) : -Math.floor(-gem + 0.5);   // 0,5 telt als een hele stap
+      if (!stap) return;
+      p[f] = clamp(p[f] + stap, f === 'i' ? 1 : 0, 5);
+      wat.push((f === 'i' ? 'intensiteit' : SMAAK[f].naam.toLowerCase()) + ' ' + (stap > 0 ? '+' : '−') + Math.abs(stap));
+    });
+    const telt = (k, x) => rel.filter(e => (e[k] || []).includes(x)).length * 2 >= rel.length;
+    [...new Set(rel.flatMap(e => e.kenPlus || []))].forEach(x => { if (telt('kenPlus', x) && !p.ken.includes(x)) { p.ken.push(x); wat.push('+' + kenNaam(x).toLowerCase()); } });
+    [...new Set(rel.flatMap(e => e.kenMin || []))].forEach(x => { if (telt('kenMin', x) && p.ken.includes(x)) { p.ken = p.ken.filter(y => y !== x); wat.push('−' + kenNaam(x).toLowerCase()); } });
+    return { p, wat };
+  }
+
+  /** Profiel voor een gerecht met wat jij (en iedereen die de app gebruikt) eerder aanpaste.
+      Volgorde: 1. jouw eigen aanpassing van precies dit gerecht ('zelf');
+                2. wat anderen bij precies dit gerecht aanpasten ('iedereen');
+                3. jouw en andermans aanpassingen bij dezelfde soort gerecht ('soort').
+      iedereen = { g: [{ gerecht, basis, d, kenPlus, kenMin }] } (zie iedereenUit). Geeft {p, bron, n, basis, wat[], mensen}. */
+  function metGeleerd(geleerd, tekst, auto, iedereen) {
+    const lijst = Object.values(geleerd || {}).filter(e => e && e.p && e.d);
+    const anderen = ((iedereen && iedereen.g) || []).filter(e => e && e.d);
+    const id = gerechtSleutel(tekst);
+    const eigen = lijst.find(e => e.id === id);
+    if (eigen) return { p: gerechtP(eigen.p), bron: 'zelf', n: eigen.n || 1, basis: eigen.basis, wat: [], mensen: 0 };
+    const leeg = { p: auto ? auto.p : gerechtP({}), bron: '', n: 0, basis: '', wat: [], mensen: 0 };
+    if (!auto) return leeg;
+    const hier = anderen.filter(e => e.gerecht === id);
+    if (hier.length) {
+      const b = bijstellen(auto.p, hier);
+      if (b.wat.length) return { p: b.p, bron: 'iedereen', n: hier.length, basis: (auto.gevonden || [])[0] || '', wat: b.wat, mensen: hier.length };
+    }
+    const basis = auto.zeker ? (auto.gevonden || [])[0] : '';
+    const mijn = basis ? lijst.filter(e => e.basis === basis) : [];
+    const hun = basis ? anderen.filter(e => e.basis === basis) : [];
+    const rel = mijn.concat(hun);
+    if (!rel.length) return leeg;
+    const b = bijstellen(auto.p, rel);
+    if (!b.wat.length) return leeg;
+    return { p: b.p, bron: 'soort', n: rel.length, basis, wat: b.wat, mensen: hun.length, zelf: mijn.length };
+  }
+
+  // ---------------------------------------------------------------- leren van iedereen (anoniem, Firebase /b)
+  // /b/g/<gerecht>/<apparaat> = { basis, d: {i, zoet, …}, kp: [kenmerken erbij], km: [kenmerken eraf], t }
+  // /b/e/<gerecht>--<bier>/<apparaat> = { bier, stijl, gerecht, gnaam, basis, o: 1 | -1, t }
+  // Geen namen; <apparaat> is een willekeurige code per telefoon, zodat iemand zijn eigen duim kan veranderen.
+  const LIJST = v => Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : [];
+  /** Ruwe /b uit Firebase → { g: [...], e: [...], mensen } zonder de bijdragen van dit apparaat. */
+  function iedereenUit(raw, mijnApparaat) {
+    const out = { g: [], e: [], mensen: 0 };
+    const wie = new Set();
+    Object.entries((raw && raw.g) || {}).forEach(([gerecht, per]) => Object.entries(per || {}).forEach(([dev, x]) => {
+      if (!x || dev === mijnApparaat || !x.d) return;
+      const d = {}; GVELD.forEach(f => { d[f] = clamp(Math.round(+x.d[f] || 0), -5, 5); });
+      out.g.push({ gerecht, basis: x.basis || '', d, kenPlus: LIJST(x.kp).filter(k => KENMERK[k] || AROMA[k]), kenMin: LIJST(x.km).filter(k => KENMERK[k] || AROMA[k]) });
+      wie.add(dev);
+    }));
+    Object.values((raw && raw.e) || {}).forEach(per => Object.entries(per || {}).forEach(([dev, x]) => {
+      if (!x || dev === mijnApparaat || !(x.o === 1 || x.o === -1)) return;
+      out.e.push({ bier: String(x.bier || ''), stijl: x.stijl || '', gerecht: x.gerecht || '', gerechtNaam: x.gnaam || '', basis: x.basis || '', oordeel: x.o });
+      wie.add(dev);
+    }));
+    out.mensen = wie.size;
+    return out;
+  }
+  /** Eigen aanpassing → wat er naar /b/g gaat. */
+  const naarIedereenG = e => {
+    const x = { basis: e.basis || '', d: {} };
+    GVELD.forEach(f => { x.d[f] = clamp(Math.round(+((e.d || {})[f]) || 0), -5, 5); });
+    if ((e.kenPlus || []).length) x.kp = e.kenPlus.slice(0, 10);
+    if ((e.kenMin || []).length) x.km = e.kenMin.slice(0, 10);
+    return x;
+  };
+  const naarIedereenE = e => ({ bier: String(e.bier).slice(0, 58), stijl: e.stijl || '', gerecht: e.gerecht || '', gnaam: String(e.gerechtNaam || '').slice(0, 78), basis: e.basis || '', o: e.oordeel });
+
+  /** Alcoholpercentage uit een regel ("8,5%", "8.5 % vol"). */
+  function abvUit(r) {
+    const m = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%/.exec(String(r || ''));
+    if (!m) return null;
+    const v = parseFloat(m[1].replace(',', '.'));
+    return v >= 0 && v <= 20 ? v : null;
+  }
+
+  /** Een bier herkennen in een regel van de kaart (of getypt). Geeft {naam, stijl, bierId, profiel, bron} of null. */
+  function bierUitRegel(regel, bieren, stijlen) {
+    const ruw = String(regel || '').replace(/\s+/g, ' ').trim();
+    const t = norm(ruw);
+    if (t.length < 2) return null;
+    const STIJL = Object.fromEntries((stijlen || []).map(s => [s.id, s]));
+    const abv = abvUit(ruw);
+    let best = null, bl = 0;
+    (bieren || []).forEach(b => [b.naam].concat(b.alias || []).forEach(n => {
+      const x = norm(n);
+      if (x.length > bl && heeft(t, x, true)) { best = b; bl = x.length; }
+    }));
+    const schoon = ruw.replace(/\s*[-–·|]?\s*(€|eur|ƒ|nafl|usd|\$)\s*\d+([.,]\d+)?\s*$/i, '').replace(/\s*\d+([.,]\d{2})\s*$/, '').replace(/\s*\d{1,2}([.,]\d)?\s*%\s*(vol\.?)?/i, '').replace(/[.…\s]+$/, '').trim();
+    if (best) {
+      const st = STIJL[best.stijl];
+      const prof = Object.assign(copy(st ? st.p : {}), copy(best.p || {}));
+      if (best.a) prof.aroma = Object.assign({}, prof.aroma || {}, best.a);
+      if (abv != null) prof.abv = abv;
+      return { naam: best.naam, stijl: best.stijl, bierId: best.id, profiel: bierP(prof), bron: 'bier' };
+    }
+    let st = null, sl = 0;
+    (stijlen || []).forEach(s => (s.w || []).forEach(w => {
+      const x = norm(w);
+      if (x.length > sl && heeft(t, x, x.length < 5)) { st = s; sl = x.length; }
+    }));
+    if (st) {
+      const prof = copy(st.p);
+      if (abv != null) prof.abv = abv;
+      return { naam: schoon || st.naam, stijl: st.id, profiel: bierP(prof), bron: 'stijl' };
+    }
+    return null;
+  }
+
+  /** Bierkaart lezen: regels (getypt of van de foto) → bieren + overige regels (mogelijk gerechten). */
+  function leesKaart(regels, bieren, stijlen) {
+    const lijst = Array.isArray(regels) ? regels : String(regels || '').split(/\n+/);
+    const gevonden = [], rest = [], gezien = new Set();
+    lijst.forEach(r => {
+      const tx = String(r && r.t != null ? r.t : r || '').trim();
+      if (!tx) return;
+      const b = bierUitRegel(tx, bieren, stijlen);
+      if (b) {
+        const key = norm(b.naam);
+        if (!gezien.has(key)) { gezien.add(key); gevonden.push(b); }
+      } else if (/[a-z]{3,}/i.test(tx) && !/^\s*(€|\d)/.test(tx)) rest.push(tx);
+    });
+    return { bieren: gevonden, rest };
+  }
+
+  const api = { SMAKEN, SMAAK, AROMAS, AROMA, KENMERKEN, KENMERK, kenNaam, BRUGGEN, BOTSINGEN, STANDAARD, DELEN, paar, config, bierP, gerechtP, nodig,
+    score, kies, knockouts, gerechtUitTekst, bierUitRegel, leesKaart, abvUit, norm, gerechtSleutel, leer, metGeleerd, ervaringPunten, metErvaring, iedereenUit, naarIedereenG, naarIedereenE };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.BierScore = api;
+})(typeof window !== 'undefined' ? window : this);

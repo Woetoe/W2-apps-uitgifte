@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bierkeuze</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../w2ui.css">
+<style>
+:root{--acc:#f4b400;--acc-ink:#2b1d00}
+.top .ib.r{margin-left:auto}
+section{display:flex;flex-direction:column;gap:12px}
+h2{font:800 18px var(--f-display);margin:6px 0 0}
+.gq{display:flex;gap:8px}
+.gq .in{flex:1}
+.gq .btn{flex:none;padding:10px 14px}
+.prof{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sm{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 9px;font-size:13px;font-weight:700;background:var(--panel2)}
+.sm i{width:10px;height:10px;border-radius:5px;display:inline-block}
+.sm.leeg{opacity:.4}
+.kens{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.gtitel{display:flex;align-items:center;gap:8px}
+.gtitel b{flex:1;font:800 17px var(--f-display)}
+.lnk{border:0;background:none;color:var(--acc);font-weight:700;cursor:pointer;padding:6px 0}
+.res{display:flex;flex-direction:column;gap:10px}
+.bc{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px 14px}
+.bc.best{border-color:var(--acc)}
+.bc.nood{border-color:#6b5a12}
+.bc .kop{display:flex;align-items:center;gap:12px}
+.bc .kop .grow{flex:1;min-width:0}
+.bc .kop b{display:block;font-weight:800;font-size:17px}
+.bc .kop span{display:block;color:var(--muted);font-size:13px}
+.sc{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;flex:none;font:800 22px/1 var(--f-display);background:var(--panel2)}
+.sc small{display:block;font:700 10px var(--f-body);opacity:.8;text-align:center}
+.sc.l-top{background:var(--acc);color:var(--acc-ink)}
+.sc.l-goed{background:#3d3410;color:#ffd75e}
+.sc.l-matig,.sc.l-nee{background:var(--panel2);color:var(--muted)}
+.sc.l-ko{background:#3a1616;color:#ff8a7a}
+.delen{display:grid;grid-template-columns:78px 1fr 44px;gap:4px 8px;align-items:center;margin-top:10px;font-size:13px}
+.delen .bar{height:7px}
+.delen em{font-style:normal;color:var(--muted);text-align:right}
+.why{margin-top:8px;font-size:14px}
+.why h4{margin:10px 0 2px;font-size:14px}
+.why ul{margin:0;padding-left:18px;color:var(--muted)}
+.ko{color:#ff8a7a;font-size:14px;margin-top:6px}
+.acts{display:flex;gap:8px;margin-top:10px}
+.acts .btn{flex:1;min-height:42px}
+.kast .row .n{display:flex;align-items:center;gap:6px;flex:none}
+.kast .row .n button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:18px;cursor:pointer}
+.kast .row .n b{min-width:22px;text-align:center}
+.kaartb{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.kaartb .chip{display:inline-flex;align-items:center;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 11px;font-size:14px;cursor:pointer;color:inherit}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.chip.rood{background:#3a1616;border-color:#7a2a2a;color:#ffb3a8}
+.chip .x{opacity:.6;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.rng{display:grid;grid-template-columns:96px 1fr 34px;align-items:center;gap:8px;font-size:14px}
+.rng input{width:100%;accent-color:var(--acc)}
+.rng output{text-align:right;font-weight:800}
+.ar{display:inline-flex;align-items:center;gap:6px}
+.ar .dots{letter-spacing:1px;font-size:10px}
+.hex{width:100%;max-width:340px;display:block;margin:0 auto}
+.paar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.paar:last-child{border-bottom:0}
+.stp{display:flex;align-items:center;gap:6px}
+.stp button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:18px;cursor:pointer}
+.stp b{min-width:38px;text-align:center}
+.stp b.pos{color:#8bc34a}.stp b.neg{color:#ff7a66}
+.gew{display:grid;grid-template-columns:1fr 84px;align-items:center;gap:8px;padding:4px 0}
+.ar-row{padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.ar-row:last-child{border-bottom:0}
+.ar-row b{display:block}
+.ar-row span{display:block;font-size:13px;color:var(--muted)}
+.hist{font-size:14px}
+.hist div{padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px}
+.hist div span{flex:1}
+.hist div:last-child{border-bottom:0}
+details summary{cursor:pointer;color:var(--muted);font-weight:700;padding:6px 0}
+[hidden]{display:none!important}
+.advies{display:flex;align-items:center;gap:10px;width:100%;margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--acc) 55%,var(--line));background:color-mix(in srgb,var(--acc) 12%,var(--panel));color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.advies span{flex:1;min-width:0}
+.advies em{flex:none;font-style:normal;font-weight:700;color:var(--acc);font-size:14px}
+.res{scroll-margin-top:76px}
+.duim{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+.duim span{flex:1;min-width:0}
+.duim button{flex:none;width:44px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);font-size:18px;cursor:pointer;filter:grayscale(1);opacity:.75}
+.duim button.on{filter:none;opacity:1;border-color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--panel2))}
+.erv{margin-top:6px;font-size:13px;font-weight:700;color:var(--acc)}
+.gl{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.gl .grow{flex:1;min-width:0}
+.gl b{display:block;font-weight:700}
+.gl span{display:block;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="top"><a class="ib" id="back" href="../index.html#samen" aria-label="Terug"></a><h1 id="titel">Bierkeuze</h1><button class="ib r" id="inst" type="button" aria-label="Scoring"></button></div>
+<main class="page">
+  <div class="seg" id="tabs"><button type="button" data-tab="thuis" class="on">🏠 Thuis</button><button type="button" data-tab="rest">🍽️ Restaurant</button><button type="button" data-tab="kast">🗄️ Voorraad</button></div>
+
+  <section id="t-thuis">
+    <div class="card" id="g-thuis"></div>
+    <div class="res" id="r-thuis"></div>
+  </section>
+
+  <section id="t-rest" hidden>
+    <div class="card" id="kaart"></div>
+    <div class="card" id="g-rest"></div>
+    <div class="res" id="r-rest"></div>
+  </section>
+
+  <section id="t-kast" class="kast" hidden>
+    <div class="list" id="kastlijst"></div>
+    <button class="btn wide" id="kast-plus" type="button"></button>
+    <div id="hist"></div>
+  </section>
+
+  <section id="t-score" hidden></section>
+</main>
+<input type="file" id="file" accept="image/*" hidden>
+<datalist id="gerechten"></datalist>
+<script src="../w2.js"></script>
+<script src="../w2data.js"></script>
+<script src="../w2ui.js"></script>
+<script src="../samen/sync.js"></script>
+<script src="../samen/deel.js"></script>
+<script src="../samen/boodschappen.js"></script>
+<script src="score.js"></script>
+<script src="data.js"></script>
+<script>
+const { esc, $, $$, icon, sheet, confirm, toast } = UI;
+const D = W2D, S = BierScore, BD = BierData;
+$('#back').innerHTML = icon('back');
+$('#inst').innerHTML = icon('gear');
+$('#kast-plus').innerHTML = icon('plus') + 'Bier toevoegen';
+D.recent('bier');
+
+// ---------------------------------------------------------------- opslag
+// Gedeeld via Samen: voorraadkast (k:), bewaarde bierkaarten (c:), instellingen van de scoring (inst), wat je dronk (l:),
+// aangepaste smaakprofielen van gerechten (g:) en je 👍/👎 bij een bier en gerecht (e:).
+// Alleen op dit apparaat: het gerecht en de bierkaart van nu.
+let data = Object.assign({ kast: [], kaarten: [], inst: {}, log: [], geleerd: {}, ervaring: {} }, D.get('bier', null) || {});
+let nu = Object.assign({ tekst: '', p: null, naam: '', zeker: false, eigen: false, kaart: { naam: '', bieren: [], rest: [] } }, D.get('bier-nu', null) || {});
+let tab = 'thuis', vorigeTab = 'thuis';
+const cfg = () => S.config(data.inst);
+const save = () => { data.log = data.log.slice(-60); D.set('bier', data); if (deel) deel.push(); };
+const saveNu = () => D.set('bier-nu', nu);
+/** Het gerecht van nu voor je ervaring (👍/👎): sleutel van de tekst en de soort gerecht. */
+const ctx = () => ({ sleutel: S.gerechtSleutel(nu.tekst || nu.naam), basis: nu.basis || '' });
+const kies = (kand, modus) => S.kies(kand, nu.p, data.inst, modus === 'thuis' ? 'thuis' : 'restaurant', BD.STIJLEN, { ervaring: data.ervaring, gerecht: ctx(), iedereen: ied() });
+
+// ---------------------------------------------------------------- leren van iedereen (anoniem, Firebase /b)
+// Jouw aanpassingen van een gerecht en je 👍/👎 gaan zonder naam naar de database; de app haalt die van alle gebruikers op
+// en rekent ermee: per gerecht, per soort gerecht en per bier. Uit te zetten via het tandwiel › Leren van iedereen.
+const DB = String(window.W2_SAMEN_URL || 'https://w2-samen-default-rtdb.europe-west1.firebasedatabase.app').replace(/\/+$/, '');
+const APPARAAT = D.get('bier-apparaat', '') || (() => {
+  const a = crypto.getRandomValues(new Uint8Array(16));
+  const id = Array.from(a, b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+  D.set('bier-apparaat', id); return id;
+})();
+const meedoen = () => D.get('bier-iedereen-aan', true) !== false;
+let iedereen = S.iedereenUit((D.get('bier-iedereen', null) || {}).raw, APPARAAT);
+const ied = () => meedoen() ? iedereen : null;
+async function haalIedereen(nu2) {
+  if (!meedoen() || navigator.onLine === false) return false;
+  const was = D.get('bier-iedereen', null) || {};
+  if (!nu2 && Date.now() - (was.t || 0) < 30 * 60000) return false;
+  try {
+    const ac = new AbortController(); const to = setTimeout(() => ac.abort(), 10000);
+    const r = await fetch(DB + '/b.json', { signal: ac.signal }); clearTimeout(to);
+    if (!r.ok) return false;
+    const raw = await r.json();
+    D.set('bier-iedereen', { t: Date.now(), raw });
+    iedereen = S.iedereenUit(raw, APPARAAT);
+    render();
+    return true;
+  } catch (e) { return false; }
+}
+/** Eigen bijdrage sturen (body) of weghalen (null). Gaat via een wachtrij, zodat het zonder internet later alsnog gaat. */
+function stuurIedereen(soort, item, body) {
+  if (!meedoen() || !item) return;
+  const w = D.get('bier-iedereen-wacht', {}) || {}, mijn = D.get('bier-iedereen-mijn', {}) || {};
+  w[soort + '/' + item] = body;
+  if (body) mijn[soort + '/' + item] = 1; else delete mijn[soort + '/' + item];
+  D.set('bier-iedereen-wacht', w); D.set('bier-iedereen-mijn', mijn);
+  verstuurIedereen();
+}
+let bezig = false;
+async function verstuurIedereen() {
+  if (bezig || navigator.onLine === false) return;
+  bezig = true;
+  try {
+    const w = D.get('bier-iedereen-wacht', {}) || {};
+    for (const [pad, body] of Object.entries(w)) {
+      const url = `${DB}/b/${pad}/${APPARAAT}.json`;
+      let ok = false;
+      try {
+        const r = await fetch(url, body ? { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, body, { t: { '.sv': 'timestamp' } })) } : { method: 'DELETE' });
+        ok = r.ok || r.status === 401;   // 401: database-regels voor /b nog niet geplakt of ongeldig; niet eindeloos opnieuw
+      } catch (e) { break; }
+      if (ok) { const n = D.get('bier-iedereen-wacht', {}) || {}; if (n[pad] === body || JSON.stringify(n[pad]) === JSON.stringify(body)) { delete n[pad]; D.set('bier-iedereen-wacht', n); } }
+    }
+  } finally { bezig = false; }
+}
+async function stopMetIedereen() {
+  // Uitzetten: al je eigen bijdragen weer weghalen.
+  const mijn = D.get('bier-iedereen-mijn', {}) || {}, w = {};
+  Object.keys(mijn).forEach(k => { w[k] = null; });
+  D.set('bier-iedereen-wacht', w); D.set('bier-iedereen-mijn', {});
+  D.set('bier-iedereen-aan', true); await verstuurIedereen(); D.set('bier-iedereen-aan', false);
+}
+addEventListener('online', () => { verstuurIedereen(); haalIedereen(); });
+
+let deel = null;
+function koppelDeel() {
+  if (deel || !window.W2Deel) return;
+  deel = W2Deel.koppel({
+    kind: 'bier',
+    lees: async () => Object.fromEntries([
+      ...data.kast.map(k => ['k:' + k.id, k]), ...data.kaarten.map(c => ['c:' + c.id, c]),
+      ...data.log.map(l => ['l:' + l.id, l]), ['inst', Object.assign({ id: 'inst' }, data.inst)],
+      ...Object.values(data.geleerd).map(g => ['g:' + g.id, g]), ...Object.values(data.ervaring).map(x => ['e:' + x.id, x])
+    ]),
+    schrijf: async map => {
+      const pick = pre => Object.entries(map).filter(([k]) => k.startsWith(pre)).map(([, v]) => JSON.parse(JSON.stringify(v)));
+      data.kast = pick('k:'); data.kaarten = pick('c:');
+      data.log = pick('l:').sort((a, b) => (a.t || 0) - (b.t || 0));
+      data.geleerd = Object.fromEntries(pick('g:').map(g => [g.id, g]));
+      data.ervaring = Object.fromEntries(pick('e:').map(x => [x.id, x]));
+      const ins = map.inst ? JSON.parse(JSON.stringify(map.inst)) : {}; delete ins.id; data.inst = ins;
+      D.set('bier', data);
+      render();
+    }
+  });
+  W2Deel.badge();
+}
+
+// ---------------------------------------------------------------- hulpjes
+const komma = v => String(Math.round(v * 10) / 10).replace('.', ',');
+const stijlNaam = id => (BD.STIJL[id] || {}).naam || 'Eigen bier';
+const sub = b => [stijlNaam(b.stijl), b.profiel ? komma(b.profiel.abv) + '%' : ''].filter(Boolean).join(' · ');
+const smaakChips = p => S.SMAKEN.map(s => `<span class="sm${p[s] ? '' : ' leeg'}"><i style="background:${S.SMAAK[s].kleur}"></i>${S.SMAAK[s].naam} ${p[s]}</span>`).join('');
+
+function pickFoto(camera) {
+  return new Promise(res => {
+    const inp = $('#file');
+    inp.value = '';
+    if (camera) inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
+    inp.onchange = async () => {
+      const f = inp.files[0];
+      if (!f) return res(null);
+      try {
+        const bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(f));
+        const sc = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', .9));
+      } catch (e) { toast('Deze foto kon niet gelezen worden.'); res(null); }
+    };
+    inp.click();
+  });
+}
+
+// ---------------------------------------------------------------- tabbladen
+function toon(t) {
+  if (t !== 'score') vorigeTab = t;
+  tab = t;
+  ['thuis', 'rest', 'kast', 'score'].forEach(x => { $('#t-' + x).hidden = x !== t; });
+  $('#tabs').hidden = t === 'score';
+  $$('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('#titel').textContent = t === 'score' ? 'Scoring' : 'Bierkeuze';
+  history.replaceState(null, '', '#' + t);
+  render();
+  window.scrollTo(0, 0);
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) toon(b.dataset.tab); });
+$('#inst').onclick = () => toon(tab === 'score' ? vorigeTab : 'score');
+window.UIback = () => { if (tab === 'score') { toon(vorigeTab); return true; } return false; };
+
+function render() {
+  if (tab === 'thuis') { renderGerecht($('#g-thuis')); renderUitslag('thuis'); }
+  else if (tab === 'rest') { renderKaart(); renderGerecht($('#g-rest')); renderUitslag('rest'); }
+  else if (tab === 'kast') renderKast();
+  else renderScoring();
+}
+
+// ---------------------------------------------------------------- gerecht
+$('#gerechten').innerHTML = BD.GERECHTEN.map(g => `<option value="${esc(g.naam)}">`).join('');
+
+function zetGerecht(tekst) {
+  tekst = String(tekst || '').trim();
+  if (!tekst) return;
+  const r = S.gerechtUitTekst(tekst, BD.GERECHTEN);
+  const m = S.metGeleerd(data.geleerd, tekst, r, ied());
+  Object.assign(nu, { tekst, p: m.p, naam: r.naam, zeker: r.zeker || m.bron === 'zelf', gevonden: r.gevonden, eigen: false,
+    basis: m.basis || r.gevonden[0] || '', bron: m.bron, bronN: m.n, bronWat: m.wat, bronMensen: m.mensen || 0, bronZelf: m.zelf || 0 });
+  saveNu();
+  render();
+  if (!r.zeker) aanpassenGerecht();
+  else setTimeout(naarAdvies, 80);
+}
+
+function renderGerecht(host) {
+  const p = nu.p;
+  host.innerHTML = `
+    <div class="gq"><input class="in" id="gq-${host.id}" list="gerechten" placeholder="Wat eet je? Bv. spareribs met BBQ-saus" value="${esc(nu.tekst)}" enterkeyhint="go" autocomplete="off"><button class="btn" type="button" data-act="zoek">${icon('search')}</button></div>
+    ${p ? `<div style="margin-top:12px" class="gtitel"><b>${esc(nu.naam || 'Gerecht')}</b><button class="lnk" type="button" data-act="pas">Aanpassen</button></div>
+      <div class="muted small">${nu.eigen ? 'Zelf ingesteld en onthouden' : nu.bron === 'zelf' ? `Jouw profiel van eerder (${nu.bronN}× aangepast)` : nu.zeker ? 'Herkend als ' + esc((nu.gevonden || []).slice(0, 2).join(' + ')) : 'Niet herkend: stel het smaakprofiel zelf in'} · intensiteit ${p.i} van 5</div>
+      ${nu.bron === 'iedereen' && !nu.eigen ? `<div class="muted small">👥 Bijgesteld met wat ${nu.bronMensen === 1 ? 'iemand anders bij dit gerecht aanpaste' : nu.bronMensen + ' anderen bij dit gerecht aanpasten'}: ${esc((nu.bronWat || []).join(', '))}</div>` : ''}
+      ${nu.bron === 'soort' && !nu.eigen ? `<div class="muted small">${nu.bronMensen ? '👥 ' : ''}Bijgesteld met wat ${nu.bronMensen && nu.bronZelf ? 'jij en anderen' : nu.bronMensen ? 'anderen' : 'je eerder'} bij ${esc(nu.basis)} ${nu.bronMensen ? 'aanpasten' : 'aanpaste'}: ${esc((nu.bronWat || []).join(', '))}</div>` : ''}
+      ${(nu.eigen || nu.bron === 'zelf') ? `<button class="lnk" type="button" data-act="vergeet" style="font-size:14px">Standaardprofiel gebruiken</button>` : ''}
+      <div class="prof">${smaakChips(p)}</div>
+      ${p.ken.length ? `<div class="kens">${p.ken.map(k => `<span class="pill">${esc(S.kenNaam(k))}</span>`).join('')}</div>` : ''}
+      ${kortAdvies(host.id === 'g-thuis' ? 'thuis' : 'rest')}`
+    : `<div class="muted small" style="margin-top:10px">Typ wat je eet (of gaat bestellen). De app zoekt het smaakprofiel erbij; dat kun je daarna aanpassen.</div>`}`;
+  const inp = $('input', host);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); zetGerecht(inp.value); } });
+  inp.addEventListener('change', () => { if (BD.GERECHTEN.some(g => g.naam === inp.value)) zetGerecht(inp.value); });
+  host.onclick = e => {
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'zoek') zetGerecht(inp.value);
+    if (a.dataset.act === 'pas') aanpassenGerecht();
+    if (a.dataset.act === 'naar') naarAdvies();
+    if (a.dataset.act === 'vergeet') {
+      const id = S.gerechtSleutel(nu.tekst || nu.naam);
+      if (data.geleerd[id]) { delete data.geleerd[id]; save(); }
+      stuurIedereen('g', id, null);
+      const t = nu.tekst || nu.naam; nu.tekst = ''; zetGerecht(t);
+      toast('Standaardprofiel staat er weer; je aanpassing is vergeten.');
+    }
+  };
+}
+
+/** Het bier dat nu bovenaan staat (aangeboden, of in een restaurant de noodoptie), of null. */
+function besteNu() {
+  if (!nu.p) return null;
+  const modus = tab === 'thuis' ? 'thuis' : 'rest', kand = kandidaten(modus);
+  if (!kand.length) return null;
+  const r = kies(kand, modus);
+  return r.aangeboden[0] || r.noodoptie || null;
+}
+
+/** Eén regel met het advies, meteen onder het gerecht (de kaarten met de scores staan verder naar beneden). */
+function kortAdvies(modus) {
+  if (!nu.p) return '';
+  const kand = kandidaten(modus);
+  let t;
+  if (!kand.length) t = modus === 'thuis' ? 'Voorraad leeg: zie hieronder welk soort bier past' : 'Nog geen bierkaart: zie hieronder welk soort bier past';
+  else {
+    const r = kies(kand, modus);
+    const a = r.aangeboden;
+    if (a.length) t = `Beste keuze: <b>${esc(a[0].naam)}</b> (${a[0].s.totaal})${a.length > 1 ? ` · nog ${a.length - 1} andere` : ''}`;
+    else if (r.noodoptie) t = `Niets past echt goed; het dichtst bij: <b>${esc(r.noodoptie.naam)}</b> (${r.noodoptie.s.totaal})`;
+    else t = modus === 'thuis' ? 'Niets in je voorraad past goed: zie hieronder wat je kunt kopen' : 'Geen bier op de kaart past';
+  }
+  return `<button class="advies" type="button" data-act="naar">🍺 <span>${t}</span><em>Bekijk ↓</em></button>`;
+}
+function naarAdvies() {
+  const el = $(tab === 'thuis' ? '#r-thuis' : '#r-rest');
+  if (el && el.firstElementChild) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const rng = (name, label, v, min, max, step) => `<label class="rng"><span>${label}</span><input type="range" name="${name}" min="${min}" max="${max}" step="${step || 1}" value="${v}"><output>${String(v).replace('.', ',')}</output></label>`;
+function liveRng(el) { el.addEventListener('input', e => { if (e.target.type === 'range') e.target.nextElementSibling.textContent = String(e.target.value).replace('.', ','); }); }
+
+async function aanpassenGerecht() {
+  const p = nu.p || S.gerechtP({});
+  const ken = new Set(p.ken);
+  const s = sheet('Smaakprofiel van het gerecht', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(nu.naam || nu.tekst)}"></label>
+    ${rng('i', 'Intensiteit', p.i, 1, 5)}
+    <div class="muted small">1 = salade of witte vis · 3 = kip, pasta · 5 = stoofvlees, wild, oude kaas</div>
+    ${S.SMAKEN.map(x => rng(x, `<i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:${S.SMAAK[x].kleur};margin-right:5px"></i>${S.SMAAK[x].naam}`, p[x], 0, 5)).join('')}
+    <div class="muted small">Kenmerken (voor het aroma)</div>
+    <div class="chips" id="kens">${S.KENMERKEN.map(([id, n]) => `<button type="button" class="chip${ken.has(id) ? ' on' : ''}" data-k="${id}">${esc(n)}</button>`).join('')}
+      ${S.AROMAS.map(a => `<button type="button" class="chip${ken.has(a.id) ? ' on' : ''}" data-k="${a.id}">${esc(a.naam)}</button>`).join('')}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Opslaan', value: 'ok' }]);
+  liveRng(s.el);
+  $('#kens', s.el).addEventListener('click', e => { const c = e.target.closest('[data-k]'); if (!c) return; const k = c.dataset.k; if (ken.has(k)) ken.delete(k); else ken.add(k); c.classList.toggle('on', ken.has(k)); });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  const f = r.form;
+  const voor = besteNu();
+  nu.p = S.gerechtP({ i: +f.i, zoet: +f.zoet, zuur: +f.zuur, zout: +f.zout, pikant: +f.pikant, vet: +f.vet, bitter: +f.bitter, ken: [...ken] });
+  nu.naam = f.naam.trim() || nu.naam; nu.eigen = true; nu.zeker = true;
+  if (!nu.tekst) nu.tekst = nu.naam;
+  // Onthouden (gedeeld via Samen): dit gerecht krijgt de volgende keer dit profiel, vergelijkbare gerechten schuiven mee.
+  const auto = S.gerechtUitTekst(nu.tekst, BD.GERECHTEN);
+  data.geleerd = S.leer(data.geleerd, nu.tekst, auto, nu.p);
+  const sl = S.gerechtSleutel(nu.tekst);
+  if (data.geleerd[sl]) stuurIedereen('g', sl, S.naarIedereenG(data.geleerd[sl]));   // anoniem, voor iedereen die de app gebruikt
+  nu.basis = auto.gevonden[0] || nu.basis || '';
+  save(); saveNu(); render();
+  // Het bieradvies is opnieuw berekend met het nieuwe profiel: laat zien of het veranderde.
+  const na = besteNu();
+  const wat = !na ? 'geen bier haalt de drempel' : `nu ${na.naam} (${na.s.totaal})`;
+  toast(voor && na && voor.naam === na.naam ? `Advies opnieuw berekend: nog steeds ${na.naam} (${na.s.totaal}). Profiel onthouden.`
+    : `Advies opnieuw berekend: ${wat}${voor ? `, was ${voor.naam}` : ''}. Profiel onthouden.`, 4500);
+  setTimeout(naarAdvies, 80);
+}
+
+// ---------------------------------------------------------------- uitslag
+function kandidaten(modus) {
+  if (modus === 'thuis') return data.kast.filter(k => (k.aantal || 0) > 0).map(k => Object.assign({}, k));
+  return (nu.kaart.bieren || []).map((b, i) => Object.assign({ id: 'm' + i }, b));
+}
+
+function scoreKaart(k, modus, extra) {
+  const s = k.s, c = cfg();
+  const cls = s.label.id;
+  const mijn = oordeelVan(k);
+  const duim = `<div class="duim"><span>Klopt dit bij ${esc(nu.naam || 'dit gerecht')}?</span>
+    <button type="button" class="${mijn === 1 ? 'on' : ''}" data-oordeel="1" data-bier="${esc(k.naam)}" data-stijl="${esc(k.stijl || '')}" aria-label="Past goed">👍</button>
+    <button type="button" class="${mijn === -1 ? 'on' : ''}" data-oordeel="-1" data-bier="${esc(k.naam)}" data-stijl="${esc(k.stijl || '')}" aria-label="Past niet">👎</button></div>`;
+  return `<div class="bc${cls === 'top' ? ' best' : ''}${extra === 'nood' ? ' nood' : ''}">
+    <div class="kop"><div class="grow"><b>${esc(k.naam)}</b><span>${esc(!k.id && BD.STIJL[k.stijl] ? BD.STIJL[k.stijl].kort + ' · ± ' + komma(k.profiel.abv) + '%' : sub(k))}${modus === 'thuis' && k.aantal ? ' · nog ' + k.aantal : ''}</span>${!k.id && voorbeelden(k.stijl).length ? `<span>Bijvoorbeeld ${esc(voorbeelden(k.stijl).join(', '))}</span>` : ''}</div>
+      <div class="sc l-${cls}">${s.totaal}<small>${esc(s.label.naam)}</small></div></div>
+    <div class="delen">${s.delen.map(d => `<span>${esc(d.naam)}</span><div class="bar"><i style="width:${d.max ? Math.round(d.punten / d.max * 100) : 0}%"></i></div><em>${komma(d.punten)}/${d.max}</em>`).join('')}</div>
+    ${s.ko.length ? `<div class="ko">✗ ${s.ko.map(esc).join(' · ')}</div>` : ''}
+    ${s.ervaring && s.ervaring.punten ? `<div class="erv">${s.ervaring.anderen ? (s.ervaring.anderen === s.ervaring.punten ? '👥 Ervaring van anderen' : '👥 Ervaring van jou en anderen') : 'Jouw ervaring'}: ${s.ervaring.punten > 0 ? '+' : '−'}${Math.abs(s.ervaring.punten)}</div>` : ''}
+    <details class="why"><summary>Waarom?</summary>
+      ${s.ervaring && s.ervaring.regels.length ? `<h4>Ervaring ${s.ervaring.punten > 0 ? '+' : s.ervaring.punten < 0 ? '−' : ''}${Math.abs(s.ervaring.punten)}</h4><ul>${s.ervaring.regels.map(u => `<li>${esc(u)}</li>`).join('')}</ul>` : ''}
+      ${s.delen.map(d => `<h4>${esc(d.naam)} ${komma(d.punten)} van ${d.max}</h4><ul>${d.uitleg.map(u => `<li>${esc(u)}</li>`).join('')}</ul>`).join('')}
+      <div class="muted small" style="margin-top:8px">Totaal = punten ÷ ${Object.values(c.max).reduce((a, b) => a + b, 0)} × 100. Aanbieden vanaf ${c.drempel.goed}, topmatch vanaf ${c.drempel.top}. Aanpassen via het tandwiel.</div>
+    </details>
+    ${extra === 'kopen' ? `<div class="acts"><button class="btn q" type="button" data-koop="${esc(k.naam)}">${icon('plus')}Op de boodschappenlijst</button></div>`
+      : extra === 'geen' ? '' : `<div class="acts"><button class="btn${s.ok ? '' : ' q'}" type="button" data-drink="${esc(k.id)}">🍺 ${modus === 'thuis' ? 'Deze drink ik' : 'Deze neem ik'}</button></div>`}
+    ${duim}
+  </div>`;
+}
+
+// ---------------------------------------------------------------- jouw ervaring: 👍 / 👎
+const ervId = (bier, sleutel) => (S.gerechtSleutel(sleutel) + '--' + S.gerechtSleutel(bier)).slice(0, 120);
+function oordeelVan(k) { const e = data.ervaring[ervId(k.naam, ctx().sleutel)]; return e ? e.oordeel : 0; }
+function zetOordeel(b) {
+  const c = ctx(), id = ervId(b.dataset.bier, c.sleutel), o = +b.dataset.oordeel;
+  const voor = besteNu();
+  if (data.ervaring[id] && data.ervaring[id].oordeel === o) { delete data.ervaring[id]; stuurIedereen('e', id, null); toast('Oordeel weggehaald.'); }
+  else {
+    data.ervaring[id] = { id, bier: b.dataset.bier, stijl: b.dataset.stijl || '', gerecht: c.sleutel, gerechtNaam: nu.naam || nu.tekst, basis: c.basis, oordeel: o, t: Date.now() };
+    stuurIedereen('e', id, S.naarIedereenE(data.ervaring[id]));
+    const na = besteNu();
+    toast((o > 0 ? `👍 Onthouden: ${b.dataset.bier} past bij ${nu.naam || 'dit gerecht'}` : `👎 Onthouden: ${b.dataset.bier} past niet bij ${nu.naam || 'dit gerecht'}`) +
+      (na && (!voor || voor.naam !== na.naam) ? `. Advies is nu ${na.naam}.` : '.') + ' Telt ook bij vergelijkbare gerechten' + (meedoen() ? ' en, zonder naam, voor andere gebruikers.' : '.'), 4500);
+  }
+  save(); render();
+}
+
+/** Beste bierstijlen bij het gerecht (om te kopen of op de kaart te zoeken); haalt niets de drempel, dan toch de beste 3. */
+function koopAdvies() {
+  const r = kies([], 'thuis');
+  if (r.kopen.length) return r.kopen;
+  return BD.STIJLEN.map(st => S.metErvaring({ naam: st.naam, stijl: st.id, profiel: st.p, s: S.score(st.p, nu.p, data.inst) }, data.ervaring, ctx(), data.inst, ied()))
+    .filter(k => !k.s.ko.length).sort((a, b) => b.s.totaal - a.s.totaal).slice(0, 3);
+}
+const voorbeelden = stijl => BD.BIEREN.filter(b => b.stijl === stijl).slice(0, 3).map(b => b.naam);
+
+function renderUitslag(modus) {
+  const host = $(modus === 'thuis' ? '#r-thuis' : '#r-rest');
+  if (!nu.p) { host.innerHTML = ''; return; }
+  const kand = kandidaten(modus);
+  if (!kand.length) {
+    // Niets in de voorraad / nog geen kaart: toch zeggen welk soort bier je zoekt
+    const advies = koopAdvies();
+    host.innerHTML = (modus === 'thuis'
+      ? `<div class="notice"><b>Je voorraad is leeg.</b> Dit soort bier past bij ${esc(nu.naam || 'dit gerecht')}; koop er een of zet je bieren in de <button class="lnk" type="button" data-naar="kast">voorraad</button>.</div>`
+      : `<div class="notice"><b>Nog geen bierkaart.</b> Zoek op de kaart naar dit soort bier, of maak hierboven een foto van de bierkaart.</div>`)
+      + advies.map(k => scoreKaart(k, modus, modus === 'thuis' ? 'kopen' : 'geen')).join('');
+    host.onclick = e => {
+      const o = e.target.closest('[data-oordeel]'); if (o) return zetOordeel(o);
+      const b = e.target.closest('[data-naar]'); if (b) return toon(b.dataset.naar);
+      const kp = e.target.closest('[data-koop]'); if (kp) return opLijst(kp.dataset.koop);
+    };
+    return;
+  }
+  const r = kies(kand, modus);
+  const rest = r.alle.filter(k => !k.s.ok && k !== r.noodoptie);
+  let h = '';
+  if (r.aangeboden.length) {
+    h += `<h2>${modus === 'thuis' ? 'Uit je voorraad' : 'Van de kaart'}</h2>` + r.aangeboden.map(k => scoreKaart(k, modus)).join('');
+  } else if (modus === 'thuis') {
+    h += `<div class="notice"><b>Niets in je voorraad past goed bij ${esc(nu.naam || 'dit gerecht')}.</b> Geen enkel bier haalt ${cfg().drempel.goed} punten. Deze biertypes zouden wel passen:</div>`;
+    h += koopAdvies().map(k => scoreKaart(k, modus, 'kopen')).join('');
+  } else if (r.noodoptie) {
+    h += `<div class="notice"><b>Geen bier op de kaart past echt goed.</b> Dit komt het dichtst bij, maar haalt de ${cfg().drempel.goed} punten niet.${r.kopen[0] ? ` Vraag eventueel of ze een <b>${esc(r.kopen[0].naam)}</b> hebben.` : ''}</div>`;
+    h += scoreKaart(r.noodoptie, modus, 'nood');
+  }
+  if (rest.length) h += `<details><summary>Niet aangeboden (${rest.length})</summary><div class="res">${rest.map(k => scoreKaart(k, modus, 'geen')).join('')}</div></details>`;
+  host.innerHTML = h;
+  host.onclick = async e => {
+    const o = e.target.closest('[data-oordeel]'); if (o) return zetOordeel(o);
+    const d = e.target.closest('[data-drink]');
+    if (d) return drink(modus, r.alle.find(k => k.id === d.dataset.drink));
+    const kp = e.target.closest('[data-koop]');
+    if (kp) return opLijst(kp.dataset.koop);
+  };
+}
+
+async function drink(modus, k) {
+  if (!k) return;
+  const g = nu.naam || nu.tekst;
+  if (modus === 'thuis') {
+    const item = data.kast.find(x => x.id === k.id);
+    if (!item) return;
+    const ok = await confirm(`<b>${esc(item.naam)}</b> bij ${esc(g)}? Er gaat er één uit de voorraad${item.aantal > 1 ? ` (dan nog ${item.aantal - 1})` : ' (dan is hij op)'}.`, 'Proost 🍺');
+    if (!ok) return;
+    item.aantal = Math.max(0, (item.aantal || 1) - 1);
+    if (!item.aantal) data.kast = data.kast.filter(x => x !== item);
+    toast(item.aantal ? `Proost! Nog ${item.aantal} over.` : `Proost! ${item.naam} is nu op.`);
+  } else toast('Proost! 🍺 Bewaard bij wat je dronk.');
+  data.log.push({ id: D.uid(), t: Date.now(), bier: k.naam, stijl: k.stijl || '', gerecht: g, score: k.s.totaal, waar: modus === 'thuis' ? 'thuis' : (nu.kaart.naam || 'restaurant'), profiel: k.profiel });
+  save(); render();
+}
+
+async function opLijst(naam) {
+  const B = window.Boodschappen, lists = B ? B.lists() : [];
+  if (!lists.length) return toast('Er is nog geen boodschappenlijst in Samen.');
+  const out = B.addLines(lists[0].id, [naam], 'Bierkeuze');
+  toast(out.added ? `${naam} staat op ${lists[0].naam}.` : 'Staat al op de lijst.');
+}
+
+// ---------------------------------------------------------------- restaurant: de bierkaart
+function renderKaart() {
+  const k = nu.kaart;
+  $('#kaart').innerHTML = `
+    <div class="gtitel"><b>🍺 Bierkaart${k.naam ? ' · ' + esc(k.naam) : ''}</b>${k.bieren.length ? `<button class="lnk" type="button" data-act="wis">Leeg</button>` : ''}</div>
+    ${k.bieren.length ? `<div class="kaartb">${k.bieren.map((b, i) => `<span class="chip" data-i="${i}">${esc(b.naam)} <span class="muted">${esc(komma(b.profiel.abv))}%</span><span class="x" data-del="${i}">✕</span></span>`).join('')}</div>
+      <div class="muted small" style="margin-top:6px">Tik op een bier om stijl of smaak aan te passen.</div>`
+      : `<div class="muted small" style="margin-top:6px">Maak een foto van de bierkaart, of typ de bieren die ze hebben.</div>`}
+    <div class="btns" style="margin-top:10px"><button class="btn q" type="button" data-act="foto">${icon('camera')}Foto</button><button class="btn q" type="button" data-act="typ">${icon('edit')}Typen</button>
+      <button class="btn q" type="button" data-act="bewaard">${icon('folder')}Bewaard</button></div>
+    ${k.bieren.length ? `<button class="lnk" type="button" data-act="bewaar">Kaart bewaren voor de volgende keer</button>` : ''}
+    ${(k.rest || []).length ? `<details><summary>Ander tekst van de foto (gerecht kiezen)</summary><div class="chips">${k.rest.slice(0, 40).map((t, i) => `<button class="chip" type="button" data-rest="${i}">${esc(t)}</button>`).join('')}</div></details>` : ''}`;
+  $('#kaart').onclick = async e => {
+    const del = e.target.closest('[data-del]');
+    if (del) { k.bieren.splice(+del.dataset.del, 1); saveNu(); return render(); }
+    const ch = e.target.closest('[data-i]');
+    if (ch) {
+      const b = k.bieren[+ch.dataset.i];
+      const nieuw = await bewerkBier(b, false);
+      if (nieuw) { k.bieren[+ch.dataset.i] = nieuw; saveNu(); render(); }
+      return;
+    }
+    const rs = e.target.closest('[data-rest]');
+    if (rs) return zetGerecht(k.rest[+rs.dataset.rest]);
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'foto') return kaartFoto();
+    if (a.dataset.act === 'typ') return kaartTypen();
+    if (a.dataset.act === 'bewaard') return kaartKiezen();
+    if (a.dataset.act === 'bewaar') return kaartBewaren();
+    if (a.dataset.act === 'wis' && await confirm('Bierkaart leegmaken?', 'Leegmaken')) { nu.kaart = { naam: '', bieren: [], rest: [] }; saveNu(); render(); }
+  };
+}
+
+function voegToe(gelezen) {
+  const k = nu.kaart, namen = new Set(k.bieren.map(b => S.norm(b.naam)));
+  let n = 0;
+  gelezen.bieren.forEach(b => { if (!namen.has(S.norm(b.naam))) { k.bieren.push(b); namen.add(S.norm(b.naam)); n++; } });
+  k.rest = [...new Set([...(k.rest || []), ...(gelezen.rest || [])])].slice(0, 80);
+  saveNu(); render();
+  return n;
+}
+
+async function kaartFoto() {
+  if (!W2.herken.available()) { toast('De kaart lezen van een foto kan alleen in de app. Typ de bieren.', 4000); return kaartTypen(); }
+  const foto = await pickFoto(true);
+  if (!foto) return;
+  toast('Kaart lezen…', 20000);
+  try {
+    const scan = await W2.herken.foto(foto, 'tekst');
+    toast('');
+    if (!scan || !scan.ok) return toast('De foto kon niet gelezen worden. Probeer het met meer licht of van dichterbij.', 4000);
+    const lines = (scan.lines || []).slice().sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    const g = S.leesKaart(lines.map(l => l.t), BD.BIEREN, BD.STIJLEN);
+    const n = voegToe(g);
+    if (!g.bieren.length) { toast('Geen bieren herkend op de foto. Typ ze, of maak een foto van dichterbij.', 4500); return kaartTypen(lines.map(l => l.t).join('\n')); }
+    toast(`${n} bier${n === 1 ? '' : 'en'} van de kaart gehaald. Tik op een bier om het na te kijken.`, 3500);
+  } catch (e) { toast(''); toast('Lezen lukte niet: ' + (e.message || e), 4000); }
+}
+
+async function kaartTypen(voor) {
+  const s = sheet('Bieren op de kaart', `
+    <label class="f">Restaurant (mag leeg)<input class="in" name="naam" value="${esc(nu.kaart.naam || '')}"></label>
+    <label class="f">Eén bier per regel; alcohol erbij mag (bv. "Huis-IPA 6,5%")<textarea class="in" name="t" rows="8" placeholder="Duvel&#10;Westmalle Tripel&#10;Brouwerij X IPA 6,8%">${esc(voor || '')}</textarea></label>
+    <div class="muted small">De app kent ± ${BD.BIEREN.length} bieren en ${BD.STIJLEN.length} stijlen. Een onbekend bier zonder stijl in de naam kies je daarna zelf.</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Toevoegen', value: 'ok' }], { focus: true });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  nu.kaart.naam = r.form.naam.trim();
+  const regels = r.form.t.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const g = S.leesKaart(regels, BD.BIEREN, BD.STIJLEN);
+  // regels zonder herkend bier: toch als bier toevoegen, stijl zelf kiezen
+  const onbekend = regels.filter(x => !S.bierUitRegel(x, BD.BIEREN, BD.STIJLEN));
+  voegToe({ bieren: g.bieren, rest: [] });
+  for (const naam of onbekend) {
+    const b = await bewerkBier({ naam, stijl: '', profiel: null }, false, `Welke stijl is "${naam}"?`);
+    if (b) { nu.kaart.bieren.push(b); saveNu(); }
+  }
+  render();
+}
+
+async function kaartBewaren() {
+  const s = sheet('Kaart bewaren', `<label class="f">Naam van het restaurant<input class="in" name="naam" value="${esc(nu.kaart.naam || '')}"></label>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Bewaren', value: 'ok', check: f => f.naam.trim() ? '' : 'Geef het restaurant een naam.' }], { focus: true });
+  const r = await s.done;
+  if (r.value !== 'ok') return;
+  const naam = r.form.naam.trim();
+  nu.kaart.naam = naam; saveNu();
+  const bestaand = data.kaarten.find(c => c.naam.toLowerCase() === naam.toLowerCase());
+  const kaart = { id: bestaand ? bestaand.id : D.uid(), naam, bieren: JSON.parse(JSON.stringify(nu.kaart.bieren)), datum: D.date.today() };
+  data.kaarten = data.kaarten.filter(c => c.id !== kaart.id).concat(kaart);
+  save(); render(); toast('Bewaard: ' + naam);
+}
+
+async function kaartKiezen() {
+  if (!data.kaarten.length) return toast('Nog geen bewaarde kaarten. Bewaar er een nadat je hem hebt ingevuld.');
+  const s = sheet('Bewaarde bierkaarten', `<div class="list">${data.kaarten.slice().sort((a, b) => a.naam.localeCompare(b.naam)).map(c => `<div class="row" data-c="${esc(c.id)}"><div class="grow"><b>${esc(c.naam)}</b><span class="sub">${c.bieren.length} bieren · ${esc(c.datum || '')}</span></div><button class="ib" type="button" data-weg="${esc(c.id)}" aria-label="Weggooien">${icon('trash')}</button></div>`).join('')}</div>`,
+    [{ label: 'Sluiten', value: null, kind: 'q' }]);
+  s.el.addEventListener('click', async e => {
+    const w = e.target.closest('[data-weg]');
+    if (w) { e.stopPropagation(); data.kaarten = data.kaarten.filter(c => c.id !== w.dataset.weg); save(); s.close(null); return kaartKiezen(); }
+    const c = e.target.closest('[data-c]');
+    if (c) { const k = data.kaarten.find(x => x.id === c.dataset.c); nu.kaart = { naam: k.naam, bieren: JSON.parse(JSON.stringify(k.bieren)), rest: [] }; saveNu(); s.close(null); render(); }
+  });
+}
+
+// ---------------------------------------------------------------- bier bewerken (profiel)
+/** Bier met profiel bewerken. Geeft {naam, stijl, bierId?, profiel, aantal?} of null. */
+async function bewerkBier(b, metAantal, titel) {
+  let p = b.profiel ? JSON.parse(JSON.stringify(b.profiel)) : (BD.STIJL[b.stijl] ? JSON.parse(JSON.stringify(BD.STIJL[b.stijl].p)) : null);
+  const vanStijl = !p;
+  if (!p) p = JSON.parse(JSON.stringify(BD.STIJL.blond.p));
+  const ar = Object.assign({}, p.aroma || {});
+  const dots = n => '●'.repeat(n) + '○'.repeat(3 - n);
+  const arHtml = () => S.AROMAS.map(a => `<button type="button" class="chip${ar[a.id] ? ' on' : ''}" data-a="${a.id}" title="${esc(a.vb)}"><span class="ar">${esc(a.naam)}${ar[a.id] ? ` <span class="dots">${dots(ar[a.id])}</span>` : ''}</span></button>`).join('');
+  const s = sheet(titel || b.naam || 'Bier', `
+    <label class="f">Naam<input class="in" name="naam" value="${esc(b.naam || '')}"></label>
+    <label class="f">Stijl<select class="in" name="stijl"><option value="">Kies een stijl…</option>${BD.STIJLEN.map(st => `<option value="${st.id}"${st.id === b.stijl ? ' selected' : ''}>${esc(st.naam)} (${esc(st.kort)})</option>`).join('')}</select></label>
+    ${metAantal ? `<label class="f">Aantal in de kast<input class="in" name="aantal" type="number" min="0" max="99" value="${b.aantal != null ? b.aantal : 1}"></label>` : ''}
+    <div id="velden">${velden(p)}</div>
+    <div class="muted small">Aroma's (biersmaakwiel). Tik vaker voor sterker: ● licht, ●● duidelijk, ●●● sterk.</div>
+    <div class="chips" id="aroma">${arHtml()}</div>
+    <div class="muted small">${b.bierId || b.stijl ? 'Profiel is een schatting op basis van de stijl; pas aan naar wat je proeft.' : ''}</div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Opslaan', value: 'ok', check: f => !f.naam.trim() ? 'Geef het bier een naam.' : !f.stijl ? 'Kies een stijl.' : '' }]);
+  liveRng(s.el);
+  $('select[name=stijl]', s.el).addEventListener('change', e => {
+    const st = BD.STIJL[e.target.value]; if (!st) return;
+    const np = JSON.parse(JSON.stringify(st.p));
+    const abv = parseFloat(String($('input[name=abv]', s.el).value).replace(',', '.'));
+    if (!vanStijl && abv) np.abv = abv;
+    $('#velden', s.el).innerHTML = velden(np);
+    Object.keys(ar).forEach(k => delete ar[k]); Object.assign(ar, np.aroma);
+    $('#aroma', s.el).innerHTML = arHtml();
+  });
+  $('#aroma', s.el).addEventListener('click', e => {
+    const c = e.target.closest('[data-a]'); if (!c) return;
+    const k = c.dataset.a; ar[k] = ((ar[k] || 0) + 1) % 4; if (!ar[k]) delete ar[k];
+    $('#aroma', s.el).innerHTML = arHtml();
+  });
+  const r = await s.done;
+  if (r.value !== 'ok') return null;
+  const f = r.form;
+  const profiel = S.bierP({ abv: parseFloat(String(f.abv).replace(',', '.')), body: +f.body, koolzuur: +f.koolzuur, zoet: +f.zoet, zuur: +f.zuur, zout: +f.zout, pikant: +f.pikant, vet: +f.vet, bitter: +f.bitter, aroma: ar });
+  const out = Object.assign({}, b, { naam: f.naam.trim(), stijl: f.stijl, profiel });
+  if (metAantal) out.aantal = Math.max(0, Math.min(99, parseInt(f.aantal, 10) || 0));
+  return out;
+}
+function velden(p) {
+  return `<label class="f">Alcohol (%)<input class="in" name="abv" inputmode="decimal" value="${komma(p.abv)}"></label>
+    ${rng('body', 'Body', p.body, 1, 5)}${rng('koolzuur', 'Koolzuur', p.koolzuur, 1, 5)}
+    ${S.SMAKEN.map(x => rng(x, `<i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:${S.SMAAK[x].kleur};margin-right:5px"></i>${S.SMAAK[x].naam}`, p[x], 0, 5)).join('')}`;
+}
+
+// ---------------------------------------------------------------- voorraadkast
+function renderKast() {
+  const kast = data.kast.slice().sort((a, b) => a.naam.localeCompare(b.naam));
+  $('#kastlijst').innerHTML = kast.length ? kast.map(k => `<div class="row" data-k="${esc(k.id)}"><div class="ico">🍺</div><div class="grow"><b>${esc(k.naam)}</b><span class="sub">${esc(sub(k))}</span></div>
+    <div class="n"><button type="button" data-min="${esc(k.id)}" aria-label="Eén minder">−</button><b>${k.aantal || 0}</b><button type="button" data-plus="${esc(k.id)}" aria-label="Eén meer">+</button></div></div>`).join('')
+    : `<div class="empty"><b>Nog niets in de voorraadkast</b>Zet de bieren erin die je thuis hebt. Bij Thuis kiest de app daaruit het beste bier bij je eten, en als je er een pakt gaat hij eraf.</div>`;
+  const log = data.log.slice(-10).reverse();
+  $('#hist').innerHTML = log.length ? `<h2>Laatst gedronken</h2><div class="card hist">${log.map(l => `<div><span><b>${esc(l.bier)}</b> bij ${esc(l.gerecht)}</span><span class="muted" style="flex:none">${l.score} · ${esc(l.waar)}</span></div>`).join('')}</div>` : '';
+}
+$('#kastlijst').addEventListener('click', async e => {
+  const mi = e.target.closest('[data-min]'), pl = e.target.closest('[data-plus]');
+  if (mi || pl) {
+    const k = data.kast.find(x => x.id === (mi || pl).dataset[mi ? 'min' : 'plus']);
+    k.aantal = Math.max(0, (k.aantal || 0) + (pl ? 1 : -1));
+    if (!k.aantal && !(await confirm(`${esc(k.naam)} is op. Uit de voorraad halen?`, 'Weghalen'))) { k.aantal = 1; return renderKast(); }
+    if (!k.aantal) data.kast = data.kast.filter(x => x !== k);
+    save(); return renderKast();
+  }
+  const row = e.target.closest('[data-k]');
+  if (!row) return;
+  const k = data.kast.find(x => x.id === row.dataset.k);
+  const nieuw = await bewerkBier(k, true);
+  if (!nieuw) return;
+  if (!nieuw.aantal) data.kast = data.kast.filter(x => x.id !== k.id);
+  else Object.assign(k, nieuw);
+  save(); renderKast();
+});
+
+$('#kast-plus').onclick = async () => {
+  const s = sheet('Bier toevoegen', `
+    <input class="in" id="zoekbier" placeholder="Zoek een bier of stijl, bv. Duvel of tripel" autocomplete="off">
+    <div class="list" id="bierres" style="max-height:46vh;overflow:auto;gap:6px"></div>`,
+  [{ label: 'Annuleren', value: null, kind: 'q' }], { focus: true });
+  const zoek = () => {
+    const q = S.norm($('#zoekbier', s.el).value);
+    const bieren = BD.BIEREN.filter(b => !q || S.norm(b.naam).includes(q) || (b.alias || []).some(a => S.norm(a).includes(q))).slice(0, 25);
+    const stijlen = BD.STIJLEN.filter(st => !q || S.norm(st.naam).includes(q) || st.w.some(w => S.norm(w).includes(q))).slice(0, 10);
+    $('#bierres', s.el).innerHTML = (q ? `<div class="row" data-eigen="1"><div class="ico">✏️</div><div class="grow"><b>"${esc($('#zoekbier', s.el).value.trim())}"</b><span class="sub">Eigen bier, stijl zelf kiezen</span></div></div>` : '') +
+      bieren.map(b => `<div class="row" data-b="${b.id}"><div class="ico">🍺</div><div class="grow"><b>${esc(b.naam)}</b><span class="sub">${esc(stijlNaam(b.stijl))} · ${komma(BD.profielVan(b).abv)}%</span></div></div>`).join('') +
+      stijlen.map(st => `<div class="row" data-st="${st.id}"><div class="ico">🏷️</div><div class="grow"><b>${esc(st.naam)}</b><span class="sub">${esc(st.kort)}</span></div></div>`).join('');
+  };
+  $('#zoekbier', s.el).addEventListener('input', zoek);
+  zoek();
+  let keuze = null;
+  s.el.addEventListener('click', e => {
+    const r = e.target.closest('[data-b],[data-st],[data-eigen]'); if (!r) return;
+    const naam = $('#zoekbier', s.el).value.trim();
+    if (r.dataset.b) { const b = BD.BIEREN.find(x => x.id === r.dataset.b); keuze = { naam: b.naam, stijl: b.stijl, bierId: b.id, profiel: S.bierP(BD.profielVan(b)) }; }
+    else if (r.dataset.st) { const st = BD.STIJL[r.dataset.st]; keuze = { naam: naam && !st.w.some(w => S.norm(w) === S.norm(naam)) ? naam : st.naam, stijl: st.id, profiel: S.bierP(st.p) }; }
+    else { const g = S.bierUitRegel(naam, BD.BIEREN, BD.STIJLEN); keuze = g ? Object.assign(g, { naam }) : { naam, stijl: '', profiel: null }; }
+    s.close('ok');
+  });
+  await s.done;
+  if (!keuze) return;
+  const al = data.kast.find(k => S.norm(k.naam) === S.norm(keuze.naam));
+  const nieuw = await bewerkBier(Object.assign({ aantal: al ? (al.aantal || 0) + 1 : 1 }, al || keuze), true);
+  if (!nieuw || !nieuw.aantal) return;
+  if (al) Object.assign(al, nieuw);
+  else data.kast.push(Object.assign({ id: D.uid() }, nieuw));
+  save(); renderKast(); toast(nieuw.naam + ' staat in de voorraad.');
+};
+
+// ---------------------------------------------------------------- scoring bekijken en aanpassen
+const HEX = { zoet: -90, zuur: -30, zout: 30, pikant: 90, vet: 150, bitter: 210 };
+function zeshoekSvg(c) {
+  const R = 118, cx = 170, cy = 160, pos = s => [cx + R * Math.cos(HEX[s] * Math.PI / 180), cy + R * Math.sin(HEX[s] * Math.PI / 180)];
+  let lines = '';
+  S.SMAKEN.forEach((a, i) => S.SMAKEN.slice(i + 1).forEach(b => {
+    const v = c.zeshoek[S.paar(a, b)] || 0, [x1, y1] = pos(a), [x2, y2] = pos(b);
+    const kl = v > 0 ? '#8bc34a' : v < 0 ? '#e0533b' : '#666';
+    lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${kl}" stroke-width="${1.5 + Math.abs(v) * 1.5}" ${v ? '' : 'stroke-dasharray="4 4"'} opacity=".9"/>`;
+  }));
+  const dots = S.SMAKEN.map(s => { const [x, y] = pos(s); const zelf = c.zeshoek[s + '|' + s]; return `<circle cx="${x}" cy="${y}" r="34" fill="${S.SMAAK[s].kleur}"/><text x="${x}" y="${y + 6}" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="17" fill="#fff">${S.SMAAK[s].naam}</text><text x="${x}" y="${y + 22}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" opacity=".85">${zelf > 0 ? '+' : ''}${String(zelf).replace('.', ',')}</text>`; }).join('');
+  return `<svg class="hex" viewBox="0 0 340 320" aria-label="Smaakzeshoek">${lines}${dots}</svg>`;
+}
+
+function renderScoring() {
+  const c = cfg(), ins = data.inst;
+  const tot = Object.values(c.max).reduce((a, b) => a + b, 0);
+  const paren = [];
+  S.SMAKEN.forEach((a, i) => S.SMAKEN.slice(i).forEach(b => paren.push(S.paar(a, b))));
+  const pn = k => k.split('|').map(x => S.SMAAK[x].naam).join(' × ');
+  const stp = (attr, v) => `<div class="stp"><button type="button" data-${attr}="-0.5">−</button><b class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${String(v).replace('.', ',')}</b><button type="button" data-${attr}="0.5">+</button></div>`;
+  $('#t-score').innerHTML = `
+    <div class="card"><b>Zo werkt de score</b><p class="muted small" style="margin:6px 0 0">Elk bier krijgt punten op vijf eigenschappen, samen 100. Een bier wordt alleen aangeboden vanaf ${c.drempel.goed} punten en zonder knock-out. Bij elk bier zie je onder <b>Waarom?</b> hoe de punten zijn opgebouwd. Alles hieronder kun je aanpassen; het geldt ook op de telefoon van je partner (via Samen).</p></div>
+
+    <h2>Gewicht per eigenschap</h2>
+    <div class="card">${S.DELEN.map(d => `<div class="gew"><div><b>${esc(d.naam)}</b><div class="muted small">${esc(d.uitleg)}</div></div><input class="in" type="number" min="0" max="100" data-max="${d.id}" value="${c.max[d.id]}"></div>`).join('')}
+      <div class="muted small" style="margin-top:6px">Samen ${tot}${tot !== 100 ? ' (wordt omgerekend naar 100)' : ''}.</div></div>
+
+    <h2>Smaakzeshoek</h2>
+    <div class="card">${zeshoekSvg(c)}
+      <p class="muted small">Groen = combinatie werkt (+), rood = botst (−). Waarde × smaak van het bier × smaak van het gerecht ÷ 5, opgeteld; 0 = neutraal (15 van de 30 punten). Het getal in een rondje geldt voor dezelfde smaak aan beide kanten (bij zoet: een dessert mag niet zoeter zijn dan het bier).</p>
+      ${paren.map(k => `<div class="paar"><span>${esc(pn(k))}</span>${stp('z="' + k + '" data-d', c.zeshoek[k])}</div>`).join('')}</div>
+
+    <h2>Drempels</h2>
+    <div class="card">
+      <div class="gew"><span>Topmatch vanaf</span><input class="in" type="number" min="0" max="100" data-dr="top" value="${c.drempel.top}"></div>
+      <div class="gew"><span>Aanbieden vanaf</span><input class="in" type="number" min="0" max="100" data-dr="goed" value="${c.drempel.goed}"></div>
+      <div class="gew"><span>Matig vanaf</span><input class="in" type="number" min="0" max="100" data-dr="matig" value="${c.drempel.matig}"></div></div>
+
+    <h2>Knock-outs (nooit aanbieden)</h2>
+    <div class="card">
+      ${[['zwaar', 'Te zwaar', '9% of meer bij een licht gerecht (intensiteit 1–2), behalve een dessert'],
+         ['botsing', 'Rode lijn', 'Een rode lijn uit de zeshoek waar bier en gerecht allebei sterk zijn (bv. bitter 4 bij pikant 3)'],
+         ['dessert', 'Dessert te zoet', 'Het dessert is 2 of meer zoeter dan het bier']].map(([k, n, u]) =>
+        `<div class="toggle"><div class="grow"><b>${n}</b><div class="muted small">${u}</div></div><button type="button" class="sw${c.ko[k] ? ' on' : ''}" data-ko="${k}" aria-label="${n}"></button></div>`).join('')}</div>
+
+    <h2>Aroma's: past bij en botst met</h2>
+    <div class="card">${S.AROMAS.map(a => `<div class="ar-row" data-ar="${a.id}"><b>${esc(a.naam)} <span class="muted small" style="display:inline">· ${esc(a.wiel)}</span></b>
+      <span>✓ ${esc((c.bruggen[a.id] || []).map(S.kenNaam).join(', ') || '–')}</span>${(c.botsingen[a.id] || []).length ? `<span>✗ ${esc(c.botsingen[a.id].map(S.kenNaam).join(', '))}</span>` : ''}</div>`).join('')}
+      <p class="muted small">Zelfde aroma in bier en gerecht: +3 per ●. Past bij: +3 (+1 bij ●●●). Botst met: −2 per ●. Basis 6, maximaal 25.</p></div>
+
+    <h2>Overige regels</h2>
+    <div class="card muted small">
+      <p style="margin:0 0 6px"><b style="color:var(--text)">Alcohol</b>: onder 5% past bij alles; 5–6,5% vraagt intensiteit 2, 6,5–8% intensiteit 3, 8–10% intensiteit 4, vanaf 10% intensiteit 5 (dessert en oude kaas tellen 1 zwaarder). −6 per stap te licht; −5 bij 7% of meer met pikant 3+.</p>
+      <p style="margin:0 0 6px"><b style="color:var(--text)">Body</b>: 15 als body gelijk is aan de intensiteit; −5 per stap te zwaar, −4 per stap te licht.</p>
+      <p style="margin:0"><b style="color:var(--text)">Koolzuur</b>: basis 8; bij vet 3+ telt (koolzuur − 2) × 2; +2 bij gefrituurd met veel prik; −4 bij pikant 3+ met veel prik; +3 voor een zacht bier bij een romig dessert.</p></div>
+
+    <h2>Leren van iedereen</h2>
+    <div class="card">
+      <div class="toggle"><div class="grow"><b>Meedoen</b><div class="muted small">Wat jij bij een gerecht aanpast en je 👍/👎 gaan zonder naam naar alle gebruikers van de app, en jij krijgt het hunne. Zo worden de adviezen voor iedereen beter. Je eigen aanpassing gaat altijd voor.</div></div><button type="button" class="sw${meedoen() ? ' on' : ''}" id="ied-sw" aria-label="Leren van iedereen"></button></div>
+      ${meedoen() ? `<div class="muted small" style="margin-top:8px">${iedereen.mensen ? `Van ${iedereen.mensen} andere telefoon${iedereen.mensen === 1 ? '' : 's'}: ${iedereen.g.length} ${iedereen.g.length === 1 ? 'aangepast gerecht' : 'aangepaste gerechten'} en ${iedereen.e.length} ${iedereen.e.length === 1 ? 'duim' : 'duimen'}.` : 'Nog niets van anderen binnen.'}${(D.get('bier-iedereen', null) || {}).t ? ' Bijgewerkt ' + esc(new Date(D.get('bier-iedereen', null).t).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '.' : ''} <button class="lnk" type="button" id="ied-nu" style="font-size:14px">Nu bijwerken</button></div>
+        <div class="muted small" style="margin-top:6px">Telt zo mee: 👍/👎 van anderen ±4 per stem bij hetzelfde bier en gerecht, ±2 bij dezelfde stijl of soort gerecht, samen hooguit ±12 (je eigen: ±15). Aanpassingen van anderen schuiven het smaakprofiel mee als jij dat gerecht zelf niet aanpaste.</div>` : ''}
+    </div>
+
+    <h2>Geleerd van jou</h2>
+    <div class="card">${geleerdLijst()}</div>
+
+    <button class="btn danger wide" type="button" id="reset">Alles terug naar standaard</button>`;
+}
+function geleerdLijst() {
+  const g = Object.values(data.geleerd).sort((a, b) => (b.t || 0) - (a.t || 0));
+  const e = Object.values(data.ervaring).sort((a, b) => (b.t || 0) - (a.t || 0));
+  const delta = x => ['i'].concat(S.SMAKEN).filter(f => x.d && x.d[f]).map(f => (f === 'i' ? 'intensiteit' : S.SMAAK[f].naam.toLowerCase()) + ' ' + (x.d[f] > 0 ? '+' : '−') + Math.abs(x.d[f]))
+    .concat((x.kenPlus || []).map(k => '+' + S.kenNaam(k).toLowerCase()), (x.kenMin || []).map(k => '−' + S.kenNaam(k).toLowerCase())).join(', ') || 'zelfde als standaard';
+  if (!g.length && !e.length) return '<p class="muted small" style="margin:0">Nog niets. Pas je bij een gerecht het smaakprofiel aan (Aanpassen), of geef bij een bier 👍 of 👎, dan onthoudt de app dat en rekent hij er de volgende keer mee: bij hetzelfde gerecht, en bij gerechten van dezelfde soort.</p>';
+  return `<p class="muted small" style="margin:0 0 8px">Telt mee in elk advies, ook bij je partner (via Samen). 👍/👎: ±10 bij hetzelfde bier en gerecht, ±6 bij dezelfde stijl of soort gerecht, samen hooguit ±15.</p>` +
+    g.map(x => `<div class="gl"><div class="grow"><b>${esc(x.tekst)}</b><span>${esc(x.basis ? x.basis + ' · ' : '')}${esc(delta(x))}</span></div><button type="button" class="lnk" data-wg="${esc(x.id)}" aria-label="Vergeten">✕</button></div>`).join('') +
+    e.map(x => `<div class="gl"><div class="grow"><b>${x.oordeel > 0 ? '👍' : '👎'} ${esc(x.bier)}</b><span>bij ${esc(x.gerechtNaam || x.gerecht)}${x.basis ? ' (' + esc(x.basis) + ')' : ''}</span></div><button type="button" class="lnk" data-we="${esc(x.id)}" aria-label="Vergeten">✕</button></div>`).join('');
+}
+$('#t-score').addEventListener('click', async e => {
+  const ins = data.inst;
+  const z = e.target.closest('[data-z]');
+  if (z) {
+    const c = cfg(), k = z.dataset.z;
+    ins.zeshoek = Object.assign({}, ins.zeshoek || {}, { [k]: Math.max(-3, Math.min(3, (c.zeshoek[k] || 0) + parseFloat(z.dataset.d))) });
+    save(); return renderScoring();
+  }
+  const ko = e.target.closest('[data-ko]');
+  if (ko) { const c = cfg(); ins.ko = Object.assign({}, ins.ko || {}, { [ko.dataset.ko]: !c.ko[ko.dataset.ko] }); save(); return renderScoring(); }
+  const ar = e.target.closest('[data-ar]');
+  if (ar) return aromaRegels(ar.dataset.ar);
+  const wg = e.target.closest('[data-wg]');
+  if (wg) { delete data.geleerd[wg.dataset.wg]; stuurIedereen('g', wg.dataset.wg, null); save(); toast('Vergeten.'); return renderScoring(); }
+  const we = e.target.closest('[data-we]');
+  if (we) { delete data.ervaring[we.dataset.we]; stuurIedereen('e', we.dataset.we, null); save(); toast('Vergeten.'); return renderScoring(); }
+  if (e.target.closest('#ied-sw')) {
+    if (meedoen()) {
+      if (!await confirm('Niet meer leren van iedereen? Je eigen aanpassingen en duimen worden dan ook bij anderen weggehaald. Wat je zelf aanpaste blijft op je telefoon.', 'Uitzetten')) return;
+      await stopMetIedereen(); iedereen = S.iedereenUit(null, APPARAAT); toast('Uit. De app rekent nu alleen met wat jij aanpaste.');
+    } else {
+      D.set('bier-iedereen-aan', true);
+      Object.values(data.geleerd).forEach(g => stuurIedereen('g', g.id, S.naarIedereenG(g)));
+      Object.values(data.ervaring).forEach(x => stuurIedereen('e', x.id, S.naarIedereenE(x)));
+      await haalIedereen(true); toast('Aan. Je leert van iedereen en anderen van jou.');
+    }
+    return renderScoring();
+  }
+  if (e.target.closest('#ied-nu')) { toast(await haalIedereen(true) ? 'Bijgewerkt.' : 'Bijwerken lukte niet (geen internet?).'); return renderScoring(); }
+  if (e.target.id === 'reset' && await confirm('Alle instellingen van de scoring terugzetten naar de standaard? Ook bij je partner.', 'Terugzetten', true)) { data.inst = {}; save(); renderScoring(); toast('Standaard staat er weer.'); }
+});
+$('#t-score').addEventListener('change', e => {
+  const ins = data.inst, v = parseInt(e.target.value, 10);
+  if (!Number.isFinite(v)) return;
+  if (e.target.dataset.max) ins.max = Object.assign({}, cfg().max, ins.max || {}, { [e.target.dataset.max]: Math.max(0, Math.min(100, v)) });
+  else if (e.target.dataset.dr) ins.drempel = Object.assign({}, cfg().drempel, ins.drempel || {}, { [e.target.dataset.dr]: Math.max(0, Math.min(100, v)) });
+  else return;
+  save(); renderScoring();
+});
+
+async function aromaRegels(id) {
+  const c = cfg(), a = S.AROMA[id];
+  const br = new Set(c.bruggen[id] || []), bo = new Set(c.botsingen[id] || []);
+  const chips = () => S.KENMERKEN.map(([k, n]) => `<button type="button" class="chip${br.has(k) ? ' on' : bo.has(k) ? ' rood' : ''}" data-k="${k}">${br.has(k) ? '✓ ' : bo.has(k) ? '✗ ' : ''}${esc(n)}</button>`).join('');
+  const s = sheet(a.naam, `<div class="muted small">${esc(a.vb)} · ${esc(a.wiel)} op het biersmaakwiel. Tik om te wisselen: ✓ past bij → ✗ botst met → niets.</div><div class="chips" id="ak">${chips()}</div>`,
+    [{ label: 'Annuleren', value: null, kind: 'q' }, { label: 'Opslaan', value: 'ok' }]);
+  $('#ak', s.el).addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    const k = b.dataset.k;
+    if (br.has(k)) { br.delete(k); bo.add(k); } else if (bo.has(k)) bo.delete(k); else br.add(k);
+    $('#ak', s.el).innerHTML = chips();
+  });
+  if ((await s.done).value !== 'ok') return;
+  data.inst.bruggen = Object.assign({}, data.inst.bruggen || {}, { [id]: [...br] });
+  data.inst.botsingen = Object.assign({}, data.inst.botsingen || {}, { [id]: [...bo] });
+  save(); renderScoring();
+}
+
+// ---------------------------------------------------------------- start
+koppelDeel();
+const start = (location.hash || '').slice(1);
+toon(['thuis', 'rest', 'kast', 'score'].includes(start) ? start : (data.kast.length ? 'thuis' : 'kast'));
+setTimeout(() => { verstuurIedereen(); haalIedereen(); }, 300);
+</script>
+</body>
+</html>
